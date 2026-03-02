@@ -65,6 +65,7 @@ REMINDER_TEMPLATES = [
     "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
+# В 21:00 по МСК используем только эти "спокойной ночи"
 NIGHT_TEMPLATES = [
     "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
     "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
@@ -78,6 +79,9 @@ NIGHT_TEMPLATES = [
     "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
 ]
 
+# ----------------------------
+# Anti-spam warnings (15)
+# ----------------------------
 SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
     "Спокойнее, герой клавиатуры. Коморка не резиновая 😡",
@@ -182,6 +186,17 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(caption)
 
 
+async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    await update.message.reply_text("Отправь фото следующим сообщением — я верну file_id.")
+
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message or not update.message.photo:
+        return
+    photo = update.message.photo[-1]
+    await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
+
+
 async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not await is_admin(update, context):
         await update.message.reply_text("Только для админов.")
@@ -192,36 +207,20 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     data["chat_id"] = chat.id
     save_data(data)
 
+    # ВАЖНО: переносы только через \\n, иначе будет SyntaxError
     await update.message.reply_text(
-        f"Чат назначен. Теперь буду писать сюда.
-"
+        f"Чат назначен. Теперь буду писать сюда.\n"
         f"Цель: @{TARGET_NICK}"
     )
 
     await update.message.reply_text(
-        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕
-"
+        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n"
         f"@{TARGET_NICK}"
     )
 
 
 async def cmd_ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(build_from(REMINDER_TEMPLATES, TARGET_NICK))
-
-
-async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Отправь фото следующим сообщением — я верну file_id.")
-
-
-# ----------------------------
-# Photo handler (for /photoid)
-# ----------------------------
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.photo:
-        return
-    photo = update.message.photo[-1]
-    await update.message.reply_text(f"FILE_ID:
-{photo.file_id}")
 
 
 # ----------------------------
@@ -238,7 +237,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not chat or not user or user.is_bot:
         return
 
-    # антиспам только в том чате, который задан через /setchat
+    # антиспам только в чате, который задан через /setchat
     target_chat_id = get_target_chat_id()
     if target_chat_id is None or chat.id != target_chat_id:
         return
@@ -290,7 +289,7 @@ def main() -> None:
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # Schedule: every 2 hours from 09:00 to 21:00 MSK (inclusive): 9,11,13,15,17,19,21
+    # Каждые 2 часа с 09:00 до 21:00 (включительно): 9,11,13,15,17,19,21 (МСК)
     scheduler = AsyncIOScheduler(timezone=TZ)
     trigger = CronTrigger(hour="9-21/2", minute=0, timezone=TZ)
     scheduler.add_job(send_reminder, trigger=trigger, kwargs={"app": app}, replace_existing=True)
