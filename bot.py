@@ -3,6 +3,7 @@ import json
 import random
 import logging
 import time
+import asyncio
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime
@@ -21,6 +22,9 @@ from telegram.ext import (
     filters,
 )
 
+# ----------------------------
+# Files / config
+# ----------------------------
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data.json"  # НЕ коммитим
 
@@ -32,6 +36,7 @@ log = logging.getLogger("guard-bot")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 TARGET_NICK = os.getenv("TARGET_NICK", "SerjoGrass").lstrip("@").strip()
 
+# Фото для /start (опционально — достаточно одного из вариантов)
 START_PHOTO_FILE_ID = os.getenv("START_PHOTO_FILE_ID", "").strip()
 START_PHOTO_URL = os.getenv("START_PHOTO_URL", "").strip()
 START_PHOTO_PATH = os.getenv("START_PHOTO_PATH", "").strip()
@@ -41,6 +46,9 @@ if not BOT_TOKEN:
 
 TZ = ZoneInfo("Europe/Moscow")
 
+# ----------------------------
+# Templates
+# ----------------------------
 REMINDER_TEMPLATES = [
     "Ему так грустно — он один охраняет коморку. @{nick}, напиши охраннику 🥺",
     "Охранник смотрит в даль и вздыхает. @{nick}, напиши охраннику 😄",
@@ -58,6 +66,7 @@ REMINDER_TEMPLATES = [
     "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
+# В 21:00 по МСК
 NIGHT_TEMPLATES = [
     "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
     "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
@@ -71,6 +80,7 @@ NIGHT_TEMPLATES = [
     "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
 ]
 
+# Антиспам фразы (15)
 SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
     "Спокойнее, герой клавиатуры. Коморка не резиновая 😡",
@@ -89,16 +99,22 @@ SPAM_WARNINGS = [
     "Спокойствие. Только спокойствие. И меньше сообщений 😾",
 ]
 
+# Антиспам настройки
 SPAM_WINDOW_SECONDS = 5
 SPAM_COOLDOWN_SECONDS = 120
 
+# Runtime state
 last_messages: dict[int, float] = {}
 last_spam_warn_ts: float = 0.0
 
+# Личка: ждём фото после /photoid или форвард после /chatid
 awaiting_photoid: set[int] = set()
 awaiting_chatid: set[int] = set()
 
 
+# ----------------------------
+# Storage helpers
+# ----------------------------
 def load_data() -> dict:
     if DATA_FILE.exists():
         try:
@@ -136,6 +152,9 @@ def user_is_target(update: Update) -> bool:
     return username.lower() == TARGET_NICK.lower()
 
 
+# ----------------------------
+# Permissions
+# ----------------------------
 async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     chat = update.effective_chat
     user = update.effective_user
@@ -149,15 +168,69 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
         return False
 
 
+async def fake_check_denied(update: Update) -> None:
+    """
+    Фейковая "проверка" с редактированием сообщения, потом отказ.
+    """
+    msg = await update.message.reply_text("Выполняется проверка...")
+    await asyncio.sleep(0.7)
+    await msg.edit_text("Пип... Пип...")
+    await asyncio.sleep(0.7)
+    await msg.edit_text("Вычисляем....")
+    await asyncio.sleep(0.8)
+    await msg.edit_text("Петушок вычислен: ты вне чата, тебе тут нечего делать 🐓")
+
+
+async def require_group_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    """
+    Разрешаем личные команды только участникам группы, заданной через /setchat.
+    """
+    # Вызываем только в личке
+    chat_id = get_target_chat_id()
+    if chat_id is None:
+        # Если чат ещё не настроен — отказываем (и объясняем)
+        await update.message.reply_text("Коморка ещё не настроена. Пусть админ выполнит /setchat в группе 🙂")
+        return False
+
+    user = update.effective_user
+    if not user:
+        return False
+
+    try:
+        member = await context.bot.get_chat_member(chat_id=chat_id, user_id=user.id)
+        if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
+            await fake_check_denied(update)
+            return False
+        return True
+    except Exception:
+        # Обычно: бот не в группе, нет доступа или Telegram не даёт проверить
+        await update.message.reply_text(
+            "Не могу проверить твоё участие в коморке 😕\n"
+            "Убедись, что бот добавлен в нужную группу и в ней выполнен /setchat."
+        )
+        return False
+
+
+# ----------------------------
+# Commands
+# ----------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     caption = "Приветствую тебя в коморке 🛡️"
+
+    # Ограничение: если пишут в личку — только участникам коморки
+    if is_private(update):
+        if not await require_group_member(update, context):
+            return
+
     try:
         if START_PHOTO_FILE_ID:
             await update.message.reply_photo(photo=START_PHOTO_FILE_ID, caption=caption)
             return
+
         if START_PHOTO_URL:
             await update.message.reply_photo(photo=START_PHOTO_URL, caption=caption)
             return
+
         if START_PHOTO_PATH:
             path = Path(START_PHOTO_PATH)
             if not path.is_absolute():
@@ -166,6 +239,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
                 with path.open("rb") as f:
                     await update.message.reply_photo(photo=InputFile(f, filename=path.name), caption=caption)
                 return
+
         await update.message.reply_text(caption)
     except Exception:
         log.exception("Failed to send /start")
@@ -200,6 +274,9 @@ async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not is_private(update):
         await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
         return
+    if not await require_group_member(update, context):
+        return
+
     user = update.effective_user
     awaiting_photoid.add(user.id)
     await update.message.reply_text("Ок! Отправь мне фото следующим сообщением — я верну его file_id.")
@@ -209,19 +286,29 @@ async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
     if not is_private(update):
         await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
         return
+    if not await require_group_member(update, context):
+        return
+
     user = update.effective_user
     awaiting_chatid.add(user.id)
-    await update.message.reply_text("Ок! Перешли мне любое сообщение из нужной группы/чата — я верну chat_id этого чата.")
+    await update.message.reply_text(
+        "Ок! Перешли мне любое сообщение из нужной группы/чата — я попробую вернуть chat_id этого чата."
+    )
 
 
+# ----------------------------
+# Private handlers: photoid / chatid
+# ----------------------------
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.photo:
         return
     if not is_private(update):
         return
+
     user = update.effective_user
     if not user or user.id not in awaiting_photoid:
         return
+
     awaiting_photoid.discard(user.id)
     photo = update.message.photo[-1]
     await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
@@ -232,16 +319,19 @@ async def handle_forwarded_for_chatid(update: Update, context: ContextTypes.DEFA
         return
     if not is_private(update):
         return
+
     user = update.effective_user
     if not user or user.id not in awaiting_chatid:
         return
 
     chat_id = None
 
+    # Старое поле пересылки
     fchat = getattr(update.message, "forward_from_chat", None)
     if fchat and getattr(fchat, "id", None) is not None:
         chat_id = fchat.id
 
+    # Новое поле пересылки
     if chat_id is None:
         origin = getattr(update.message, "forward_origin", None)
         if origin is not None:
@@ -249,17 +339,22 @@ async def handle_forwarded_for_chatid(update: Update, context: ContextTypes.DEFA
             if possible_chat is not None and getattr(possible_chat, "id", None) is not None:
                 chat_id = possible_chat.id
 
+    awaiting_chatid.discard(user.id)
+
     if chat_id is None:
         await update.message.reply_text(
             "Не смог понять chat_id из пересылки 😕\n"
-            "Попробуй переслать сообщение именно из группы (не копировать текст), или добавь меня в группу и используй /setchat."
+            "Telegram иногда скрывает источник пересылки.\n"
+            "Самый надёжный способ — добавить меня в группу и сделать /setchat."
         )
         return
 
-    awaiting_chatid.discard(user.id)
     await update.message.reply_text(f"CHAT_ID:\n{chat_id}")
 
 
+# ----------------------------
+# Anti-spam (ONLY for @TARGET_NICK) in the configured group chat
+# ----------------------------
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global last_spam_warn_ts
 
@@ -275,7 +370,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if target_chat_id is None or chat.id != target_chat_id:
         return
 
-    # ругаем ТОЛЬКО если спамит TARGET_NICK
+    # ругаем только если спамит TARGET_NICK
     if not user_is_target(update):
         return
 
@@ -292,6 +387,9 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     last_messages[user_id] = now
 
 
+# ----------------------------
+# Scheduled reminders
+# ----------------------------
 async def send_reminder(app: Application) -> None:
     chat_id = get_target_chat_id()
     if chat_id is None:
@@ -307,6 +405,9 @@ async def send_reminder(app: Application) -> None:
         log.exception("Failed to send scheduled reminder")
 
 
+# ----------------------------
+# Main
+# ----------------------------
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -314,17 +415,18 @@ def main() -> None:
     app.add_handler(CommandHandler("setchat", cmd_setchat))
     app.add_handler(CommandHandler("ping", cmd_ping))
 
-    # Эти команды доступны только в личке с ботом
+    # Личные команды (доступ только участникам коморки)
     app.add_handler(CommandHandler("photoid", cmd_photoid))
     app.add_handler(CommandHandler("chatid", cmd_chatid))
 
-    # Обработчики: срабатывают только в личке и только после команды
+    # Эти хэндлеры реально отвечают только в личке и только после команды
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.FORWARDED, handle_forwarded_for_chatid))
 
     # Антиспам: только текст (не команды) и только если пишет TARGET_NICK
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
+    # Каждые 2 часа с 09:00 до 21:00 (включительно): 9,11,13,15,17,19,21 (МСК)
     scheduler = AsyncIOScheduler(timezone=TZ)
     trigger = CronTrigger(hour="9-21/2", minute=0, timezone=TZ)
     scheduler.add_job(send_reminder, trigger=trigger, kwargs={"app": app}, replace_existing=True)
