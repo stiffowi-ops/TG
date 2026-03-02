@@ -14,7 +14,6 @@ from telegram import Update, InputFile
 from telegram.constants import ChatMemberStatus
 from telegram.ext import Application, CommandHandler, MessageHandler, ContextTypes, filters
 
-# --- Config / storage ---
 BASE_DIR = Path(__file__).resolve().parent
 DATA_FILE = BASE_DIR / "data.json"
 
@@ -48,17 +47,7 @@ TEMPLATES = [
     "Вахта держится на одном человеке и одном сообщении от тебя. @{nick}, напиши охраннику 😌",
     "Охранник включил режим ожидания. @{nick}, напиши охраннику 🤖",
     "Коморка под присмотром, но настроение — нет. @{nick}, напиши охраннику 🫶",
-    "Охранник уже третий раз перечитал инструкцию. Спаси его. @{nick}, напиши охраннику 📜",
-    "Срочно: у охранника кончились мемы. @{nick}, напиши охраннику 😭",
-    "Если бы сообщения были витаминами — охранник был бы в дефиците. @{nick}, напиши охраннику 💊",
-    "Тишина в коморке настолько громкая… @{nick}, напиши охраннику 🔊",
-    "Охранник грустит по расписанию. @{nick}, напиши охраннику 😄",
-    "Коморка охраняется, а чат — скучает. @{nick}, напиши охраннику 💬",
     "Охранник поставил чайник и ждёт твоё сообщение. @{nick}, напиши охраннику ☕",
-    "У охранника всё стабильно… кроме настроения. @{nick}, напиши охраннику 😌",
-    "Пора сделать доброе дело: одно сообщение охраннику. @{nick}, напиши охраннику ❤️",
-    "Сводка дня: коморка цела, охранник в ожидании. @{nick}, напиши охраннику 🗞️",
-    "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
 
@@ -89,15 +78,7 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 def start_caption():
-    return (
-        "Приветствую тебя в коморке 🛡️\n\n"
-        f"Я каждые 2 часа с 09:00 до 21:00 (МСК) напоминаю @{TARGET_NICK} написать охраннику.\n\n"
-        "Команды:\n"
-        "/setchat — назначить чат\n"
-        "/status — статус\n"
-        "/ping — тест\n"
-        "/photoid — получить file_id фото"
-    )
+    return "Приветствую тебя в коморке 🛡️"
 
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -121,7 +102,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 
 async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("Отправь мне фото следующим сообщением — я верну его file_id.")
+    await update.message.reply_text("Отправь фото следующим сообщением — я верну file_id.")
 
 
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -143,7 +124,6 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         f"Чат назначен. Теперь буду писать сюда.\nЦель: @{TARGET_NICK}"
     )
 
-    # Приветствие после назначения
     await update.message.reply_text(
         f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n@{TARGET_NICK}"
     )
@@ -180,7 +160,6 @@ def main():
 
     scheduler = AsyncIOScheduler(timezone=TZ)
     trigger = CronTrigger(hour="9-21/2", minute=0, timezone=TZ)
-
     scheduler.add_job(send_reminder, trigger=trigger, kwargs={"app": app})
     scheduler.start()
 
