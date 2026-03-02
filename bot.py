@@ -5,6 +5,7 @@ import logging
 import time
 from pathlib import Path
 from zoneinfo import ZoneInfo
+from datetime import datetime
 
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -45,7 +46,7 @@ if not BOT_TOKEN:
 TZ = ZoneInfo("Europe/Moscow")
 
 # ----------------------------
-# Reminder templates
+# Templates
 # ----------------------------
 REMINDER_TEMPLATES = [
     "Ему так грустно — он один охраняет коморку. @{nick}, напиши охраннику 🥺",
@@ -64,9 +65,19 @@ REMINDER_TEMPLATES = [
     "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
-# ----------------------------
-# Anti-spam warnings (15)
-# ----------------------------
+NIGHT_TEMPLATES = [
+    "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
+    "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
+    "Смена окончена: коморка засыпает, и ты тоже. Спокойной ночи, @{nick} 🛌",
+    "Заслон опущен, дверь на замке. Спокойной ночи, @{nick} 🔒🌙",
+    "Коморка шепчет: «пора отдыхать». Спокойной ночи, @{nick} ✨",
+    "Охранник кивает: «до завтра». Спокойной ночи, @{nick} 🌛",
+    "Тишина в коморке — лучший плед. Спокойной ночи, @{nick} 🧣😴",
+    "Чай допит, фонарь погас. Спокойной ночи, @{nick} ☕💤",
+    "Коморка уходит в ночной режим. Спокойной ночи, @{nick} 🌌",
+    "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
+]
+
 SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
     "Спокойнее, герой клавиатуры. Коморка не резиновая 😡",
@@ -116,9 +127,9 @@ def get_target_chat_id() -> int | None:
     return int(chat_id) if chat_id is not None else None
 
 
-def build_reminder(nick: str) -> str:
+def build_from(templates: list[str], nick: str) -> str:
     nick = nick.lstrip("@").strip()
-    return random.choice(REMINDER_TEMPLATES).format(nick=nick)
+    return random.choice(templates).format(nick=nick)
 
 
 # ----------------------------
@@ -141,7 +152,7 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
 # Commands
 # ----------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Пользователь просил: только приветствие + фото (если настроено)
+    # Только приветствие + фото (если настроено)
     caption = "Приветствую тебя в коморке 🛡️"
 
     try:
@@ -181,20 +192,21 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     data["chat_id"] = chat.id
     save_data(data)
 
-    # ВАЖНО: никаких переносов внутри строк без \n (иначе SyntaxError)
     await update.message.reply_text(
-        f"Чат назначен. Теперь буду писать сюда.\n"
+        f"Чат назначен. Теперь буду писать сюда.
+"
         f"Цель: @{TARGET_NICK}"
     )
 
     await update.message.reply_text(
-        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n"
+        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕
+"
         f"@{TARGET_NICK}"
     )
 
 
 async def cmd_ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text(build_reminder(TARGET_NICK))
+    await update.message.reply_text(build_from(REMINDER_TEMPLATES, TARGET_NICK))
 
 
 async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -208,18 +220,14 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     if not update.message or not update.message.photo:
         return
     photo = update.message.photo[-1]
-    await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
+    await update.message.reply_text(f"FILE_ID:
+{photo.file_id}")
 
 
 # ----------------------------
 # Anti-spam handler
 # ----------------------------
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Если пользователь спамит (2+ сообщений подряд за SPAM_WINDOW_SECONDS),
-    бот ругается, но не чаще чем раз в 2 минуты.
-    Ругаемся только в том чате, который задан через /setchat.
-    """
     global last_spam_warn_ts
 
     if not update.message:
@@ -230,9 +238,10 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not chat or not user or user.is_bot:
         return
 
+    # антиспам только в том чате, который задан через /setchat
     target_chat_id = get_target_chat_id()
     if target_chat_id is None or chat.id != target_chat_id:
-        return  # антиспам только в "целевом" чате
+        return
 
     now = time.time()
     user_id = user.id
@@ -256,8 +265,13 @@ async def send_reminder(app: Application) -> None:
     chat_id = get_target_chat_id()
     if chat_id is None:
         return
+
+    hour_msk = datetime.now(TZ).hour
+    templates = NIGHT_TEMPLATES if hour_msk == 21 else REMINDER_TEMPLATES
+    text = build_from(templates, TARGET_NICK)
+
     try:
-        await app.bot.send_message(chat_id=chat_id, text=build_reminder(TARGET_NICK))
+        await app.bot.send_message(chat_id=chat_id, text=text)
     except Exception:
         log.exception("Failed to send scheduled reminder")
 
@@ -273,10 +287,7 @@ def main() -> None:
     app.add_handler(CommandHandler("ping", cmd_ping))
     app.add_handler(CommandHandler("photoid", cmd_photoid))
 
-    # Любое фото -> вернём file_id (удобно для настройки START_PHOTO_FILE_ID)
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-
-    # Антиспам на обычные текстовые сообщения (не команды)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
     # Schedule: every 2 hours from 09:00 to 21:00 MSK (inclusive): 9,11,13,15,17,19,21
