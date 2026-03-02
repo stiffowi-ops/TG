@@ -21,11 +21,8 @@ from telegram.ext import (
     filters,
 )
 
-# ----------------------------
-# Files / config
-# ----------------------------
 BASE_DIR = Path(__file__).resolve().parent
-DATA_FILE = BASE_DIR / "data.json"  # НЕ коммитим (в .gitignore)
+DATA_FILE = BASE_DIR / "data.json"  # НЕ коммитим
 
 load_dotenv()
 
@@ -35,7 +32,6 @@ log = logging.getLogger("guard-bot")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 TARGET_NICK = os.getenv("TARGET_NICK", "SerjoGrass").lstrip("@").strip()
 
-# Фото для /start (опционально — достаточно одного из вариантов)
 START_PHOTO_FILE_ID = os.getenv("START_PHOTO_FILE_ID", "").strip()
 START_PHOTO_URL = os.getenv("START_PHOTO_URL", "").strip()
 START_PHOTO_PATH = os.getenv("START_PHOTO_PATH", "").strip()
@@ -45,9 +41,6 @@ if not BOT_TOKEN:
 
 TZ = ZoneInfo("Europe/Moscow")
 
-# ----------------------------
-# Templates
-# ----------------------------
 REMINDER_TEMPLATES = [
     "Ему так грустно — он один охраняет коморку. @{nick}, напиши охраннику 🥺",
     "Охранник смотрит в даль и вздыхает. @{nick}, напиши охраннику 😄",
@@ -65,7 +58,6 @@ REMINDER_TEMPLATES = [
     "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
-# В 21:00 по МСК используем только эти "спокойной ночи"
 NIGHT_TEMPLATES = [
     "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
     "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
@@ -79,9 +71,6 @@ NIGHT_TEMPLATES = [
     "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
 ]
 
-# ----------------------------
-# Anti-spam warnings (15)
-# ----------------------------
 SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
     "Спокойнее, герой клавиатуры. Коморка не резиновая 😡",
@@ -100,18 +89,16 @@ SPAM_WARNINGS = [
     "Спокойствие. Только спокойствие. И меньше сообщений 😾",
 ]
 
-# Anti-spam settings:
-SPAM_WINDOW_SECONDS = 5       # если 2+ сообщений за 5 секунд — считаем спамом
-SPAM_COOLDOWN_SECONDS = 120   # бот ругается не чаще чем раз в 2 минуты
+SPAM_WINDOW_SECONDS = 5
+SPAM_COOLDOWN_SECONDS = 120
 
-# Runtime state (in-memory)
-last_messages: dict[int, float] = {}  # user_id -> last msg time
-last_spam_warn_ts: float = 0.0        # last time bot warned
+last_messages: dict[int, float] = {}
+last_spam_warn_ts: float = 0.0
+
+awaiting_photoid: set[int] = set()
+awaiting_chatid: set[int] = set()
 
 
-# ----------------------------
-# Helpers: data storage
-# ----------------------------
 def load_data() -> dict:
     if DATA_FILE.exists():
         try:
@@ -136,9 +123,19 @@ def build_from(templates: list[str], nick: str) -> str:
     return random.choice(templates).format(nick=nick)
 
 
-# ----------------------------
-# Permissions
-# ----------------------------
+def is_private(update: Update) -> bool:
+    chat = update.effective_chat
+    return bool(chat and chat.type == "private")
+
+
+def user_is_target(update: Update) -> bool:
+    user = update.effective_user
+    if not user or user.is_bot:
+        return False
+    username = (user.username or "").lstrip("@")
+    return username.lower() == TARGET_NICK.lower()
+
+
 async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     chat = update.effective_chat
     user = update.effective_user
@@ -152,49 +149,27 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
         return False
 
 
-# ----------------------------
-# Commands
-# ----------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # Только приветствие + фото (если настроено)
     caption = "Приветствую тебя в коморке 🛡️"
-
     try:
         if START_PHOTO_FILE_ID:
             await update.message.reply_photo(photo=START_PHOTO_FILE_ID, caption=caption)
             return
-
         if START_PHOTO_URL:
             await update.message.reply_photo(photo=START_PHOTO_URL, caption=caption)
             return
-
         if START_PHOTO_PATH:
             path = Path(START_PHOTO_PATH)
             if not path.is_absolute():
                 path = BASE_DIR / path
             if path.exists():
                 with path.open("rb") as f:
-                    await update.message.reply_photo(
-                        photo=InputFile(f, filename=path.name),
-                        caption=caption,
-                    )
+                    await update.message.reply_photo(photo=InputFile(f, filename=path.name), caption=caption)
                 return
-
         await update.message.reply_text(caption)
     except Exception:
         log.exception("Failed to send /start")
         await update.message.reply_text(caption)
-
-
-async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    await update.message.reply_text("Отправь фото следующим сообщением — я верну file_id.")
-
-
-async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message or not update.message.photo:
-        return
-    photo = update.message.photo[-1]
-    await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
 
 
 async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -207,12 +182,10 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     data["chat_id"] = chat.id
     save_data(data)
 
-    # ВАЖНО: переносы только через \\n, иначе будет SyntaxError
     await update.message.reply_text(
         f"Чат назначен. Теперь буду писать сюда.\n"
         f"Цель: @{TARGET_NICK}"
     )
-
     await update.message.reply_text(
         f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n"
         f"@{TARGET_NICK}"
@@ -223,9 +196,70 @@ async def cmd_ping(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(build_from(REMINDER_TEMPLATES, TARGET_NICK))
 
 
-# ----------------------------
-# Anti-spam handler
-# ----------------------------
+async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_private(update):
+        await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
+        return
+    user = update.effective_user
+    awaiting_photoid.add(user.id)
+    await update.message.reply_text("Ок! Отправь мне фото следующим сообщением — я верну его file_id.")
+
+
+async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_private(update):
+        await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
+        return
+    user = update.effective_user
+    awaiting_chatid.add(user.id)
+    await update.message.reply_text("Ок! Перешли мне любое сообщение из нужной группы/чата — я верну chat_id этого чата.")
+
+
+async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message or not update.message.photo:
+        return
+    if not is_private(update):
+        return
+    user = update.effective_user
+    if not user or user.id not in awaiting_photoid:
+        return
+    awaiting_photoid.discard(user.id)
+    photo = update.message.photo[-1]
+    await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
+
+
+async def handle_forwarded_for_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.message:
+        return
+    if not is_private(update):
+        return
+    user = update.effective_user
+    if not user or user.id not in awaiting_chatid:
+        return
+
+    chat_id = None
+
+    fchat = getattr(update.message, "forward_from_chat", None)
+    if fchat and getattr(fchat, "id", None) is not None:
+        chat_id = fchat.id
+
+    if chat_id is None:
+        origin = getattr(update.message, "forward_origin", None)
+        if origin is not None:
+            possible_chat = getattr(origin, "chat", None)
+            if possible_chat is not None and getattr(possible_chat, "id", None) is not None:
+                chat_id = possible_chat.id
+
+    if chat_id is None:
+        await update.message.reply_text(
+            "Не смог понять chat_id из пересылки 😕\n"
+            "Попробуй переслать сообщение именно из группы (не копировать текст), или добавь меня в группу и используй /setchat."
+        )
+        return
+
+    awaiting_chatid.discard(user.id)
+    await update.message.reply_text(f"CHAT_ID:\n{chat_id}")
+
+
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     global last_spam_warn_ts
 
@@ -237,9 +271,12 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not chat or not user or user.is_bot:
         return
 
-    # антиспам только в чате, который задан через /setchat
     target_chat_id = get_target_chat_id()
     if target_chat_id is None or chat.id != target_chat_id:
+        return
+
+    # ругаем ТОЛЬКО если спамит TARGET_NICK
+    if not user_is_target(update):
         return
 
     now = time.time()
@@ -247,19 +284,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     prev_ts = last_messages.get(user_id)
     if prev_ts is not None:
-        diff = now - prev_ts
-        if diff <= SPAM_WINDOW_SECONDS:
+        if now - prev_ts <= SPAM_WINDOW_SECONDS:
             if now - last_spam_warn_ts >= SPAM_COOLDOWN_SECONDS:
-                warning = random.choice(SPAM_WARNINGS)
-                await update.message.reply_text(f"@{TARGET_NICK} {warning}")
+                await update.message.reply_text(f"@{TARGET_NICK} {random.choice(SPAM_WARNINGS)}")
                 last_spam_warn_ts = now
 
     last_messages[user_id] = now
 
 
-# ----------------------------
-# Scheduled reminders
-# ----------------------------
 async def send_reminder(app: Application) -> None:
     chat_id = get_target_chat_id()
     if chat_id is None:
@@ -275,21 +307,24 @@ async def send_reminder(app: Application) -> None:
         log.exception("Failed to send scheduled reminder")
 
 
-# ----------------------------
-# Main
-# ----------------------------
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("setchat", cmd_setchat))
     app.add_handler(CommandHandler("ping", cmd_ping))
-    app.add_handler(CommandHandler("photoid", cmd_photoid))
 
+    # Эти команды доступны только в личке с ботом
+    app.add_handler(CommandHandler("photoid", cmd_photoid))
+    app.add_handler(CommandHandler("chatid", cmd_chatid))
+
+    # Обработчики: срабатывают только в личке и только после команды
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
+    app.add_handler(MessageHandler(filters.FORWARDED, handle_forwarded_for_chatid))
+
+    # Антиспам: только текст (не команды) и только если пишет TARGET_NICK
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # Каждые 2 часа с 09:00 до 21:00 (включительно): 9,11,13,15,17,19,21 (МСК)
     scheduler = AsyncIOScheduler(timezone=TZ)
     trigger = CronTrigger(hour="9-21/2", minute=0, timezone=TZ)
     scheduler.add_job(send_reminder, trigger=trigger, kwargs={"app": app}, replace_existing=True)
