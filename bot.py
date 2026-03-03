@@ -6,7 +6,6 @@ import time
 import asyncio
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from datetime import datetime
 
 from dotenv import load_dotenv
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -26,7 +25,7 @@ from telegram.ext import (
 # Files / config
 # ----------------------------
 BASE_DIR = Path(__file__).resolve().parent
-DATA_FILE = BASE_DIR / "data.json"  # НЕ коммитим
+DATA_FILE = BASE_DIR / "data.json"  # do not commit
 
 load_dotenv()
 
@@ -36,13 +35,13 @@ log = logging.getLogger("guard-bot")
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 TARGET_NICK = os.getenv("TARGET_NICK", "SerjoGrass").lstrip("@").strip()
 
-# Фото для /start (опционально — достаточно одного из вариантов)
+# Photo for /start (optional)
 START_PHOTO_FILE_ID = os.getenv("START_PHOTO_FILE_ID", "").strip()
 START_PHOTO_URL = os.getenv("START_PHOTO_URL", "").strip()
 START_PHOTO_PATH = os.getenv("START_PHOTO_PATH", "").strip()
 
 if not BOT_TOKEN:
-    raise RuntimeError("Не задан BOT_TOKEN")
+    raise RuntimeError("BOT_TOKEN is not set")
 
 TZ = ZoneInfo("Europe/Moscow")
 
@@ -66,7 +65,6 @@ REMINDER_TEMPLATES = [
     "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
 ]
 
-# В 21:00 по МСК
 NIGHT_TEMPLATES = [
     "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
     "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
@@ -80,7 +78,6 @@ NIGHT_TEMPLATES = [
     "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
 ]
 
-# Антиспам фразы (15)
 SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
     "Спокойнее, герой клавиатуры. Коморка не резиновая 😡",
@@ -99,22 +96,15 @@ SPAM_WARNINGS = [
     "Спокойствие. Только спокойствие. И меньше сообщений 😾",
 ]
 
-# Антиспам настройки
 SPAM_WINDOW_SECONDS = 5
 SPAM_COOLDOWN_SECONDS = 120
 
-# Runtime state
 last_messages: dict[int, float] = {}
 last_spam_warn_ts: float = 0.0
 
-# Личка: ждём фото после /photoid или форвард после /chatid
 awaiting_photoid: set[int] = set()
-awaiting_chatid: set[int] = set()
 
 
-# ----------------------------
-# Storage helpers
-# ----------------------------
 def load_data() -> dict:
     if DATA_FILE.exists():
         try:
@@ -152,9 +142,6 @@ def user_is_target(update: Update) -> bool:
     return username.lower() == TARGET_NICK.lower()
 
 
-# ----------------------------
-# Permissions
-# ----------------------------
 async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     chat = update.effective_chat
     user = update.effective_user
@@ -168,28 +155,25 @@ async def is_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
         return False
 
 
-async def fake_check_denied(update: Update) -> None:
-    """
-    Фейковая "проверка" с редактированием сообщения, потом отказ.
-    """
+async def fake_check_sequence(update: Update, final_text: str) -> None:
     msg = await update.message.reply_text("Выполняется проверка...")
     await asyncio.sleep(0.7)
     await msg.edit_text("Пип... Пип...")
     await asyncio.sleep(0.7)
     await msg.edit_text("Вычисляем....")
     await asyncio.sleep(0.8)
-    await msg.edit_text("Петушок вычислен: ты вне чата, тебе тут нечего делать 🐓")
+    await msg.edit_text(final_text)
 
 
 async def require_group_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
-    """
-    Разрешаем личные команды только участникам группы, заданной через /setchat.
-    """
-    # Вызываем только в личке
+    # Access to private commands is only for members of the group set via /setchat.
+    # If chat is not set yet, we still show the "check" animation (your logic).
     chat_id = get_target_chat_id()
     if chat_id is None:
-        # Если чат ещё не настроен — отказываем (и объясняем)
-        await update.message.reply_text("Коморка ещё не настроена. Пусть админ выполнит /setchat в группе 🙂")
+        await fake_check_sequence(
+            update,
+            "Петушок вычислен: коморка ещё не привязана. Пусть админ выполнит /setchat в группе 🐓",
+        )
         return False
 
     user = update.effective_user
@@ -199,28 +183,25 @@ async def require_group_member(update: Update, context: ContextTypes.DEFAULT_TYP
     try:
         member = await context.bot.get_chat_member(chat_id=chat_id, user_id=user.id)
         if member.status in (ChatMemberStatus.LEFT, ChatMemberStatus.KICKED):
-            await fake_check_denied(update)
+            await fake_check_sequence(update, "Петушок вычислен: ты вне чата, тебе тут нечего делать 🐓")
             return False
         return True
     except Exception:
-        # Обычно: бот не в группе, нет доступа или Telegram не даёт проверить
         await update.message.reply_text(
-            "Не могу проверить твоё участие в коморке 😕\n"
+            "Не могу проверить участие в коморке 😕
+"
             "Убедись, что бот добавлен в нужную группу и в ней выполнен /setchat."
         )
         return False
 
 
-# ----------------------------
-# Commands
-# ----------------------------
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    caption = "Приветствую тебя в коморке 🛡️"
-
-    # Ограничение: если пишут в личку — только участникам коморки
+    # In private: members only (with fake check). In group: just greeting.
     if is_private(update):
         if not await require_group_member(update, context):
             return
+
+    caption = "Приветствую тебя в коморке 🛡️"
 
     try:
         if START_PHOTO_FILE_ID:
@@ -257,11 +238,16 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     save_data(data)
 
     await update.message.reply_text(
-        f"Чат назначен. Теперь буду писать сюда.\n"
+        f"Чат назначен ✅
+"
+        f"CHAT_ID: {chat.id}
+"
         f"Цель: @{TARGET_NICK}"
     )
+
     await update.message.reply_text(
-        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n"
+        f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕
+"
         f"@{TARGET_NICK}"
     )
 
@@ -274,6 +260,7 @@ async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if not is_private(update):
         await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
         return
+
     if not await require_group_member(update, context):
         return
 
@@ -282,23 +269,6 @@ async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     await update.message.reply_text("Ок! Отправь мне фото следующим сообщением — я верну его file_id.")
 
 
-async def cmd_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_private(update):
-        await update.message.reply_text("Эта команда работает только в личке со мной 🙂")
-        return
-    if not await require_group_member(update, context):
-        return
-
-    user = update.effective_user
-    awaiting_chatid.add(user.id)
-    await update.message.reply_text(
-        "Ок! Перешли мне любое сообщение из нужной группы/чата — я попробую вернуть chat_id этого чата."
-    )
-
-
-# ----------------------------
-# Private handlers: photoid / chatid
-# ----------------------------
 async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not update.message or not update.message.photo:
         return
@@ -311,51 +281,12 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 
     awaiting_photoid.discard(user.id)
     photo = update.message.photo[-1]
-    await update.message.reply_text(f"FILE_ID:\n{photo.file_id}")
+    await update.message.reply_text(f"FILE_ID:
+{photo.file_id}")
 
 
-async def handle_forwarded_for_chatid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not update.message:
-        return
-    if not is_private(update):
-        return
-
-    user = update.effective_user
-    if not user or user.id not in awaiting_chatid:
-        return
-
-    chat_id = None
-
-    # Старое поле пересылки
-    fchat = getattr(update.message, "forward_from_chat", None)
-    if fchat and getattr(fchat, "id", None) is not None:
-        chat_id = fchat.id
-
-    # Новое поле пересылки
-    if chat_id is None:
-        origin = getattr(update.message, "forward_origin", None)
-        if origin is not None:
-            possible_chat = getattr(origin, "chat", None)
-            if possible_chat is not None and getattr(possible_chat, "id", None) is not None:
-                chat_id = possible_chat.id
-
-    awaiting_chatid.discard(user.id)
-
-    if chat_id is None:
-        await update.message.reply_text(
-            "Не смог понять chat_id из пересылки 😕\n"
-            "Telegram иногда скрывает источник пересылки.\n"
-            "Самый надёжный способ — добавить меня в группу и сделать /setchat."
-        )
-        return
-
-    await update.message.reply_text(f"CHAT_ID:\n{chat_id}")
-
-
-# ----------------------------
-# Anti-spam (ONLY for @TARGET_NICK) in the configured group chat
-# ----------------------------
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Anti-spam: only in the configured group and only if TARGET_NICK is spamming
     global last_spam_warn_ts
 
     if not update.message:
@@ -370,7 +301,6 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     if target_chat_id is None or chat.id != target_chat_id:
         return
 
-    # ругаем только если спамит TARGET_NICK
     if not user_is_target(update):
         return
 
@@ -388,49 +318,56 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 # ----------------------------
-# Scheduled reminders
+# Scheduled reminders (split jobs to guarantee 21:00 behavior)
 # ----------------------------
-async def send_reminder(app: Application) -> None:
+async def send_day_reminder(app: Application) -> None:
     chat_id = get_target_chat_id()
     if chat_id is None:
         return
-
-    hour_msk = datetime.now(TZ).hour
-    templates = NIGHT_TEMPLATES if hour_msk == 21 else REMINDER_TEMPLATES
-    text = build_from(templates, TARGET_NICK)
-
+    text = build_from(REMINDER_TEMPLATES, TARGET_NICK)
     try:
         await app.bot.send_message(chat_id=chat_id, text=text)
     except Exception:
-        log.exception("Failed to send scheduled reminder")
+        log.exception("Failed to send day reminder")
 
 
-# ----------------------------
-# Main
-# ----------------------------
+async def send_night_reminder(app: Application) -> None:
+    chat_id = get_target_chat_id()
+    if chat_id is None:
+        return
+    text = build_from(NIGHT_TEMPLATES, TARGET_NICK)
+    try:
+        await app.bot.send_message(chat_id=chat_id, text=text)
+    except Exception:
+        log.exception("Failed to send night reminder")
+
+
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("setchat", cmd_setchat))
     app.add_handler(CommandHandler("ping", cmd_ping))
-
-    # Личные команды (доступ только участникам коморки)
     app.add_handler(CommandHandler("photoid", cmd_photoid))
-    app.add_handler(CommandHandler("chatid", cmd_chatid))
 
-    # Эти хэндлеры реально отвечают только в личке и только после команды
+    # file_id only in private and only after /photoid
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
-    app.add_handler(MessageHandler(filters.FORWARDED, handle_forwarded_for_chatid))
 
-    # Антиспам: только текст (не команды) и только если пишет TARGET_NICK
+    # Anti-spam: only text (not commands) and only if TARGET_NICK
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
 
-    # Каждые 2 часа с 09:00 до 21:00 (включительно): 9,11,13,15,17,19,21 (МСК)
     scheduler = AsyncIOScheduler(timezone=TZ)
-    trigger = CronTrigger(hour="9-21/2", minute=0, timezone=TZ)
-    scheduler.add_job(send_reminder, trigger=trigger, kwargs={"app": app}, replace_existing=True)
+
+    # Day: 09:00, 11:00, 13:00, 15:00, 17:00, 19:00
+    day_trigger = CronTrigger(hour="9-19/2", minute=0, timezone=TZ)
+    scheduler.add_job(send_day_reminder, trigger=day_trigger, kwargs={"app": app}, id="day", replace_existing=True)
+
+    # Night: exactly 21:00
+    night_trigger = CronTrigger(hour=21, minute=0, timezone=TZ)
+    scheduler.add_job(send_night_reminder, trigger=night_trigger, kwargs={"app": app}, id="night", replace_existing=True)
+
     scheduler.start()
+    log.info("Scheduler started: day 09-19/2 and night at 21:00 (MSK)")
 
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
