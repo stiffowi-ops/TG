@@ -490,7 +490,7 @@ def main() -> None:
 
     # Conversation must be able to receive private messages -> group=0
     conv = ConversationHandler(
-        entry_points=[CommandHandler("Button", cmd_button)],
+        entry_points=[CommandHandler("button", cmd_button), CommandHandler("Button", cmd_button)],
         states={
             BC_MENU: [CallbackQueryHandler(bc_menu_click)],
             BC_TITLE: [MessageHandler(filters.TEXT & ~filters.COMMAND, bc_title)],
@@ -504,7 +504,7 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", bc_cancel_command)],
         per_user=True,
         per_chat=True,
-        per_message=True,
+        per_message=False,
         allow_reentry=True,
     )
     app.add_handler(conv, group=0)
