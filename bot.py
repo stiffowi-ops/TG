@@ -504,6 +504,7 @@ def main() -> None:
         fallbacks=[CommandHandler("cancel", bc_cancel_command)],
         per_user=True,
         per_chat=True,
+        per_message=True,
         allow_reentry=True,
     )
     app.add_handler(conv, group=0)
