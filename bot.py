@@ -39,6 +39,9 @@ SERJO_NICK = os.getenv("SERJO_NICK", os.getenv("TARGET_NICK", "SerjoGrass")).lst
 CHERNOV_NICK = os.getenv("CHERNOV_NICK", "chernovhush").lstrip("@").strip()
 BUTTON_ADMIN = os.getenv("BUTTON_ADMIN", "Stiff_OWi").lstrip("@").strip()
 
+# Чат по умолчанию для всех отправок/рассылок (чтобы /setchat был не обязателен)
+DEFAULT_CHAT_ID = int(os.getenv("DEFAULT_CHAT_ID", "1001671727453"))
+
 START_PHOTO_FILE_ID = os.getenv("START_PHOTO_FILE_ID", "").strip()
 START_PHOTO_URL = os.getenv("START_PHOTO_URL", "").strip()
 START_PHOTO_PATH = os.getenv("START_PHOTO_PATH", "").strip()
@@ -96,12 +99,12 @@ CHERNOV_REMINDERS = [
     "Время проветрить голову: @{nick}, на улицу и бегом 🌬️",
     "Коморка ставит челлендж: @{nick}, пробежка до ближайшей мысли и обратно 🏃‍♂️💡",
     "Разогревай мотор! @{nick}, вперёд за эндорфинами 😈🏃‍♂️",
-    "Твой кроссовок грустит без тебя. @{nick}, го бегать! 👟🥺",
+    "Твой кроссовок грустит без тебя. @{nick}, пробежка! 👟🥺",
     "Секундомер уже включён в воображении. @{nick}, выходи бегать ⏱️🏃‍♂️",
-    "Пока хлеб с маслом не убежал — убеги ты от него. @{nick}, погнали потеть! 🥪🏃‍♂️",
+    "Пока хлеб с маслом не убежал — убеги ты. @{nick}, погнали! 🥪🏃‍♂️",
     "Коморка объявляет: час здоровья. @{nick}, на пробежку 🏃‍♂️🫀",
     "Сделай вид, что ты спортсмен. @{nick}, пробежка по протоколу 😎🏃‍♂️",
-    "Погода не важна — настроение важнее. @{nick}, го на пробежку толстая задница! 🌦️🏃‍♂️",
+    "Погода не важна — настроение важнее. @{nick}, пробежка! 🌦️🏃‍♂️",
 ]
 
 SERJO_SPAM_WARNINGS = [
@@ -145,15 +148,18 @@ def save_data(data: dict) -> None:
     DATA_FILE.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def get_target_chat_id() -> int | None:
+def get_target_chat_id() -> int:
+    """Возвращает chat_id коморки.
+
+    По умолчанию используем DEFAULT_CHAT_ID, чтобы бот работал без /setchat.
+    Если админ (разрешённый) сделает /setchat — сохраняем chat_id в data.json и используем его.
+    """
     data = load_data()
-    chat_id = data.get("chat_id")
-    if chat_id is None:
-        return None
+    chat_id = data.get("chat_id", DEFAULT_CHAT_ID)
     try:
         return int(chat_id)
     except Exception:
-        return None
+        return DEFAULT_CHAT_ID
 
 
 def set_target_chat_id(chat_id: int) -> None:
@@ -199,9 +205,6 @@ async def fake_check_sequence(update: Update, final_text: str) -> None:
 
 async def require_group_member(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
     chat_id = get_target_chat_id()
-    if chat_id is None:
-        await fake_check_sequence(update, "Петушок вычислен, коморка ещё не привязана. Пусть админ выполнит /setchat в группе 🐓")
-        return False
 
     user = update.effective_user
     if not user:
@@ -260,6 +263,13 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    user = update.effective_user
+    username = (user.username or "").lstrip("@").strip() if user else ""
+    if username.lower() != BUTTON_ADMIN.lower():
+        # Просили "остальных посылай к чёрту" — без разжигания и без угроз
+        await update.effective_message.reply_text(f"Иди к чёрту 🙂\n/setchat только для @{BUTTON_ADMIN}.")
+        return
+
     if not await is_admin(update, context):
         await update.effective_message.reply_text("Только для админов.")
         return
