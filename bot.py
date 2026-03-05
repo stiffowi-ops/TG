@@ -8,8 +8,6 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from apscheduler.triggers.cron import CronTrigger
 
 from telegram import Update, InputFile, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ChatMemberStatus, ParseMode
@@ -47,65 +45,6 @@ START_PHOTO_URL = os.getenv("START_PHOTO_URL", "").strip()
 START_PHOTO_PATH = os.getenv("START_PHOTO_PATH", "").strip()
 
 TZ = ZoneInfo("Europe/Moscow")
-
-SERJO_REMINDERS = [
-    "Ему так грустно — он один охраняет коморку. @{nick}, напиши охраннику 🥺",
-    "Охранник поставил чайник и ждёт твоё сообщение. @{nick}, напиши охраннику ☕",
-    "Коморка под надежной охраной… но без твоего сообщения скучно. @{nick}, напиши охраннику 🙂",
-    "Сигнал тревоги: охраннику не хватает твоего «привет». @{nick}, напиши охраннику 🚨",
-    "Вахта продолжается. Подкрепи морально. @{nick}, напиши охраннику 🛡️",
-    "Охранник на посту, а ты где? @{nick}, напиши охраннику 😄",
-    "Коморка ждёт твоего знака. @{nick}, напиши охраннику ✍️",
-    "Страж коморки грустит в тишине… @{nick}, напиши охраннику 🌫️",
-    "Если бы сообщения грели — охранник бы не мёрз. @{nick}, напиши охраннику 🧣",
-    "Охранник сверяет журнал: «сообщения нет». @{nick}, напиши охраннику 📒",
-    "Коморка скучает по твоим буквам. @{nick}, напиши охраннику 📨",
-    "Охранник уже третий раз смотрит на дверь… @{nick}, напиши охраннику 🚪",
-    "Пора разморозить чат одним сообщением. @{nick}, напиши охраннику ❄️➡️🔥",
-    "Страж просит: просто одно короткое «йо». @{nick}, напиши охраннику 😅",
-    "Коморка в режиме ожидания. @{nick}, напиши охраннику ⏳",
-    "У охранника всё стабильно… кроме настроения. @{nick}, напиши охраннику 😌",
-    "Поддержи коморочный дух! @{nick}, напиши охраннику 🫶",
-    "Охранник говорит шёпотом: «ну напиши…». @{nick}, напиши охраннику 🤫",
-    "Дежурство идёт, часы тикают… @{nick}, напиши охраннику ⏰",
-    "Коморка не любит одиночество. @{nick}, напиши охраннику 🧱",
-    "Охранник придумал новый пароль: «пиши мне». @{nick}, напиши охраннику 🔐",
-    "Тревожная сводка: мораль охранника падает. @{nick}, напиши охраннику 📉",
-    "Охранник обещал не ворчать (почти). @{nick}, напиши охраннику 🙂",
-    "Коморка держится на твоём «привет». @{nick}, напиши охраннику 👋",
-    "На посту тихо… слишком тихо. @{nick}, напиши охраннику 👀",
-]
-
-SERJO_NIGHT = [
-    "Коморка закрывается — сон твой начинается. Спокойной ночи, @{nick} 🌙",
-    "Охранник гасит свет и ставит чайник на паузу. Спокойной ночи, @{nick} 😴",
-    "Смена окончена: коморка засыпает, и ты тоже. Спокойной ночи, @{nick} 🛌",
-    "Заслон опущен, дверь на замке. Спокойной ночи, @{nick} 🔒🌙",
-    "Коморка шепчет: «пора отдыхать». Спокойной ночи, @{nick} ✨",
-    "Охранник кивает: «до завтра». Спокойной ночи, @{nick} 🌛",
-    "Чай допит, фонарь погас. Спокойной ночи, @{nick} ☕💤",
-    "Коморка уходит в ночной режим. Спокойной ночи, @{nick} 🌌",
-    "Пусть снится коморка без спама и с уютом. Спокойной ночи, @{nick} 💤",
-    "Тишина в коморке — лучший плед. Спокойной ночи, @{nick} 🧣😴",
-]
-
-CHERNOV_REMINDERS = [
-    "Отличный день для пробежки — бросай хлеб с маслом и погнали, @{nick} 🏃‍♂️🥪",
-    "Пора шевелиться! Хлеб с маслом подождёт — @{nick}, на пробежку! 🏃‍♂️",
-    "Коморка рекомендует кардио: @{nick}, кроссы на ноги и вперёд 💨",
-    "Если не сейчас, то когда? @{nick}, пробежка сама себя не пробежит 😄",
-    "Лёгкий старт: 10 минут туда, 10 обратно. @{nick}, погнали! 🏃‍♂️",
-    "Хлеб с маслом — после! @{nick}, сначала километрик-другой 🥪➡️🏃‍♂️",
-    "Время проветрить голову: @{nick}, на улицу и бегом 🌬️",
-    "Коморка ставит челлендж: @{nick}, пробежка до ближайшей мысли и обратно 🏃‍♂️💡",
-    "Разогревай мотор! @{nick}, вперёд за эндорфинами 😈🏃‍♂️",
-    "Твой кроссовок грустит без тебя. @{nick}, пробежка! 👟🥺",
-    "Секундомер уже включён в воображении. @{nick}, выходи бегать ⏱️🏃‍♂️",
-    "Пока хлеб с маслом не убежал — убеги ты. @{nick}, погнали! 🥪🏃‍♂️",
-    "Коморка объявляет: час здоровья. @{nick}, на пробежку 🏃‍♂️🫀",
-    "Сделай вид, что ты спортсмен. @{nick}, пробежка по протоколу 😎🏃‍♂️",
-    "Погода не важна — настроение важнее. @{nick}, пробежка! 🌦️🏃‍♂️",
-]
 
 SERJO_SPAM_WARNINGS = [
     "А-ну, не спамь, а то заберу в коморку с ночёвкой 😠",
@@ -166,11 +105,6 @@ def set_target_chat_id(chat_id: int) -> None:
     data = load_data()
     data["chat_id"] = int(chat_id)
     save_data(data)
-
-
-def build_from(templates: list[str], nick: str) -> str:
-    nick = nick.lstrip("@").strip()
-    return random.choice(templates).format(nick=nick)
 
 
 def is_private(update: Update) -> bool:
@@ -266,7 +200,6 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     user = update.effective_user
     username = (user.username or "").lstrip("@").strip() if user else ""
     if username.lower() != BUTTON_ADMIN.lower():
-        # Просили "остальных посылай к чёрту" — без разжигания и без угроз
         await update.effective_message.reply_text(f"Иди к чёрту 🙂\n/setchat только для @{BUTTON_ADMIN}.")
         return
 
@@ -277,8 +210,9 @@ async def cmd_setchat(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     chat = update.effective_chat
     set_target_chat_id(chat.id)
 
-    await update.effective_message.reply_text(f"Чат назначен ✅\nCHAT_ID: {chat.id}\nЦели: @{SERJO_NICK}, @{CHERNOV_NICK}")
-    await update.effective_message.reply_text(f"Эй, эй, Сергей, не скучай — скоротай вечерок, заходи на чаёк ☕\n@{SERJO_NICK}")
+    await update.effective_message.reply_text(
+        f"Чат назначен ✅\nCHAT_ID: {chat.id}\nЦели: @{SERJO_NICK}, @{CHERNOV_NICK}"
+    )
 
 
 async def cmd_photoid(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -336,11 +270,18 @@ async def bc_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     keyboard = [
         [InlineKeyboardButton("📎 Прикрепить файл", callback_data="bc_attach")],
-        [InlineKeyboardButton("✅ Отправить", callback_data="bc_send"), InlineKeyboardButton("❌ Отмена", callback_data="bc_cancel")],
+        [
+            InlineKeyboardButton("✅ Отправить", callback_data="bc_send"),
+            InlineKeyboardButton("❌ Отмена", callback_data="bc_cancel"),
+        ],
     ]
     bc = context.user_data["bc"]
     preview = f"<b>{escape_html(bc['title'])}</b>\n{escape_html(bc['text'])}"
-    await update.effective_message.reply_text("Черновик готов.\n\nПредпросмотр:\n" + preview, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.effective_message.reply_text(
+        "Черновик готов.\n\nПредпросмотр:\n" + preview,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
     return BC_CONFIRM
 
 
@@ -411,7 +352,11 @@ async def bc_file(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         [InlineKeyboardButton("✅ Отправить", callback_data="bc_send"), InlineKeyboardButton("❌ Отмена", callback_data="bc_cancel")],
     ]
     preview = f"<b>{escape_html(bc.get('title',''))}</b>\n{escape_html(bc.get('text',''))}"
-    await msg.reply_text("Файл прикреплён ✅\n\nПредпросмотр:\n" + preview, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
+    await msg.reply_text(
+        "Файл прикреплён ✅\n\nПредпросмотр:\n" + preview,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
     return BC_CONFIRM
 
 
@@ -424,7 +369,11 @@ async def bc_skip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         [InlineKeyboardButton("✅ Отправить", callback_data="bc_send"), InlineKeyboardButton("❌ Отмена", callback_data="bc_cancel")],
     ]
     preview = f"<b>{escape_html(bc.get('title',''))}</b>\n{escape_html(bc.get('text',''))}"
-    await update.effective_message.reply_text("Ок, без файла.\n\nПредпросмотр:\n" + preview, parse_mode=ParseMode.HTML, reply_markup=InlineKeyboardMarkup(keyboard))
+    await update.effective_message.reply_text(
+        "Ок, без файла.\n\nПредпросмотр:\n" + preview,
+        parse_mode=ParseMode.HTML,
+        reply_markup=InlineKeyboardMarkup(keyboard),
+    )
     return BC_CONFIRM
 
 
@@ -477,28 +426,9 @@ async def handle_antispam(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
     last_messages[user.id] = now
 
 
-async def send_serjo_day(app: Application) -> None:
-    chat_id = get_target_chat_id()
-    if chat_id:
-        await app.bot.send_message(chat_id=chat_id, text=build_from(SERJO_REMINDERS, SERJO_NICK))
-
-
-async def send_serjo_night(app: Application) -> None:
-    chat_id = get_target_chat_id()
-    if chat_id:
-        await app.bot.send_message(chat_id=chat_id, text=build_from(SERJO_NIGHT, SERJO_NICK))
-
-
-async def send_chernov_hourly(app: Application) -> None:
-    chat_id = get_target_chat_id()
-    if chat_id:
-        await app.bot.send_message(chat_id=chat_id, text=build_from(CHERNOV_REMINDERS, CHERNOV_NICK))
-
-
 def main() -> None:
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # Conversation must be able to receive private messages -> group=0
     conv = ConversationHandler(
         entry_points=[CommandHandler("button", cmd_button), CommandHandler("Button", cmd_button)],
         states={
@@ -524,18 +454,11 @@ def main() -> None:
     app.add_handler(CommandHandler("setchat", cmd_setchat), group=0)
     app.add_handler(CommandHandler("photoid", cmd_photoid), group=0)
 
-    # IMPORTANT: these handlers are in group=1 and have narrow filters,
-    # so they do NOT steal Conversation messages in private chat.
+    # Handlers with narrow filters (do not steal Conversation messages in private chat)
     app.add_handler(MessageHandler(filters.ChatType.PRIVATE & filters.PHOTO, handle_photoid_photo), group=1)
     app.add_handler(MessageHandler(filters.ChatType.GROUPS & (filters.TEXT & ~filters.COMMAND), handle_antispam), group=1)
 
-    # Scheduler
-    scheduler = AsyncIOScheduler(timezone=TZ)
-    scheduler.add_job(send_serjo_day, trigger=CronTrigger(hour="9-19/2", minute=0, timezone=TZ), kwargs={"app": app}, id="serjo_day", replace_existing=True)
-    scheduler.add_job(send_serjo_night, trigger=CronTrigger(hour=21, minute=0, timezone=TZ), kwargs={"app": app}, id="serjo_night", replace_existing=True)
-    scheduler.add_job(send_chernov_hourly, trigger=CronTrigger(hour="9-21", minute=0, timezone=TZ), kwargs={"app": app}, id="chernov_hourly", replace_existing=True)
-    scheduler.start()
-
+    # ВАЖНО: Планировщик и любые автосообщения по времени удалены.
     app.run_polling(allowed_updates=Update.ALL_TYPES)
 
 
