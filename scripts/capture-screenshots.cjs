@@ -18,6 +18,16 @@ const path = require('node:path');
   await page.getByRole('button',{name:/Смотреть локации/}).click();
   await page.locator('.catalog-page').waitFor();
   await page.screenshot({path:'screenshots/02-catalog-real.png'});
+  await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
+  await page.locator('.geo-map .leaflet-container').waitFor({timeout:20000});
+  const pins=page.locator('.geo-pin');
+  await pins.first().waitFor({timeout:20000});
+  await pins.first().click();
+  await page.locator('.geo-map-preview').waitFor();
+  await page.screenshot({path:'screenshots/05-map-selected-real.png'});
+  await page.locator('.catalog-view-switcher').getByRole('button',{name:'Список'}).click();
+  await page.locator('.catalog-location-grid').waitFor();
+
   await page.locator('.main-container').evaluate(el=>{el.scrollTop=el.scrollHeight;});
   await page.waitForTimeout(300);
   await page.screenshot({path:'screenshots/03-catalog-bottom-real.png'});
