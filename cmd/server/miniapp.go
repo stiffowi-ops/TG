@@ -45,8 +45,7 @@ func verifyTelegramInitData(raw, token string, now time.Time) (telegramUser,erro
 	secretMAC:=hmac.New(sha256.New,[]byte("WebAppData"))
 	secretMAC.Write([]byte(token))
 	sigMAC:=hmac.New(sha256.New,secretMAC.Sum(nil))
-	sigMAC.Write([]byte(strings.Join(lines,"
-")))
+	sigMAC.Write([]byte(strings.Join(lines,"\n")))
 	if !hmac.Equal(sigMAC.Sum(nil),expectedHash) {return user,errors.New("invalid Telegram signature")}
 	seconds,err:=strconv.ParseInt(values.Get("auth_date"),10,64)
 	if err!=nil {return user,errors.New("invalid Telegram date")}
