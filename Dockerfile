@@ -1,4 +1,4 @@
-FROM node:22-alpine AS frontend
+FROM node:22-bookworm-slim AS frontend
 WORKDIR /web
 COPY web/package.json web/tsconfig.json web/vite.config.ts web/index.html ./
 COPY web/src ./src
