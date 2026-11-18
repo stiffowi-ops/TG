@@ -1,5 +1,6 @@
 import {useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
+import AdminExtras from './AdminExtras';
 import {
  ArrowLeft, ArrowRight, Building2, Check,
  CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3,
@@ -114,6 +115,8 @@ function App(){
  useEffect(()=>{if(tab!=='admin'||!session?.admin)return;setAdminBusy(true);
   miniApi<{cases:DemoCase[]}>('/api/admin/cases').then(data=>setAdminCases(data.cases)).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
  },[tab,session?.admin]);
+ const refreshCatalog=()=>fetch('/api/locations').then(async r=>r.json()).then((data:{locations:Location[]})=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
+ useEffect(()=>{if(!detail||!session)return;miniApi('/api/locations/view',{method:'POST',body:JSON.stringify({id:detail.id})}).catch(()=>{});},[detail?.id,session?.user.id]);
  const adminAction=async(number:number,action:'take'|'ack'|'resolve',updateId=0)=>{
   try{await miniApi('/api/admin/action',{method:'POST',body:JSON.stringify({number,action,updateId})});
   const data=await miniApi<{cases:DemoCase[]}>('/api/admin/cases');setAdminCases(data.cases);setToast('Изменения сохранены');}
@@ -173,7 +176,7 @@ function App(){
     <div><small>В работе</small><strong>{adminCases.filter(c=>c.status==='working').length}</strong></div>
     <div><small>Обработаны</small><strong>{adminCases.filter(c=>c.status==='resolved').length}</strong></div>
    </div>
-   <h2>Банк заявок</h2>{adminBusy&&<p>Загружаем обращения…</p>}
+   <AdminExtras locations={locations} refresh={refreshCatalog}/><h2>Банк заявок</h2>{adminBusy&&<p>Загружаем обращения…</p>}
    <div className="admin-request-list">{adminCases.map(c=><article className="admin-request" key={c.number}>
     <div className="admin-request-head"><strong>Заявка №{String(c.number).padStart(4,'0')}</strong><Status status={c.status}/></div>
     <p><b>{c.name||'Клиент'}</b>{c.company?' · '+c.company:''}</p>

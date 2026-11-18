@@ -68,8 +68,8 @@ func (b *Bot) MiniFavorites(userID int64) []string {
 func (b *Bot) MiniToggleFavorite(userID int64, locationID string) ([]string,error) {
 	if b==nil || b.favorites==nil || userID<=0 { return nil, errors.New("доступ запрещён") }
 	if _,ok:=b.store.Find(locationID); !ok {return nil, errors.New("локация не найдена")}
-	if _,err:=b.favorites.Toggle(userID,locationID);err!=nil{return nil,err}
-	b.recordLocationAnalytics(userID,locationID,"saved")
+	added,err:=b.favorites.Toggle(userID,locationID);if err!=nil{return nil,err}
+	if added {b.recordLocationAnalytics(userID,locationID,"favorite_add")} else {b.recordLocationAnalytics(userID,locationID,"favorite_remove")}
 	return b.MiniFavorites(userID),nil
 }
 

@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"locationbot/internal/catalog"
+	"locationbot/internal/adminbackup"
+	"path/filepath"
 	"locationbot/internal/telegram"
 )
 
@@ -127,13 +129,29 @@ func (s *appService) handler(webDist string) http.Handler {
 			jsonResponse(w,200,map[string]any{"locations":result,"demo":false})
 			return
 		}
-		if !strings.HasPrefix(r.URL.Path,"/api/") || r.URL.Path=="/api/health" {
+		if r.Method=="GET" && strings.HasPrefix(r.URL.Path,"/media/") && s.store!=nil {
+   fileName:=strings.TrimPrefix(r.URL.Path,"/media/")
+   ext:=filepath.Ext(fileName)
+   id:=strings.TrimSuffix(fileName,ext)
+   if !catalog.ValidID(id)||!catalog.ValidExt(ext)||filepath.Base(fileName)!=fileName {http.NotFound(w,r);return}
+   w.Header().Set("Cache-Control","public, max-age=3600")
+   http.ServeFile(w,r,filepath.Join(s.store.DataDir(),"images",fileName))
+   return
+  }
+  if !strings.HasPrefix(r.URL.Path,"/api/") || r.URL.Path=="/api/health" {
 			original.ServeHTTP(w,r);return
 		}
 		u,ok:=s.authenticated(w,r)
 		if !ok{return}
 		switch {
-		case r.Method=="GET"&&r.URL.Path=="/api/me":
+		case r.Method=="POST"&&r.URL.Path=="/api/locations/view":
+   var input struct{ID string `json:"id"`}
+   if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
+   if _,exists:=s.store.Find(input.ID);!exists{jsonResponse(w,404,map[string]string{"error":"location not found"});return}
+   s.bot.MiniObserve(u.ID,u.Username,u.FirstName,input.ID)
+   jsonResponse(w,200,map[string]bool{"ok":true})
+  case r.Method=="GET"&&r.URL.Path=="/api/me":
+   s.bot.MiniObserve(u.ID,u.Username,u.FirstName,"")
 			jsonResponse(w,200,map[string]any{
 				"user":map[string]any{"id":u.ID,"username":u.Username,"firstName":u.FirstName},
 				"admin":s.bot.IsMiniAdmin(u.ID),
@@ -161,7 +179,51 @@ func (s *appService) handler(webDist string) http.Handler {
 			c,err:=s.bot.MiniAddSupplement(u.ID,input.Number,input.Telegram)
 			if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
 			jsonResponse(w,200,map[string]any{"case":c})
-		case r.Method=="GET"&&r.URL.Path=="/api/admin/cases":
+		case r.Method=="GET"&&r.URL.Path=="/api/admin/analytics":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   days,_:=strconv.Atoi(r.URL.Query().Get("days"))
+   metrics,err:=s.bot.MiniAdminAnalytics(u.ID,r.URL.Query().Get("metric"),days)
+   if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+   jsonResponse(w,200,map[string]any{"metrics":metrics})
+  case r.Method=="GET"&&r.URL.Path=="/api/admin/visitors":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   users,err:=s.bot.MiniAdminVisitors(u.ID)
+   if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+   jsonResponse(w,200,map[string]any{"visitors":users})
+  case r.Method=="GET"&&r.URL.Path=="/api/admin/location":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   l,ok:=s.store.Find(r.URL.Query().Get("id"));if !ok{jsonResponse(w,404,map[string]string{"error":"location not found"});return}
+   rev:=catalog.Revision(l)
+   jsonResponse(w,200,map[string]any{"revision":rev,"hash":catalog.RevisionHash(rev)})
+  case r.Method=="POST"&&r.URL.Path=="/api/admin/location":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   var input struct {
+    ID string `json:"id"`
+    Hash string `json:"hash"`
+    Revision catalog.CardRevision `json:"revision"`
+   }
+   if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
+   if input.Hash==""{jsonResponse(w,400,map[string]string{"error":"hash required"});return}
+   if err:=s.store.AdminEdit(input.ID,input.Hash,input.Revision);err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+   jsonResponse(w,200,map[string]bool{"ok":true})
+  case r.Method=="POST"&&r.URL.Path=="/api/admin/location/create":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   var input catalog.CardRevision
+   if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
+   id,err:=catalog.NewAdminLocationID()
+   if err!=nil{jsonResponse(w,500,map[string]string{"error":"could not generate ID"});return}
+   loc:=catalog.Location{ID:id,Title:input.Title,Category:input.Category,Description:input.Description,Rating:input.Rating,Latitude:input.Latitude,Longitude:input.Longitude,LineStatus:input.LineStatus,Landmarks:input.Landmarks,MapURL:input.MapURL,Sections:input.Sections}
+   if err:=s.store.CreateAdminLocation(loc);err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+   jsonResponse(w,201,map[string]string{"id":id})
+  case r.Method=="GET"&&r.URL.Path=="/api/admin/backup":
+   if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+   data,err:=adminbackup.Build(s.store.DataDir(),s.store.List())
+   if err!=nil{jsonResponse(w,500,map[string]string{"error":"backup unavailable"});return}
+   w.Header().Set("Content-Type","application/zip")
+   w.Header().Set("Cache-Control","no-store")
+   w.Header().Set("Content-Disposition",`attachment; filename="miniapp-backup.zip"`)
+   w.WriteHeader(200);_,_=w.Write(data)
+  case r.Method=="GET"&&r.URL.Path=="/api/admin/cases":
 			if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
 			items,err:=s.bot.MiniAdminCases(u.ID)
 			if err!=nil{jsonResponse(w,403,map[string]string{"error":err.Error()});return}
