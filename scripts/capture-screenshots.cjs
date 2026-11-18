@@ -22,9 +22,9 @@ const path = require('node:path');
   await page.locator('.geo-map .leaflet-container').waitFor({timeout:20000});
   const pins=page.locator('.geo-pin-container');
   await pins.first().waitFor({timeout:20000});
-  // Keyboard selection avoids overlapping pins sharing the same coordinates.
-  await pins.first().focus();
-  await pins.first().press('Enter');
+  // Some real locations share coordinates; DOM click verifies the Leaflet click handler
+  // without another marker occluding the tested one in the screenshot viewport.
+  await pins.first().evaluate(marker=>marker.click());
   await page.locator('.geo-map-preview').waitFor();
   await page.screenshot({path:'screenshots/05-map-selected-real.png'});
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Список'}).click();
