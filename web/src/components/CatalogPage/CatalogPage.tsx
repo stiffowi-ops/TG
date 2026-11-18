@@ -43,7 +43,7 @@ export default function CatalogPage({
   </div>
   {view==='map'?
    <LocationMap locations={locations} selectedId={selectedId} onSelect={onSelect}
-    favorites={favorites} onFavorite={onFavorite} onDetails={onDetails}/>:
+    favorites={favorites} onFavorite={onFavorite} onDetails={onDetails} onOpenYandex={onMap}/>:
    locations.length?<div className="card-grid catalog-location-grid">
     {locations.map(location=><LocationCard key={location.id} location={location}
      saved={favorites.has(location.id)} onFavorite={onFavorite}

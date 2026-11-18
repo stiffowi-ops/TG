@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -100,14 +99,7 @@ func (s *appService) handler(webDist string) http.Handler {
 	original:=routes(webDist)
 	return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
 		w.Header().Set("X-Content-Type-Options","nosniff")
-		if r.Method=="GET" && r.URL.Path=="/api/map/config" {
-            // This is a browser-facing public key. Restrict it to your domain
-            // using HTTP Referer in the Yandex developer console.
-            key:=strings.TrimSpace(os.Getenv("YANDEX_MAPS_API_KEY"))
-            jsonResponse(w,200,map[string]any{"enabled":key!="","key":key})
-            return
-        }
-        if r.Method=="GET"&&r.URL.Path=="/api/locations"&&s.store!=nil {
+		if r.Method=="GET"&&r.URL.Path=="/api/locations"&&s.store!=nil {
 			items:=s.store.List()
 			type loc struct {
 				ID string `json:"id"`

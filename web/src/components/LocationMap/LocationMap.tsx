@@ -1,15 +1,15 @@
 import {useEffect,useMemo,useState} from 'react';
 import {ArrowRight, Heart, LocateFixed, MapPin, Minus, Plus, X} from 'lucide-react';
-import {MapContainer,Marker,TileLayer,ZoomControl,useMap} from 'react-leaflet';
+import {AttributionControl,MapContainer,Marker,TileLayer,useMap} from 'react-leaflet';
 import {divIcon,latLngBounds} from 'leaflet';
 import type {Location} from '../../types';
 import PhotoCarousel from '../PhotoCarousel/PhotoCarousel';
 import LocationArt from '../LocationArt/LocationArt';
-import YandexMapCanvas from './YandexMapCanvas';
+
 
 type Props={
  locations:Location[];selectedId:string|null;onSelect:(id:string|null)=>void;
- favorites:Set<string>;onFavorite:(id:string)=>void;onDetails:(location:Location)=>void;
+ favorites:Set<string>;onFavorite:(id:string)=>void;onDetails:(location:Location)=>void;onOpenYandex:(location:Location)=>void;
 };
 const point=(location:Location)=>location.latitude!==undefined&&location.longitude!==undefined&&
  Number.isFinite(location.latitude)&&Number.isFinite(location.longitude)&&
@@ -59,47 +59,43 @@ function MapPhoto({location}:{location:Location}){
  const photos=location.imageUrls?.length?location.imageUrls:location.imageUrl?[location.imageUrl]:[];
  return <PhotoCarousel photos={photos} fallback={<LocationArt location={location} compact/>} label={location.title} compact/>;
 }
-export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails}:Props){
+export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails,onOpenYandex}:Props){
  const points=useMemo(()=>locations.filter(point),[locations]);
  const [tileFailures,setTileFailures]=useState(0);
- const [yandexKey,setYandexKey]=useState('');
- const [yandexFailed,setYandexFailed]=useState(false);
- useEffect(()=>{let live=true;fetch('/api/map/config').then(r=>r.ok?r.json():Promise.reject()).then((data:{key?:string})=>{if(live)setYandexKey(data.key||'')}).catch(()=>{});return()=>{live=false}},[]);
  const tileUnavailable=tileFailures>=4;
  const chosen=points.find(l=>l.id===selectedId)??null;
  const mapCenter:[number,number]=points.length?[points[0].latitude!,points[0].longitude!]:[55.7512,37.6184];
  return <div className="geo-map-layout">
   {points.length?
    <div className="geo-map" role="region" aria-label="Интерактивная карта локаций">
-    {yandexKey&&!yandexFailed?<YandexMapCanvas locations={points} selectedId={selectedId} onSelect={onSelect} apiKey={yandexKey} onFailure={()=>setYandexFailed(true)}/>:
-    <MapContainer center={mapCenter} zoom={11} scrollWheelZoom={false} zoomControl={false}
+    <MapContainer center={mapCenter} zoom={11} scrollWheelZoom={false} zoomControl={false} attributionControl={false}
      className="geo-map__tiles">
+     <AttributionControl position="bottomright" prefix={false}/>
      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={18}
       eventHandlers={{
        tileerror:()=>setTileFailures(v=>Math.min(5,v+1)),
        tileload:()=>setTileFailures(0)
       }}/>
-     <ZoomControl position="topright"/>
      <MapSync locations={points} selected={chosen}/>
      {points.map(l=><Marker key={l.id} position={[l.latitude!,l.longitude!]}
       icon={pinIcon(l.id===selectedId)} zIndexOffset={l.id===selectedId?1000:0}
       eventHandlers={{click:()=>onSelect(l.id)}}/>)}
      <MapActions/>
-    </MapContainer>}
+    </MapContainer>
     <div className="geo-map__count"><MapPin size={15}/>{points.length} на карте</div>
-    {(tileUnavailable||yandexFailed)&&<div className="geo-map__tile-notice" role="status">{yandexFailed?"Яндекс Карты недоступны, включена резервная карта.":"Подложка карты недоступна. Метки показаны по координатам."}</div>}
+    {tileUnavailable&&<div className="geo-map__tile-notice" role="status">Подложка карты недоступна. Метки показаны по координатам.</div>}
     {chosen&&<div className="geo-map-preview" role="group" aria-label={`Выбрана локация ${chosen.title}`}>
      <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
      <div className="geo-map-preview__photo"><MapPhoto location={chosen}/></div>
      <div className="geo-map-preview__body">
-      <div className="geo-map-preview__title">{chosen.title}</div>
+      <button type="button" className="geo-map-preview__title geo-map-preview__title-button" onClick={()=>onDetails(chosen)}>{chosen.title}</button>
       <div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>
       <div className="geo-map-preview__actions">
        <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)} aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'}>
         <Heart size={18} fill={favorites.has(chosen.id)?'currentColor':'none'}/>
        </button>
-       <button type="button" className="geo-map-preview__details" onClick={()=>onDetails(chosen)}>Подробнее <ArrowRight size={17}/></button>
+       <button type="button" className="geo-map-preview__details" onClick={()=>onOpenYandex(chosen)}>Открыть на карте <ArrowRight size={17}/></button>
       </div>
      </div>
     </div>}

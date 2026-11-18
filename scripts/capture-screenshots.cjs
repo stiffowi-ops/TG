@@ -27,7 +27,23 @@ const path = require('node:path');
   await pins.first().evaluate(marker=>marker.click());
   await page.locator('.geo-map-preview').waitFor();
   await page.screenshot({path:'screenshots/05-map-selected-real.png'});
+  // Attribution must retain OpenStreetMap copyright, without Leaflet branding or flag.
+  const attribution=await page.locator('.geo-map .leaflet-control-attribution').innerText();
+  if(!attribution.includes('OpenStreetMap')||attribution.includes('Leaflet'))throw Error('Unexpected map attribution: '+attribution);
+  const flag=await page.locator('.geo-map .leaflet-attribution-flag').count();
+  if(flag && await page.locator('.geo-map .leaflet-attribution-flag').first().isVisible())throw Error('Leaflet flag still visible');
+  await page.locator('.geo-map-preview').getByRole('button',{name:/Открыть на карте/}).click();
+  await page.locator('.yandex-location-viewer iframe').waitFor();
+  const widget=await page.locator('.yandex-location-viewer iframe').getAttribute('src');
+  if(!widget?.includes('/map-widget/v1/')||!widget.includes('pt='))throw Error('Point widget URL missing: '+widget);
+  await page.screenshot({path:'screenshots/06-yandex-point-inside-app.png'});
+  await page.getByRole('button',{name:'Вернуться в каталог'}).click();
+  await page.locator('.geo-map-preview').waitFor();
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Список'}).click();
+  await page.locator('.catalog-location-grid .location-card__map-link').first().click();
+  await page.locator('.yandex-location-viewer iframe').waitFor();
+  await page.getByRole('button',{name:'Вернуться в каталог'}).click();
+  await page.locator('.catalog-location-grid').waitFor();
   await page.locator('.catalog-location-grid').waitFor();
 
   await page.locator('.main-container').evaluate(el=>{el.scrollTop=el.scrollHeight;});

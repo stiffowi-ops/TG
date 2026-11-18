@@ -145,11 +145,27 @@
 .geo-map__tile-notice{position:absolute;z-index:504;top:58px;left:12px;right:68px;max-width:270px;border:1px solid #F0D9C6;background:#FFF9F0EB;border-radius:11px;padding:9px 12px;color:#9B6A44;font-size:10px;line-height:1.35;box-shadow:0 4px 11px #8D604224}
 @media(max-width:530px){.geo-map__tile-notice{font-size:9px;max-width:206px;right:55px}}
 
-/* Official Yandex Maps v3 is an optional, independently replaceable provider. */
-.yandex-map-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
-.yandex-map-loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);padding:11px 16px;border-radius:12px;background:#FFF9F1;color:#99643C;font-size:12px;font-weight:750;box-shadow:0 5px 15px #7B56351A}
-.yandex-location-pin{display:grid;place-items:center;width:32px;height:38px;border:3px solid #FFF5E9;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:linear-gradient(130deg,#FCAB51,#E66E1B);color:#FFF;box-shadow:0 3px 11px #6A371D4A;cursor:pointer;position:relative;font-size:16px;line-height:1;transition:filter .15s,scale .15s}
-.yandex-location-pin.is-selected{width:41px;height:47px;background:#E56212;filter:drop-shadow(0 0 6px #F98C44);scale:1.12;z-index:2}
-.yandex-location-pin:focus-visible{outline:3px solid #24383D;outline-offset:4px}
 
-.yandex-map-host{position:absolute;inset:0;width:100%;height:100%}
+/* Leaflet remains the map controller. Keep only the OSM copyright attribution. */
+.geo-map .leaflet-attribution-flag{display:none!important}
+.geo-map .leaflet-control-attribution{display:block!important;color:#5D6568;font:10px/1.4 system-ui,sans-serif!important;padding:2px 6px!important;border-radius:7px 0 0 0;background:#FFFDF8D9!important;box-shadow:none!important}
+.geo-map .leaflet-control-attribution a{color:#4C6868!important;text-decoration:underline!important}
+.geo-map-preview__title-button{border:0;text-align:left;background:transparent;padding:0;cursor:pointer}
+.yandex-location-overlay{position:fixed;inset:0;z-index:120;background:#FFF8F2;display:flex;flex-direction:column}
+.yandex-location-viewer{display:flex;flex-direction:column;min-height:0;height:100%;width:100%;max-width:900px;margin:auto;background:#FFF8F2}
+.yandex-location-viewer__header{flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:68px;padding:calc(8px + env(safe-area-inset-top,0px)) 15px 10px;background:#FFFCF8;border-bottom:1px solid #EFE0D5}
+.yandex-location-viewer__back,.yandex-location-viewer__close{flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;border:1px solid #ECDCCB;border-radius:12px;background:#FFF3E8;color:#B95F22}
+.yandex-location-viewer__heading{display:flex;flex-direction:column;min-width:0;flex:1;gap:3px}
+.yandex-location-viewer__heading small{font-size:9px;letter-spacing:1.2px;font-weight:850;color:#C67538}
+.yandex-location-viewer__heading strong{font-size:16px;color:#223D40;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yandex-location-viewer__frame{flex:1;position:relative;min-height:0;background:#EAE8E1;overflow:hidden}
+.yandex-location-viewer__frame iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:#F1EDE5}
+.yandex-location-viewer__loading{position:absolute;inset:0;display:flex;justify-content:center;align-items:center;gap:12px;flex-direction:column;color:#AD6739;font-size:13px;font-weight:750;background:#FFF6ED}
+.yandex-location-viewer__empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:25px;color:#A86538}
+.yandex-location-viewer__empty h3{color:#263B3F;margin:12px 0 2px;font-size:18px}
+.yandex-location-viewer__empty p{font-size:12px;color:#738182}
+.yandex-location-viewer__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #EEDFD0;background:#FFFCF8}
+.yandex-location-viewer__footer span{display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;color:#6D7B7D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.yandex-location-viewer__footer span svg{color:#E78130;flex-shrink:0}
+.yandex-location-viewer__footer a{flex-shrink:0;display:flex;align-items:center;gap:5px;color:#CE6D27;font-size:12px;font-weight:800;text-decoration:none}
+@media(max-width:530px){.yandex-location-viewer__header{min-height:63px;padding:calc(6px + env(safe-area-inset-top,0px)) 12px 8px}.yandex-location-viewer__footer{min-height:55px;padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px))}}
