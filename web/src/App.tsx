@@ -1,4 +1,4 @@
-import {useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
@@ -20,6 +20,9 @@ type WebApp = {
  ready():void; expand():void; close?():void; setHeaderColor?(color:string):void;
  HapticFeedback?:{impactOccurred(style:'light'|'medium'|'heavy'):void};
  initData?:string;
+ isFullscreen?:boolean;
+ isVersionAtLeast?:(version:string)=>boolean;
+ BackButton?:{isVisible:boolean;show():void;hide():void;onClick(callback:()=>void):void;offClick(callback:()=>void):void};
 };
 declare global {interface Window {Telegram?:{WebApp?:WebApp}}}
 
@@ -65,9 +68,9 @@ function Empty({icon,title,description,action}:{icon:ReactNode;title:string;desc
  return <div className="empty"><div className="empty-symbol">{icon}</div><h3>{title}</h3><p>{description}</p>{action}</div>;
 }
 function Status({status}:{status:CaseStatus}){return <span className={`status status-${status}`}>{statusLabel[status]}</span>}
-function Dialog({children,onClose,className=''}:{children:ReactNode;onClose:()=>void;className?:string}){
- useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',onKey);document.body.classList.add('has-dialog');return()=>{document.removeEventListener('keydown',onKey);document.body.classList.remove('has-dialog')}},[onClose]);
- return <div className="dialog-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
+function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode;onClose:()=>void;className?:string;hidden?:boolean}){
+ useEffect(()=>{if(hidden)return;const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',onKey);document.body.classList.add('has-dialog');return()=>{document.removeEventListener('keydown',onKey);document.body.classList.remove('has-dialog')}},[onClose,hidden]);
+ return <div className="dialog-overlay" style={hidden?{display:'none'}:undefined} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
 }
 function App(){
  const [tab,setTab]=useState<Tab>('home');
@@ -87,7 +90,10 @@ function App(){
   const [adminBusy,setAdminBusy]=useState(false);
  const [compareIds,setCompareIds]=useState<string[]>([]);
  const [compareOpen,setCompareOpen]=useState(false);
- const [detail,setDetail]=useState<Location|null>(null);
+ const [detailId,setDetailId]=useState<string|null>(null);
+ const detail=locations.find(location=>location.id===detailId);
+ const setDetail=(location:Location|null)=>setDetailId(location?.id??null);
+ const closeYandex=useCallback(()=>setYandexLocation(null),[]);
  const [caseDetail,setCaseDetail]=useState<number|null>(null);
  const [creating,setCreating]=useState<string|null>(null);
  const [supplement,setSupplement]=useState<number|null>(null);
@@ -101,6 +107,7 @@ function App(){
   const updateSafeArea=()=>{
    const inTelegram=Boolean(app?.initData);
    document.documentElement.classList.toggle('inside-telegram-miniapp',inTelegram);
+   document.documentElement.classList.toggle('telegram-fullscreen',Boolean(app?.isFullscreen));
    // Respect the actual Telegram content inset, without a fabricated 76px gap.
    // A number of Android Telegram WebViews already position their web content
    // below the native toolbar, so reserving another 76px creates blank scroll.
@@ -111,14 +118,41 @@ function App(){
   try{app?.ready();app?.expand();app?.setHeaderColor?.('#ffffff')}catch{/* standard browser */}
   updateSafeArea();
   app?.onEvent?.('contentSafeAreaChanged',updateSafeArea);
-  return()=>{app?.offEvent?.('contentSafeAreaChanged',updateSafeArea)};
+  app?.onEvent?.('fullscreenChanged',updateSafeArea);
+  return()=>{
+   app?.offEvent?.('contentSafeAreaChanged',updateSafeArea);
+   app?.offEvent?.('fullscreenChanged',updateSafeArea);
+  };
  },[]);
  useEffect(()=>{
   if(tab!=='catalog'||!focusSearch)return;
   document.getElementById('catalog-search')?.focus();
   setFocusSearch(false);
  },[tab,focusSearch]);
- useEffect(()=>{let active=true;fetch('/api/locations').then(async response=>{if(!response.ok)throw new Error('no API');return response.json() as Promise<{locations:Location[]}>}).then(data=>{if(active&&data.locations?.length)setLocations(data.locations)}).catch(()=>{/* standalone UI preview uses bundled demo data */}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  let timer:number|undefined;
+  async function loadCatalog(){
+   let retry=false;
+   try{
+    const response=await fetch('/api/locations',{signal:controller.signal});
+    if(!response.ok)throw new Error('Catalog unavailable');
+    const data:{locations:Location[];photosSyncing?:boolean}=await response.json();
+    if(controller.signal.aborted)return;
+    if(data.locations?.length)setLocations(data.locations);
+    retry=Boolean(data.photosSyncing);
+   }catch{
+    retry=true;
+   }finally{
+    if(!controller.signal.aborted){
+     setLoading(false);
+     if(retry)timer=window.setTimeout(loadCatalog,15000);
+    }
+   }
+  }
+  void loadCatalog();
+  return()=>{controller.abort();window.clearTimeout(timer)};
+ },[]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),3000);return()=>clearTimeout(t)},[toast]);
  useEffect(()=>{if(!window.Telegram?.WebApp?.initData)return;let active=true;
   miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setCases(Array.isArray(data.cases)?data.cases:[]);setFavorites(Array.isArray(data.favorites)?data.favorites:[])}}).catch(err=>{if(active)setToast(err.message)});
@@ -219,10 +253,10 @@ function App(){
   <footer className="site-footer"><span>Подбор локаций</span><span>Доступ к личным данным через Telegram</span></footer>
   <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin} onHaptic={tgHaptic}/>
   {toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
-  {detail&&<Dialog onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<AreaArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><div className="detail-topline"><Pill>{detail.category}</Pill><span>№{detail.id}</span></div><h2>{detail.title}</h2><p className="detail-area"><MapPin size={17}/>{detail.area}</p><div className="detail-facts"><div><span>Широта</span><strong>{detail.latitude?.toFixed(4)??'не указана'}</strong></div><div><span>Долгота</span><strong>{detail.longitude?.toFixed(4)??'не указана'}</strong></div></div><div className="location-description">
+  {detail&&<Dialog hidden={Boolean(yandexLocation)} onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<AreaArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><div className="detail-topline"><Pill>{detail.category}</Pill><span>№{detail.id}</span></div><h2>{detail.title}</h2><p className="detail-area"><MapPin size={17}/>{detail.area}</p><div className="detail-facts"><div><span>Широта</span><strong>{detail.latitude?.toFixed(4)??'не указана'}</strong></div><div><span>Долгота</span><strong>{detail.longitude?.toFixed(4)??'не указана'}</strong></div></div><div className="location-description">
  {([{title:'Ориентиры и транспорт',body:[detail.lineStatus,detail.landmarks].filter(Boolean).join(' · ')},{title:'Трафик и локация',body:detail.traffic},{title:'Кто платит',body:detail.payers},{title:'Окно возможностей',body:detail.opportunity},{title:'Почему именно здесь',body:detail.conclusion}]).map(item=><details key={item.title}><summary>{item.title}</summary><p>{item.body||'Информация пока не добавлена'}</p></details>)}
- </div><div className="detail-buttons"><button className="btn secondary" onClick={()=>favoriteToggle(detail.id)}><Heart size={18} fill={favoritesSet.has(detail.id)?'currentColor':'none'}/>{favoritesSet.has(detail.id)?'В избранном':'В избранное'}</button><button className="btn secondary" onClick={()=>{setYandexLocation(detail);setDetail(null)}}><MapPin size={17}/> На Яндекс Карте <ExternalLink size={13}/></button></div><button className="btn primary full" onClick={()=>{setCreating(detail.id);setDetail(null)}}>Оставить заявку по локации <ArrowRight size={18}/></button></div></Dialog>}
-  {yandexLocation&&<YandexLocationViewer location={yandexLocation} onClose={()=>setYandexLocation(null)}/>}
+ </div><div className="detail-buttons"><button className="btn secondary" onClick={()=>favoriteToggle(detail.id)}><Heart size={18} fill={favoritesSet.has(detail.id)?'currentColor':'none'}/>{favoritesSet.has(detail.id)?'В избранном':'В избранное'}</button><button className="btn secondary" onClick={()=>showYandexLocation(detail)}><MapPin size={17}/> На Яндекс Карте <ExternalLink size={13}/></button></div><button className="btn primary full" onClick={()=>{setCreating(detail.id);setDetail(null)}}>Оставить заявку по локации <ArrowRight size={18}/></button></div></Dialog>}
+  {yandexLocation&&<YandexLocationViewer location={yandexLocation} onClose={closeYandex}/>}
   {compareOpen&&<Dialog onClose={()=>setCompareOpen(false)} className="compare-dialog"><div className="dialog-content"><span className="overline">ВАША ПОДБОРКА</span><h2>Сравнение локаций</h2><p className="section-subtitle">Сравнивайте основные данные выбранных вариантов.</p><div className="compare-table"><div className="compare-row compare-top"><span>Параметр</span>{compareIds.map(id=><strong key={id}>{locationById.get(id)?.title}</strong>)}</div>{([{name:'Категория',get:(l:Location)=>l.category},{name:'Район',get:(l:Location)=>l.area},{name:'Координаты',get:(l:Location)=>l.latitude===undefined||l.longitude===undefined?'Нет данных':`${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`}]).map(row=><div className="compare-row" key={row.name}><span>{row.name}</span>{compareIds.map(id=><span key={id}>{locationById.get(id)?row.get(locationById.get(id)!):'—'}</span>)}</div>)}</div><div className="compare-links">{compareIds.map(id=>{const l=locationById.get(id);return l?<button key={id} className="btn secondary" onClick={()=>openMap(mapLink(l))}>{l.title} <ExternalLink size={15}/></button>:null})}</div><p className="muted-note">Показаны только подтверждённые данные.</p></div></Dialog>}
   {activeCase&&<Dialog onClose={()=>setCaseDetail(null)} className="case-dialog"><div className="dialog-content"><span className="overline">ВАШЕ ОБРАЩЕНИЕ</span><h2>Заявка №{String(activeCase.number).padStart(4,'0')}</h2><Status status={activeCase.status}/><div className="case-details"><div><span>Создана</span><strong>{prettyDate(activeCase.createdAt)}</strong></div><div><span>Локаций</span><strong>{activeCase.locationIds.length}</strong></div><div><span>Дополнения</span><strong>{activeCase.updates.length} из 2</strong></div></div><h3>Интересующие локации</h3><div className="case-location-list">{activeCase.locationIds.map(id=><div key={id}><MapPin size={16}/>{locationById.get(id)?.title||`Локация №${id}`}</div>)}</div><h3>История обращения</h3><CaseTimeline record={activeCase}/>{activeCase.status!=='resolved'&&<div className="case-supplement-actions">{activeCase.updates.length<MAX_UPDATES?<><button className="btn secondary" onClick={()=>{setSupplement(activeCase.number);setCaseDetail(null)}}><Plus size={17}/> Дополнить заявку</button><span>Доступно дополнений: {MAX_UPDATES-activeCase.updates.length} из {MAX_UPDATES}</span></>:<div className="quota-message"><CheckCircle2 size={18}/>Вы уже отправили два дополнения. Пожалуйста, дождитесь ответа специалиста.</div>}</div>}<div className="dialog-footer"><button className="btn dark full" onClick={()=>setCaseDetail(null)}>Вернуться к заявкам</button></div></div></Dialog>}
   {creating!==null&&<CreateCase locations={locations} selected={creating} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}

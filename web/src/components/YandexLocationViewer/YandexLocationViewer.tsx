@@ -24,9 +24,19 @@ export default function YandexLocationViewer({location,onClose}:{
   setLoaded(false);
   const previous=document.body.style.overflow;
   document.body.style.overflow='hidden';
+  const app=window.Telegram?.WebApp;
+  const backButton=app?.initData && app.isVersionAtLeast?.('6.1')!==false ? app.BackButton : undefined;
+  const wasVisible=backButton?.isVisible;
+  backButton?.onClick(onClose);
+  backButton?.show();
   const onEscape=(event:KeyboardEvent)=>{if(event.key==='Escape')onClose()};
   window.addEventListener('keydown',onEscape);
-  return()=>{document.body.style.overflow=previous;window.removeEventListener('keydown',onEscape)};
+  return()=>{
+   document.body.style.overflow=previous;
+   window.removeEventListener('keydown',onEscape);
+   backButton?.offClick(onClose);
+   if(!wasVisible)backButton?.hide();
+  };
  },[src,onClose]);
  return <div className="yandex-location-overlay" role="presentation">
   <section className="yandex-location-viewer" role="dialog" aria-modal="true" aria-label={`Яндекс Карты: ${location.title}`}>

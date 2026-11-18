@@ -14,9 +14,9 @@ type Pin={marker:MapLibreMarker;element:HTMLButtonElement};
 const validPoint=(l:Location)=>l.latitude!==undefined&&l.longitude!==undefined&&Number.isFinite(l.latitude)&&Number.isFinite(l.longitude)&&Math.abs(l.latitude)<=90&&Math.abs(l.longitude)<=180;
 const tileURL=import.meta.env.VITE_MAP_TILE_URL?.trim()||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const mapStyle:StyleSpecification={version:8,sources:{osm:{type:'raster',tiles:[tileURL],tileSize:256,minzoom:0,maxzoom:19,attribution:'© OpenStreetMap contributors'}},layers:[{id:'osm-base',type:'raster',source:'osm'}]};
-function MapPhoto({location}:{location:Location}){
+function MapPhoto({location,onOpen}:{location:Location;onOpen:()=>void}){
  const photos=location.imageUrls?.length?location.imageUrls:location.imageUrl?[location.imageUrl]:[];
- return <PhotoCarousel photos={photos} fallback={<LocationArt location={location} compact/>} label={location.title} compact/>;
+ return <PhotoCarousel photos={photos} fallback={<LocationArt location={location} compact/>} label={location.title} onOpen={onOpen} compact/>;
 }
 export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails,onOpenYandex}:Props){
  const points=useMemo(()=>locations.filter(validPoint),[locations]);
@@ -69,6 +69,13 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
  useEffect(()=>{
   const map=mapRef.current;
   if(!map||!points.length)return;
+  // Gallery refreshes must keep the viewport and the marker under the user's finger.
+  const pins=markersRef.current;
+  if(pins.size===points.length&&points.every(location=>{
+   const pin=pins.get(location.id);
+   const coords=pin?.marker.getLngLat();
+   return pin?.element.title===location.title&&coords?.lat===location.latitude&&coords?.lng===location.longitude;
+  }))return;
   markersRef.current.forEach(({marker})=>marker.remove());
   markersRef.current.clear();
   for(const location of points){
@@ -98,11 +105,15 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    element.querySelector('.geo-pin')?.classList.toggle('geo-pin--active',active);
    element.setAttribute('aria-pressed',String(active));
   });
-  const target=points.find(location=>location.id===selectedId);
-  const map=mapRef.current;
-  if(target&&map)map.flyTo({center:[target.longitude!,target.latitude!],
-   zoom:Math.max(13,map.getZoom()),duration:450,essential:true});
  },[selectedId,points]);
+
+ const latitude=chosen?.latitude;
+ const longitude=chosen?.longitude;
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(latitude!==undefined&&longitude!==undefined&&map)map.flyTo({center:[longitude,latitude],
+   zoom:Math.max(13,map.getZoom()),duration:450,essential:true});
+ },[selectedId,latitude,longitude]);
 
  const locate=()=>{
   const map=mapRef.current;
@@ -132,7 +143,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    {!mapUnavailable&&tileFailures>=4&&<div className="geo-map__tile-notice" role="status">Подложка карты временно недоступна. Метки сохраняют свои координаты.</div>}
    {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}>
     <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
-    <div className="geo-map-preview__photo"><MapPhoto location={chosen}/></div>
+    <div className="geo-map-preview__photo"><MapPhoto location={chosen} onOpen={()=>onDetails(chosen)}/></div>
     <div className="geo-map-preview__body">
      <button type="button" className="geo-map-preview__title geo-map-preview__title-button" onClick={()=>onDetails(chosen)}>{chosen.title}</button>
      <div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>

@@ -158,8 +158,16 @@
 
 .geo-map-preview__title-button{border:0;text-align:left;background:transparent;padding:0;cursor:pointer}
 .yandex-location-overlay{position:fixed;inset:0;z-index:10000;background:#FFF8F2;display:flex;flex-direction:column}
+.yandex-location-overlay{
+ --viewer-toolbar:var(--tg-content-safe-area-inset-top,0px);
+ padding-top:calc(max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px)) + var(--viewer-toolbar));
+ padding-left:calc(max(env(safe-area-inset-left,0px),var(--tg-safe-area-inset-left,0px)) + var(--tg-content-safe-area-inset-left,0px));
+ padding-right:calc(max(env(safe-area-inset-right,0px),var(--tg-safe-area-inset-right,0px)) + var(--tg-content-safe-area-inset-right,0px));
+ padding-bottom:calc(max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)) + var(--tg-content-safe-area-inset-bottom,0px));
+}
+.telegram-fullscreen .yandex-location-overlay{--viewer-toolbar:max(48px,var(--tg-content-safe-area-inset-top,0px))}
 .yandex-location-viewer{display:flex;flex-direction:column;min-height:0;height:100%;width:100%;max-width:900px;margin:auto;background:#FFF8F2}
-.yandex-location-viewer__header{flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:68px;padding:calc(8px + env(safe-area-inset-top,0px)) 15px 10px;background:#FFFCF8;border-bottom:1px solid #EFE0D5}
+.yandex-location-viewer__header{flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:68px;padding:8px 15px 10px;background:#FFFCF8;border-bottom:1px solid #EFE0D5}
 .yandex-location-viewer__back,.yandex-location-viewer__close{flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;border:1px solid #ECDCCB;border-radius:12px;background:#FFF3E8;color:#B95F22}
 .yandex-location-viewer__heading{display:flex;flex-direction:column;min-width:0;flex:1;gap:3px}
 .yandex-location-viewer__heading small{font-size:9px;letter-spacing:1.2px;font-weight:850;color:#C67538}
@@ -170,8 +178,8 @@
 .yandex-location-viewer__empty{flex:1;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:25px;color:#A86538}
 .yandex-location-viewer__empty h3{color:#263B3F;margin:12px 0 2px;font-size:18px}
 .yandex-location-viewer__empty p{font-size:12px;color:#738182}
-.yandex-location-viewer__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));border-top:1px solid #EEDFD0;background:#FFFCF8}
+.yandex-location-viewer__footer{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:56px;padding:10px 16px;border-top:1px solid #EEDFD0;background:#FFFCF8}
 .yandex-location-viewer__footer span{display:flex;align-items:center;gap:5px;min-width:0;font-size:11px;color:#6D7B7D;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .yandex-location-viewer__footer span svg{color:#E78130;flex-shrink:0}
 .yandex-location-viewer__footer a{flex-shrink:0;display:flex;align-items:center;gap:5px;color:#CE6D27;font-size:12px;font-weight:800;text-decoration:none}
-@media(max-width:530px){.yandex-location-viewer__header{min-height:63px;padding:calc(6px + env(safe-area-inset-top,0px)) 12px 8px}.yandex-location-viewer__footer{min-height:55px;padding:9px 12px calc(9px + env(safe-area-inset-bottom,0px))}}
+@media(max-width:530px){.yandex-location-viewer__header{min-height:63px;padding:6px 12px 8px}.yandex-location-viewer__footer{min-height:55px;padding:9px 12px}}

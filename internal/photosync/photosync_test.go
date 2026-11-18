@@ -59,3 +59,17 @@ func TestRealYandexFolderFileNames(t *testing.T){
  }
  for i,photo:=range matched["001"]{if photo.order!=i+1 {t.Fatalf("photo order %d at %d",photo.order,i)}}
 }
+
+func TestDuplicateStationNamesUseMatchingCatalogID(t *testing.T) {
+ locations:=[]catalog.Location{{ID:"007",Title:"Метро Липецкая"},{ID:"061",Title:"Липецкая"},{ID:"001",Title:"Остров Мечты"}}
+ files:=[]entry{
+  {item:diskItem{Name:"007 Метро Липецкая — 2.jpg"},rel:"007 Метро Липецкая — 2.jpg"},
+  {item:diskItem{Name:"1.jpg"},parent:"061 Липецкая",rel:"061 Липецкая/1.jpg"},
+  {item:diskItem{Name:"Липецкая — 3.jpg"},rel:"Липецкая — 3.jpg"},
+  {item:diskItem{Name:"001 Липецкая — 1.jpg"},rel:"001 Липецкая — 1.jpg"},
+ }
+ got,_,ambiguous:=matchFiles(files,locations)
+ if len(got["007"])!=1||got["007"][0].rel!=files[0].rel||len(got["061"])!=1||got["061"][0].rel!=files[1].rel||len(ambiguous)!=2 {
+  t.Fatalf("matched=%v ambiguous=%v",got,ambiguous)
+ }
+}
