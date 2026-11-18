@@ -1,0 +1,31 @@
+name: Check public Yandex photo folder
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'internal/photosync/**'
+      - '.github/workflows/photo-source-check.yml'
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Probe public Yandex API without credentials
+        run: |
+          python3 - <<'PY'
+          import json,urllib.request,urllib.parse,collections
+          share='https://disk.yandex.ru/d/TpiMfBy9WROTGg'
+          url='https://cloud-api.yandex.net/v1/disk/public/resources?'+urllib.parse.urlencode({'public_key':share,'limit':100,'offset':0})
+          print('Checking Yandex public folder, using the same API endpoint as the bot.')
+          try:
+            req=urllib.request.Request(url,headers={'User-Agent':'Karty-MiniApp-photo-diagnostic/1.0'})
+            with urllib.request.urlopen(req,timeout=20) as response:
+              data=json.load(response)
+              items=data.get('_embedded',{}).get('items',[])
+              print('HTTP status:',response.status,'type:',data.get('type'))
+              print('Root entries (first page):',len(items),'total:',data.get('_embedded',{}).get('total'))
+              print('Types:',dict(collections.Counter(item.get('type') for item in items)))
+              for item in items[:25]:
+                print('entry:',item.get('name'), 'type:',item.get('type'), 'size:',item.get('size'), 'path:',item.get('path'))
+          except Exception as e:
+            print('Source check failed:',type(e).__name__,str(e))
+          PY
