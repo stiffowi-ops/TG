@@ -4,7 +4,7 @@ const path = require('node:path');
 (async () => {
   const target=process.env.APP_URL || 'http://127.0.0.1:8080/';
   fs.mkdirSync('screenshots',{recursive:true});
-  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'ru-RU'});
   const page=await context.newPage();
   page.on('pageerror',e=>console.error('SCREENSHOT_JS_ERROR:',e.message));
@@ -19,19 +19,18 @@ const path = require('node:path');
   await page.locator('.catalog-page').waitFor();
   await page.screenshot({path:'screenshots/02-catalog-real.png'});
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
-  await page.locator('.geo-map .leaflet-container').waitFor({timeout:20000});
+  await page.locator('.geo-map .maplibregl-map').waitFor({timeout:20000});
   const pins=page.locator('.geo-pin-container');
   await pins.first().waitFor({timeout:20000});
-  // Some real locations share coordinates; DOM click verifies the Leaflet click handler
+  // Some real locations share coordinates; DOM click verifies the MapLibre click handler
   // without another marker occluding the tested one in the screenshot viewport.
   await pins.first().evaluate(marker=>marker.click());
   await page.locator('.geo-map-preview').waitFor();
   await page.screenshot({path:'screenshots/05-map-selected-real.png'});
-  // Attribution must retain OpenStreetMap copyright, without Leaflet branding or flag.
-  const attribution=await page.locator('.geo-map .leaflet-control-attribution').innerText();
-  if(!attribution.includes('OpenStreetMap')||attribution.includes('Leaflet'))throw Error('Unexpected map attribution: '+attribution);
-  const flag=await page.locator('.geo-map .leaflet-attribution-flag').count();
-  if(flag && await page.locator('.geo-map .leaflet-attribution-flag').first().isVisible())throw Error('Leaflet flag still visible');
+  // Attribution must retain OpenStreetMap copyright without unwanted map engine branding.
+  const attribution=await page.locator('.geo-map__attribution').innerText();
+  if(!attribution.includes('OpenStreetMap'))throw Error('Missing OSM attribution: '+attribution);
+  if(await page.locator('.geo-map .leaflet-container').count())throw Error('Legacy map engine remains in the DOM');
   await page.locator('.geo-map-preview').getByRole('button',{name:/Открыть на карте/}).click();
   await page.locator('.yandex-location-viewer iframe').waitFor();
   const widget=await page.locator('.yandex-location-viewer iframe').getAttribute('src');
@@ -42,7 +41,7 @@ const path = require('node:path');
     const rect=element.getBoundingClientRect();
     return document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.yandex-location-viewer')!==null;
   });
-  if(!viewerAboveMap)throw Error('Map viewer is hidden below Leaflet overlays');
+  if(!viewerAboveMap)throw Error('Map viewer is hidden below map overlays');
   await page.waitForTimeout(3500);
   await page.screenshot({path:'screenshots/06-yandex-point-inside-app.png'});
   await page.getByRole('button',{name:'Вернуться в каталог'}).click();
