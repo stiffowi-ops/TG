@@ -26,6 +26,16 @@ jobs:
               print('Types:',dict(collections.Counter(item.get('type') for item in items)))
               for item in items[:25]:
                 print('entry:',item.get('name'), 'type:',item.get('type'), 'size:',item.get('size'), 'path:',item.get('path'))
+              # Verify that the real file can be resolved through the download endpoint.
+              if items:
+                first=items[0]['name']
+                link='https://cloud-api.yandex.net/v1/disk/public/resources/download?'+urllib.parse.urlencode({'public_key':share,'path':'/'+first})
+                with urllib.request.urlopen(urllib.request.Request(link,headers={'User-Agent':'Karty-photo-diagnostic/1.0'}),timeout=20) as response:
+                  from urllib.parse import urlsplit
+                  result=json.load(response)
+                  target=result.get('href','')
+                  print('Download link host:',urlsplit(target).hostname,'scheme:',urlsplit(target).scheme)
+                  print('Download link available:',bool(target))
           except Exception as e:
             print('Source check failed:',type(e).__name__,str(e))
           PY
