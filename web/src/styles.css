@@ -64,3 +64,104 @@ body{background:#FAF9F7}
 
 /* Graceful fallback instead of an empty white Telegram WebView after a React crash. */
 .miniapp-recovery{min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:16px;padding:24px;background:#faf9f7;color:#24262b}.miniapp-recovery__mark{display:grid;place-items:center;width:64px;height:64px;border-radius:22px;background:#fff2e6;color:#e97824;font-size:34px;font-weight:800}.miniapp-recovery h1{font-size:22px;margin:0}.miniapp-recovery p{max-width:330px;margin:0;line-height:1.5;color:#797a80}.miniapp-recovery button{border:0;border-radius:12px;background:#e97824;color:white;padding:13px 22px;font-weight:700}
+
+
+/* Approved visual direction: warm cartography, practical clickable shortcuts,
+   a separate catalog screen and a Telegram-safe wordmark. */
+:root{--page-warm:#FAF7F3;--map-ink:#20373A;--map-orange:#E97824}
+body{background:var(--page-warm)}
+.app-header{position:relative;top:auto;z-index:12;background:transparent;border-bottom:0}
+.header-inner{min-height:72px;max-width:1200px;padding:14px 24px;justify-content:center}
+.brand{justify-content:center;text-align:center}
+.brand-text{font-size:26px;font-weight:850;color:var(--map-ink);letter-spacing:-1.25px;line-height:1.1}
+.brand-text small{font-size:9px;letter-spacing:1.1px;font-weight:700;text-transform:uppercase;color:#9C9C99;margin-top:6px}
+.inside-telegram-miniapp .app-header{padding-top:var(--telegram-top-space,76px)}
+.landing-home{padding:12px 0 105px;max-width:1160px;margin:0 auto}
+.landing-hero{isolation:isolate;position:relative;overflow:hidden;min-height:510px;border-radius:28px;background:linear-gradient(127deg,#FFF9F3 0%,#FFF3E9 52%,#F2E2D4 100%);border:1px solid #F4E8DC;box-shadow:0 16px 45px rgba(94,58,30,.035)}
+.landing-hero:before{content:'';pointer-events:none;position:absolute;inset:-25% -12%;opacity:.4;background:repeating-radial-gradient(ellipse at 78% 68%,transparent 0,transparent 31px,rgba(215,163,123,.22) 32px,transparent 34px);transform:rotate(-12deg)}
+.landing-copy{z-index:2;position:relative;padding:57px 54px;max-width:650px}
+.landing-eyebrow{font-size:12px;font-weight:850;letter-spacing:1.65px;color:#C86020;line-height:1.6}
+.landing-copy h1{font-weight:850;letter-spacing:-2.5px;line-height:1.13;font-size:clamp(34px,4.5vw,57px);margin:24px 0 21px;color:var(--map-ink)}
+.landing-copy h1 em{font-style:normal;color:var(--map-orange)}
+.landing-copy p{font-size:15px;line-height:1.7;max-width:480px;margin:0 0 28px;color:#607275}
+.landing-cta{display:inline-flex;align-items:center;justify-content:space-between;gap:23px;min-height:58px;padding:0 25px;border-radius:17px;border:1px solid #E97824;background:linear-gradient(120deg,#F68A2D,#E66B1B);box-shadow:0 12px 20px #E9782436;color:#fff;font-weight:800;font-size:15px;transition:transform .2s,box-shadow .2s}
+.landing-cta:hover{transform:translateY(-2px);box-shadow:0 15px 24px #E9782440}
+.landing-scene{position:absolute;z-index:1;bottom:-22px;right:-38px;width:70%;max-width:790px;pointer-events:none;opacity:.94}
+.landing-illustration{display:block;width:100%;height:auto;filter:drop-shadow(0 10px 15px #C17D4020)}
+.landing-shortcuts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:18px}
+.landing-shortcut{position:relative;overflow:hidden;min-width:0;display:flex;align-items:center;gap:14px;min-height:101px;text-align:left;padding:19px;border-radius:20px;border:1px solid #EEE4DB;background:linear-gradient(122deg,#FFFFFF,#FFF9F3);box-shadow:0 7px 21px #7E64450C;color:var(--map-ink);transition:transform .2s,border-color .2s,box-shadow .2s}
+.landing-shortcut:before{content:'';position:absolute;inset:0 0 0 55%;opacity:.4;background:repeating-radial-gradient(ellipse at 100% 100%,transparent 0,transparent 12px,#F3DBCA 13px,transparent 14px)}
+.landing-shortcut:hover{transform:translateY(-3px);box-shadow:0 11px 25px #7E64451D;border-color:#F3CEB0}
+.shortcut-icon{display:grid;place-items:center;flex:0 0 54px;width:54px;height:54px;border-radius:16px;color:#E87323;background:#FFF0E3}
+.landing-shortcut:nth-child(2) .shortcut-icon{background:#F5F0E9}
+.landing-shortcut:nth-child(3) .shortcut-icon{background:#FFF0E8}
+.shortcut-label{position:relative;z-index:1;flex:1;font-size:14px;line-height:1.35;font-weight:800;max-width:210px}
+.shortcut-chevron{z-index:1;flex-shrink:0;color:#AF7E5E}
+.catalog-page{padding-top:18px;scroll-margin-top:30px}
+.catalog-page-heading{position:relative;overflow:hidden;padding:27px 30px 32px;margin-bottom:21px;border-radius:24px;background:linear-gradient(110deg,#FFF8F0 0%,#FFF3E8 60%,#F3E3D5 100%);border:1px solid #F5E6D9}
+.catalog-page-heading:before{content:'';position:absolute;inset:-150px -80px -100px 52%;opacity:.65;background:repeating-radial-gradient(ellipse at 75% 55%,transparent 0,transparent 25px,#F1D9C5 26px,transparent 27px);transform:rotate(-15deg)}
+.catalog-page-heading:after{content:'';position:absolute;right:8%;bottom:-35px;width:200px;height:95px;border:3px dashed #EEA66C;border-radius:50%;opacity:.32;transform:rotate(-25deg)}
+.catalog-page-heading>*{position:relative;z-index:1}
+.catalog-back{display:inline-flex;align-items:center;gap:7px;border:0;background:transparent;padding:0;color:#9B704F;font-size:12px;font-weight:750;margin-bottom:22px}
+.catalog-page-heading .overline{display:block;font-size:11px;letter-spacing:1.6px}
+.catalog-page-heading h1{color:var(--map-ink);font-size:clamp(29px,3.5vw,42px);line-height:1.12;letter-spacing:-1.55px;margin:10px 0 10px}
+.catalog-page-heading p{max-width:560px;margin:0;color:#718083;font-size:13px;line-height:1.6}
+.catalog-page .filters{margin-bottom:15px}
+.catalog-page .search-field,.catalog-page .filter-select{background:#FFFFFF;border-color:#E9E4DE;min-height:55px;border-radius:15px;box-shadow:0 5px 20px #665B510C}
+.catalog-page .search-field:focus-within,.catalog-page .filter-select:focus-within{border-color:#E8A678;box-shadow:0 0 0 3px #FFF0E5}
+.catalog-page .catalog-toolbar{margin:16px 0}
+.catalog-page .filter-chip{border-radius:12px}
+.catalog-page .filter-chip.active{box-shadow:0 6px 12px #E9782426}
+.catalog-results-summary{display:flex;justify-content:space-between;gap:10px;align-items:center;margin:10px 0 20px;color:#8A908E;font-size:12px}
+.catalog-results-summary strong{color:var(--map-ink)}
+.catalog-page .location-card{border-color:#EFE6DE;border-radius:20px;box-shadow:0 8px 22px #6D5B4912}
+.catalog-page .location-body h3{color:var(--map-ink)}
+.catalog-page .area-art{filter:saturate(.85)}
+.catalog-page .location-card:hover{border-color:#F2C5A8;box-shadow:0 13px 26px #6D5B4920}
+.bottom-nav{background:rgba(255,252,248,.97);border-color:#EEE5DE;box-shadow:0 -7px 26px #6A574512}
+.bottom-nav .nav-item{color:#8B9696}
+.bottom-nav .nav-item.active{color:#E97824}
+@media(max-width:780px){
+ .inside-telegram-miniapp .app-header{padding-top:var(--telegram-top-space,76px)}
+ .main-container{width:calc(100% - 30px)}
+ .landing-home{padding-top:7px;padding-bottom:105px}
+ .landing-hero{min-height:505px;border-radius:23px}
+ .landing-copy{padding:36px 31px;max-width:100%}
+ .landing-copy h1{font-size:clamp(32px,7vw,46px);letter-spacing:-1.55px;line-height:1.13;margin:19px 0 15px}
+ .landing-copy p{font-size:13px;line-height:1.65;max-width:380px;margin-bottom:24px}
+ .landing-scene{width:110%;right:-21%;bottom:-17px}
+ .landing-shortcuts{grid-template-columns:1fr;gap:10px;margin-top:13px}
+ .landing-shortcut{min-height:77px;padding:12px 16px;border-radius:18px}
+ .shortcut-icon{width:48px;height:48px;flex-basis:48px;border-radius:14px}
+ .shortcut-label{font-size:13px;max-width:none}
+ .catalog-page{padding-top:5px}
+ .catalog-page-heading{padding:21px 22px 26px;border-radius:19px}
+ .catalog-back{margin-bottom:20px}
+ .catalog-page .filters{grid-template-columns:1fr}
+ .catalog-page .card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .catalog-results-summary>span:last-child{display:none}
+ .bottom-nav{width:100%;min-width:0;max-width:100%;border-radius:18px 18px 0 0}
+}
+@media(max-width:530px){
+ .header-inner{padding:12px 15px;min-height:61px}
+ .brand-text{font-size:24px}
+ .brand-text small{font-size:8px;letter-spacing:.9px}
+ .landing-hero{min-height:458px}
+ .landing-copy{padding:29px 22px}
+ .landing-eyebrow{font-size:9px;letter-spacing:1px}
+ .landing-copy h1{font-size:clamp(27px,7.25vw,37px);letter-spacing:-1.3px;margin:15px 0 15px}
+ .landing-copy p{font-size:12px;max-width:320px;line-height:1.55;margin-bottom:18px}
+ .landing-cta{min-height:48px;font-size:13px;border-radius:14px;padding:0 17px}
+ .landing-scene{bottom:-9px;width:115%;right:-24%;opacity:.85}
+ .landing-shortcut{min-height:68px;padding:9px 13px;gap:11px;border-radius:16px}
+ .shortcut-icon{width:43px;height:43px;flex-basis:43px;border-radius:12px}
+ .shortcut-icon svg{width:22px}
+ .shortcut-label{font-size:12px}
+ .shortcut-chevron{width:17px}
+ .catalog-page-heading h1{font-size:28px}
+ .catalog-page-heading p{font-size:12px}
+ .catalog-page .card-grid{gap:11px}
+ .catalog-page .location-card{border-radius:15px}
+ .bottom-nav .nav-item{min-width:0;flex:1}
+}
+@media(prefers-reduced-motion:reduce){.landing-cta,.landing-shortcut{transition:none}}

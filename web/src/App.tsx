@@ -61,13 +61,13 @@ function Empty({icon,title,description,action}:{icon:ReactNode;title:string;desc
 }
 function BottomNav({tab,onTab,selected,admin}:{tab:Tab;onTab:(t:Tab)=>void;selected:number;admin:boolean}){
  const items:{id:Tab;label:string;icon:ReactNode}[]=[
-  {id:'catalog',label:'Локации',icon:<Compass size={22}/>},
+  {id:'home',label:'Локации',icon:<Compass size={22}/>},
   {id:'map',label:'Карта',icon:<MapIcon size={22}/>},
   {id:'favorites',label:'Избранное',icon:<Heart size={22}/>},
   {id:'requests',label:'Мои заявки',icon:<MessageCircle size={22}/>},
  ];
  if(admin)items.push({id:"admin",label:"Управление",icon:<ShieldCheck size={22}/>});
- return <nav className="bottom-nav" aria-label="Основная навигация">{items.map(i=><button type="button" key={i.id} aria-current={tab===i.id?'page':undefined} className={`nav-item ${tab===i.id?'active':''}`} onClick={()=>{tgHaptic();onTab(i.id)}}>{i.icon}<span>{i.label}</span>{i.id==='favorites'&&selected>0&&<span className="nav-count">{selected}</span>}</button>)}</nav>
+ return <nav className="bottom-nav" aria-label="Основная навигация">{items.map(i=>{const active=tab===i.id||(i.id==='home'&&tab==='catalog');return <button type="button" key={i.id} aria-current={active?'page':undefined} className={`nav-item ${active?'active':''}`} onClick={()=>{tgHaptic();onTab(i.id)}}>{i.icon}<span>{i.label}</span>{i.id==='favorites'&&selected>0&&<span className="nav-count">{selected}</span>}</button>})}</nav>
 }
 function Status({status}:{status:CaseStatus}){return <span className={`status status-${status}`}>{statusLabel[status]}</span>}
 function Dialog({children,onClose,className=''}:{children:ReactNode;onClose:()=>void;className?:string}){
@@ -83,8 +83,45 @@ function LocationCard({l,saved,onDetails,onFavorite,compareMode=false,selected=f
   </div>
  </article>;
 }
+function LandingScene(){
+ return <div className="landing-scene" aria-hidden="true">
+  <svg className="landing-illustration" viewBox="0 0 740 410" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
+   <defs>
+    <linearGradient id="landingGround" x1="115" y1="45" x2="570" y2="410" gradientUnits="userSpaceOnUse"><stop stopColor="#FFF8F0"/><stop offset="1" stopColor="#EBD6C4"/></linearGradient>
+    <linearGradient id="landingRiver" x1="140" y1="115" x2="640" y2="374" gradientUnits="userSpaceOnUse"><stop stopColor="#DCE5DE"/><stop offset="1" stopColor="#9CBEB4"/></linearGradient>
+    <linearGradient id="landingPin" x1="353" y1="170" x2="410" y2="297" gradientUnits="userSpaceOnUse"><stop stopColor="#F9A44C"/><stop offset="1" stopColor="#DF651B"/></linearGradient>
+    <linearGradient id="landingShop" x1="540" y1="240" x2="720" y2="410" gradientUnits="userSpaceOnUse"><stop stopColor="#FDE3C6"/><stop offset="1" stopColor="#D6A982"/></linearGradient>
+    <filter id="landingBlur"><feGaussianBlur stdDeviation="12"/></filter>
+   </defs>
+   <path d="M-20 362C116 284 167 259 244 260S440 314 517 265 653 151 765 193V425H-20Z" fill="url(#landingGround)"/>
+   <path d="M-20 355C104 310 166 224 240 237S378 337 459 308C557 273 607 204 771 182" stroke="#F6DFC6" strokeWidth="95"/>
+   <path d="M-20 356C104 311 166 225 240 238S378 338 459 309C557 274 607 205 771 183" stroke="url(#landingRiver)" strokeWidth="54" opacity=".78"/>
+   <path d="M-26 351C97 311 177 207 242 228S377 345 461 306 604 207 770 182" stroke="#FFFAF4" strokeWidth="6" opacity=".78"/>
+   <path d="M20 392L360 154L796 394M85 414L472 109M199 428L597 125M337 427L721 170M-30 286L557 430M31 206L685 412" stroke="#FFFDFB" strokeWidth="13" opacity=".8"/>
+   <path d="M20 392L360 154L796 394M85 414L472 109M199 428L597 125M337 427L721 170M-30 286L557 430M31 206L685 412" stroke="#E9C7A8" strokeWidth="2" opacity=".55"/>
+   <g opacity=".82"><path d="M0 303L69 259L69 343L0 385Z" fill="#E7CEBA"/><path d="M0 303L43 279L96 303L69 319Z" fill="#FFF2E2"/><path d="M67 302L117 266L162 295L117 328Z" fill="#F3DDC8"/><path d="M117 328L162 295V364L117 390Z" fill="#DCBFA7"/><path d="M197 189L247 161L278 176L227 211Z" fill="#FFECDC"/><path d="M227 211L278 176V246L227 284Z" fill="#EBD1BD"/><path d="M197 189L227 211V284L197 267Z" fill="#F3DECD"/></g>
+   <g opacity=".8"><path d="M455 163L487 138L520 158L489 181Z" fill="#FFF3E5"/><path d="M489 181L520 158V259L489 277Z" fill="#E5CBB5"/><path d="M455 163L489 181V277L455 260Z" fill="#F0D7C4"/><path d="M530 141L553 122L581 137L558 159Z" fill="#FFF6EA"/><path d="M558 159L581 137V240L558 261Z" fill="#DDBDA6"/></g>
+   <g opacity=".65" stroke="#D2A77C" strokeWidth="3"><path d="M481 195V246M503 178V237M545 165V222M566 159V216"/></g>
+   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#C76027" strokeWidth="18" opacity=".18" filter="url(#landingBlur)"/>
+   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round"/>
+   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#E97525" strokeWidth="4.5" strokeDasharray="8 11" strokeLinecap="round"/>
+   <circle cx="235" cy="309" r="12" fill="#FFF5EA" stroke="#E97525" strokeWidth="5"/>
+   <ellipse cx="371" cy="335" rx="88" ry="33" fill="#F6AE70" opacity=".28" filter="url(#landingBlur)"/>
+   <ellipse cx="371" cy="328" rx="72" ry="20" stroke="#FFFFFF" strokeWidth="5" opacity=".9"/>
+   <ellipse cx="371" cy="328" rx="53" ry="12" stroke="#F4A46B" strokeWidth="4" opacity=".95"/>
+   <path d="M368 195C326 195 304 225 304 256C304 292 368 343 368 343S432 292 432 256C432 224 410 195 368 195Z" fill="#A5451B" opacity=".18" transform="translate(4 10)"/>
+   <path d="M368 188C326 188 304 220 304 251C304 287 368 333 368 333S432 287 432 251C432 220 410 188 368 188Z" fill="url(#landingPin)" stroke="#FFF5E9" strokeWidth="5"/>
+   <circle cx="368" cy="252" r="22" fill="#FFF4E7" stroke="#D96821" strokeWidth="5"/>
+   <g transform="translate(524 229)"><path d="M11 46L149 0L214 37L81 87Z" fill="#FFEDDB"/><path d="M11 46L81 87V178L11 140Z" fill="#D5A47E"/><path d="M81 87L214 37V133L81 178Z" fill="url(#landingShop)" stroke="#FBE7D3" strokeWidth="4"/><path d="M11 46L81 87V104L11 64Z" fill="#E77A2D"/><path d="M81 87L214 37V59L81 108Z" fill="#E97824"/><path d="M94 111L142 93V166L94 177Z" fill="#9FBBB7" stroke="#F8E7D7" strokeWidth="5"/><path d="M151 90L199 72V144L151 164Z" fill="#9FBBB7" stroke="#F8E7D7" strokeWidth="5"/><path d="M96 124L141 107M153 103L196 87" stroke="#FBE4C4" strokeWidth="2"/><path d="M29 66L65 84V111L29 92Z" fill="#FFF1E0"/><path d="M40 71L54 78M40 78L54 85" stroke="#E97824" strokeWidth="3" strokeLinecap="round"/></g>
+   <g fill="#8AAB91" opacity=".88"><circle cx="103" cy="325" r="17"/><circle cx="123" cy="312" r="20"/><circle cx="148" cy="329" r="14"/><circle cx="610" cy="225" r="15"/><circle cx="628" cy="216" r="18"/><circle cx="652" cy="218" r="14"/></g>
+   <g fill="#71957A" opacity=".74"><circle cx="80" cy="348" r="14"/><circle cx="168" cy="338" r="12"/><circle cx="599" cy="238" r="12"/></g>
+  </svg>
+ </div>;
+}
+
 function App(){
- const [tab,setTab]=useState<Tab>('catalog');
+ const [tab,setTab]=useState<Tab>('home');
+ const [focusSearch,setFocusSearch]=useState(false);
  const [locations,setLocations]=useState<Location[]>(backupLocations);
  const [loading,setLoading]=useState(true);
  const [query,setQuery]=useState('');
@@ -103,7 +140,30 @@ function App(){
  const [creating,setCreating]=useState<string|null>(null);
  const [supplement,setSupplement]=useState<number|null>(null);
  const [toast,setToast]=useState('');
- useEffect(()=>{const app=window.Telegram?.WebApp;try{app?.ready();app?.expand();app?.setHeaderColor?.('#ffffff')}catch{/* standard browser */}},[]);
+ useEffect(()=>{
+  const app=window.Telegram?.WebApp as (WebApp & {
+   contentSafeAreaInset?:{top?:number};
+   onEvent?:(event:string,callback:()=>void)=>void;
+   offEvent?:(event:string,callback:()=>void)=>void;
+  })|undefined;
+  const updateSafeArea=()=>{
+   const inTelegram=Boolean(app?.initData);
+   document.documentElement.classList.toggle('inside-telegram-miniapp',inTelegram);
+   if(inTelegram){
+    const inset=Number(app?.contentSafeAreaInset?.top)||0;
+    document.documentElement.style.setProperty('--telegram-top-space',Math.max(76,inset)+'px');
+   }
+  };
+  try{app?.ready();app?.expand();app?.setHeaderColor?.('#ffffff')}catch{/* standard browser */}
+  updateSafeArea();
+  app?.onEvent?.('contentSafeAreaChanged',updateSafeArea);
+  return()=>{app?.offEvent?.('contentSafeAreaChanged',updateSafeArea)};
+ },[]);
+ useEffect(()=>{
+  if(tab!=='catalog'||!focusSearch)return;
+  document.getElementById('catalog-search')?.focus();
+  setFocusSearch(false);
+ },[tab,focusSearch]);
  useEffect(()=>{let active=true;fetch('/api/locations').then(async response=>{if(!response.ok)throw new Error('no API');return response.json() as Promise<{locations:Location[]}>}).then(data=>{if(active&&data.locations?.length)setLocations(data.locations)}).catch(()=>{/* standalone UI preview uses bundled demo data */}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),3000);return()=>clearTimeout(t)},[toast]);
  useEffect(()=>{if(!window.Telegram?.WebApp?.initData)return;let active=true;
@@ -128,7 +188,7 @@ function App(){
  const favoritesSet=new Set(favorites);
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
- const onTab=(t:Tab)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');window.scrollTo({top:0,behavior:'smooth'})};
+ const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');window.scrollTo({top:0,behavior:'smooth'})};
  const favoriteToggle=async(id:string)=>{try{
   const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
   const next=Array.isArray(data.favorites)?data.favorites:[];
@@ -147,14 +207,41 @@ function App(){
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
-  <header className="app-header"><div className="header-inner"><button className="brand" onClick={()=>onTab('catalog')}><span className="brand-icon"><Compass size={23} strokeWidth={2.2}/></span><span className="brand-text">Локации<span className="brand-dot">.</span><small>пространство возможностей</small></span></button><div className="header-actions"><span className="demo-chip"><span/>{session?'Личный кабинет':'Каталог локаций'}</span><span className="avatar">Л</span></div></div></header>
+  <header className="app-header"><div className="header-inner"><button type="button" className="brand" onClick={()=>onTab('home')} aria-label="На главную"><span className="brand-text">Локации<span className="brand-dot">.</span><small>пространство возможностей</small></span></button></div></header>
   <main className="main-container">
+   {tab==='home'&&<section className="landing-home" aria-label="Главная страница">
+    <div className="landing-hero">
+     <div className="landing-copy">
+      <span className="landing-eyebrow">ВОЗМОЖНОСТИ ДЛЯ ВАШЕГО БИЗНЕСА</span>
+      <h1>Найдите место,<br/>где начнётся <em>рост.</em></h1>
+      <p>Изучайте локации, сравнивайте варианты и выбирайте точки, которые подходят Вашим планам.</p>
+      <button type="button" className="landing-cta" onClick={()=>onTab('catalog')}>Смотреть локации <ArrowRight size={20}/></button>
+     </div>
+     <LandingScene/>
+    </div>
+    <nav className="landing-shortcuts" aria-label="Возможности сервиса">
+     <button type="button" className="landing-shortcut" onClick={()=>onTab('catalog')}>
+      <span className="shortcut-icon"><MapPin size={25}/></span><span className="shortcut-label">Большое разнообразие локаций</span><ChevronRight size={20} className="shortcut-chevron"/>
+     </button>
+     <button type="button" className="landing-shortcut" onClick={()=>onTab('catalog',true)}>
+      <span className="shortcut-icon"><SlidersHorizontal size={25}/></span><span className="shortcut-label">Удобный подбор</span><ChevronRight size={20} className="shortcut-chevron"/>
+     </button>
+     <button type="button" className="landing-shortcut" onClick={()=>onTab('favorites')}>
+      <span className="shortcut-icon"><Heart size={25}/></span><span className="shortcut-label">Сохраняйте лучшее</span><ChevronRight size={20} className="shortcut-chevron"/>
+     </button>
+    </nav>
+   </section>}
    {(tab==='catalog'||tab==='map')&&<>
-    <section className="hero"><div className="hero-copy"><span className="eyebrow"><Sparkles size={14}/> Возможности для Вашего бизнеса</span><h1>Найдите место,<br/>где начнётся <em>рост.</em></h1><p>Изучайте локации, сравнивайте варианты и выбирайте точки, которые подходят Вашим планам.</p><button className="hero-button" onClick={()=>{document.getElementById('catalog-results')?.scrollIntoView({behavior:'smooth'})}}>Смотреть локации <ArrowRight size={17}/></button></div><div className="hero-visual" aria-hidden="true"><div className="hero-orbit orb-1"/><div className="hero-orbit orb-2"/><div className="hero-map-card card-one"><span className="orbit-dot"/><div><span className="tiny-line"/><span className="tiny-line short"/></div></div><div className="hero-map-card card-two"><MapPin size={20}/><div><span className="tiny-line"/><span className="tiny-line short"/></div></div><div className="hero-pin"><MapPin size={42} strokeWidth={1.7} fill="#fdfefe"/></div><div className="hero-curve"/></div></section>
-    <div className="top-metrics"><span><span className="metric-icon"><MapPin size={17}/></span><strong>{locations.length}</strong> локаций</span><span><span className="metric-icon purple"><SlidersHorizontal size={17}/></span>Удобный подбор</span><span><span className="metric-icon orange"><Heart size={17}/></span>Сохраняйте лучшее</span></div>
-    <section className="section-block" id="catalog-results"><div className="section-heading"><div><span className="overline">КАТАЛОГ</span><h2>Исследуйте локации</h2><p>Все варианты в одном месте. Найдите подходящий за пару кликов.</p></div><span className="results-counter">Найдено: {filtered.length}</span></div>
-     <div className="filters"><label className="search-field"><Search size={19}/><input type="search" placeholder="Название локации или станции" value={query} onChange={e=>setQuery(e.target.value)} aria-label="Поиск локаций"/>{query&&<button onClick={()=>setQuery('')} aria-label="Очистить поиск"><X size={16}/></button>}</label><label className="filter-select"><ListFilter size={17}/><select aria-label="Район" value={area} onChange={e=>setArea(e.target.value)}>{areas.map(a=><option key={a}>{a}</option>)}</select><ChevronDown size={17}/></label></div>
+    <section className="section-block catalog-page" id="catalog-results">
+     <div className="catalog-page-heading">
+      <button type="button" className="catalog-back" onClick={()=>onTab('home')}><ArrowLeft size={17}/> На главную</button>
+      <span className="overline">КАТАЛОГ</span>
+      <h1>Исследуйте локации</h1>
+      <p>Все варианты в одном месте. Найдите подходящий за пару кликов.</p>
+     </div>
+     <div className="filters"><label className="search-field"><Search size={19}/><input id="catalog-search" type="search" placeholder="Название локации или станции" value={query} onChange={e=>setQuery(e.target.value)} aria-label="Поиск локаций"/>{query&&<button onClick={()=>setQuery('')} aria-label="Очистить поиск"><X size={16}/></button>}</label><label className="filter-select"><ListFilter size={17}/><select aria-label="Район" value={area} onChange={e=>setArea(e.target.value)}>{areas.map(a=><option key={a}>{a}</option>)}</select><ChevronDown size={17}/></label></div>
      <div className="catalog-toolbar"><div className="chip-row"><button className={`filter-chip ${category==='Все'?'active':''}`} onClick={()=>setCategory('Все')}>Все локации</button>{uniqueCategory.map(c=><button key={c} className={`filter-chip ${category===c?'active':''}`} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="view-switch"><button className={!showMap?'active':''} onClick={()=>setShowMap(false)} title="Карточки" aria-label="Карточки"><LayoutGrid size={18}/></button><button className={showMap?'active':''} onClick={()=>setShowMap(true)} title="Карта" aria-label="Карта"><MapIcon size={18}/></button></div></div>
+     <div className="catalog-results-summary"><span>Найдено: <strong>{filtered.length}</strong></span><span>Выберите подходящую локацию</span></div>
      {showMap?<div className="map-panel"><div className="map-frame"><iframe title="Обзорная карта локаций" loading="lazy" src={`https://yandex.ru/map-widget/v1/?ll=37.6%2C55.65&z=10&pt=${encodeURIComponent(filtered.filter(l=>l.longitude!==undefined&&l.latitude!==undefined).slice(0,20).map(l=>`${l.longitude},${l.latitude},pm2rdm`).join('~'))}`}/><div className="map-info">Для точной точки откройте её в Яндекс Картах.</div></div><div className="map-aside"><h3>Локации на карте</h3><p>{filtered.length} вариантов</p><div className="map-list">{filtered.map(l=><button key={l.id} onClick={()=>setDetail(l)}><span className="map-aside-pin"><MapPin size={16}/></span><span>{l.title}<small>{l.area}</small></span><ChevronRight size={17}/></button>)}</div></div></div>:
       filtered.length?<div className="card-grid">{filtered.map(l=><LocationCard key={l.id} l={l} saved={favoritesSet.has(l.id)} onDetails={setDetail} onFavorite={favoriteToggle}/>)}</div>:<Empty icon={<Search size={29}/>} title="Ничего не найдено" description="Попробуйте другое название или измените фильтры." action={<button className="btn secondary" onClick={()=>{setQuery('');setArea('Все районы');setCategory('Все')}}>Сбросить фильтры</button>}/>}
      {loading&&<p className="discreet-loading">Загружаем каталог…</p>}
