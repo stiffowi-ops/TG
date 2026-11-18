@@ -20,11 +20,12 @@ WORKDIR /opt/miniapp
 COPY --from=backend /usr/local/bin/miniapp-server /usr/local/bin/miniapp-server
 COPY --from=backend /usr/local/bin/miniapp-testbot /usr/local/bin/miniapp-testbot
 COPY --from=frontend /web/dist /opt/miniapp/web
+COPY config/seed.json /opt/miniapp/config/seed.json
 COPY scripts/start-bothost.sh /usr/local/bin/start-bothost
 RUN chmod +x /usr/local/bin/start-bothost \
  && test -f /opt/miniapp/web/index.html \
  && bash -n /usr/local/bin/start-bothost
 
-ENV PORT=8080
+ENV PORT=8080 DATA_DIR=/app/runtime
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/start-bothost"]

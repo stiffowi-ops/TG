@@ -18,6 +18,6 @@ export function seededCases():DemoCase[]{return [
 export const MAX_UPDATES=2;
 export const MAX_COMPARE=3;
 export const MAP_BASE='https://yandex.ru/maps/';
-export function mapLink(l:Location){const q=new URLSearchParams({ll:`${l.longitude},${l.latitude}`,z:'15',pt:`${l.longitude},${l.latitude},pm2rdm`});return `${MAP_BASE}?${q.toString()}`;}
+export function mapLink(l:Location){if(l.mapUrl)return l.mapUrl;if(l.latitude===undefined||l.longitude===undefined)return MAP_BASE;const q=new URLSearchParams({ll:`${l.longitude},${l.latitude}`,z:'15',pt:`${l.longitude},${l.latitude},pm2rdm`});return `${MAP_BASE}?${q.toString()}`;}
 export function normalize(s:string){return s.toLowerCase().replace(/ё/g,'е').replace(/метро\s+/g,'').trim();}
 export function prettyDate(s:string){return new Intl.DateTimeFormat('ru-RU',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',timeZone:'Europe/Moscow'}).format(new Date(s))+' МСК';}

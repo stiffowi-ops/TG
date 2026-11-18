@@ -119,6 +119,9 @@ func startMenuMarkup(mapURL string, action Button, admin bool) map[string]any {
 		{callbackButton("⭐ Избранное", "favorites"), cabinetButton()},
 		{action},
 	}
+	if appURL:=strings.TrimSpace(os.Getenv("MINIAPP_URL")); strings.HasPrefix(appURL,"https://") {
+		rows=append([][]Button{{Button{"text":"Открыть приложение","web_app":map[string]string{"url":appURL}}}},rows...)
+	}
 	if admin {
 		rows = append(rows, []Button{callbackButton("⚙️ Админ-панель", "adm:menu")})
 	}

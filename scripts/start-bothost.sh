@@ -1,18 +1,16 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-# Bothost's /app mount can replace files stored there. Always serve the
-# frontend from the image's own filesystem, not the mounted directory.
+# Bothost may mount /app. Runtime data is stored there, while application
+# binaries and static assets remain outside the mount in the Docker image.
 export WEB_DIST=/opt/miniapp/web
 export ADDR="0.0.0.0:${PORT:-8080}"
+export DATA_DIR="${DATA_DIR:-/app/runtime}"
 
-# Bothost sets BOT_TOKEN from the Telegram bot configuration. Keep the
-# TEST_BOT_TOKEN override for standalone environments and local testing.
-if [[ -z "${TEST_BOT_TOKEN:-}" ]]; then
-  export TEST_BOT_TOKEN="${BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-${API_TOKEN:-}}}"
+# Only one integrated process polls Telegram.
+if [[ -z "${BOT_TOKEN:-}" ]]; then
+  export BOT_TOKEN="${TEST_BOT_TOKEN:-${TELEGRAM_BOT_TOKEN:-${API_TOKEN:-}}}"
 fi
-
-# Bothost supplies DOMAIN when an HTTPS domain is attached to the service.
 if [[ -z "${MINIAPP_URL:-}" && -n "${DOMAIN:-}" ]]; then
   domain="${DOMAIN#https://}"
   domain="${domain#http://}"
@@ -20,39 +18,11 @@ if [[ -z "${MINIAPP_URL:-}" && -n "${DOMAIN:-}" ]]; then
   export MINIAPP_URL="https://${domain}"
 fi
 
-if [[ -z "${TEST_BOT_TOKEN:-}" ]]; then
-  echo "[miniapp] No Telegram bot token: starting HTTP application only." >&2
-  exec /usr/local/bin/miniapp-server
+echo "[miniapp] Starting integrated application (HTTP + Telegram)." >&2
+if [[ -z "${BOT_TOKEN:-}" ]]; then
+  echo "[miniapp] BOT_TOKEN not configured: private actions disabled." >&2
 fi
-
-if [[ -z "${MINIAPP_URL:-}" ]]; then
-  echo "[miniapp] HTTPS domain is not set yet: HTTP app runs, Telegram bot waits for DOMAIN or MINIAPP_URL." >&2
-  exec /usr/local/bin/miniapp-server
+if [[ -z "${ADMIN_IDS:-}" ]]; then
+  echo "[miniapp] ADMIN_IDS not configured: admin access disabled." >&2
 fi
-
-if [[ ! "${MINIAPP_URL}" =~ ^https://[^/]+ ]]; then
-  echo "[miniapp] MINIAPP_URL must be a public HTTPS URL." >&2
-  exit 1
-fi
-
-echo "[miniapp] Starting HTTP application and separate Telegram test bot." >&2
-/usr/local/bin/miniapp-server &
-server_pid=$!
-/usr/local/bin/miniapp-testbot &
-bot_pid=$!
-
-shutdown() {
-  trap - TERM INT
-  kill -TERM "${server_pid}" "${bot_pid}" 2>/dev/null || true
-  wait "${server_pid}" 2>/dev/null || true
-  wait "${bot_pid}" 2>/dev/null || true
-}
-trap 'shutdown; exit 0' TERM INT
-
-# If either process exits, stop its sibling and let Bothost restart the
-# container rather than silently leaving a "running" broken bot.
-exit_status=0
-wait -n "${server_pid}" "${bot_pid}" || exit_status=$?
-echo "[miniapp] A service exited (status=${exit_status}); stopping the container." >&2
-shutdown
-exit 1
+exec /usr/local/bin/miniapp-server

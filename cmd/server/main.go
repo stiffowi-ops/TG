@@ -1,6 +1,12 @@
 package main
 
 import (
+	"context"
+	"os/signal"
+	"syscall"
+	"locationbot/internal/catalog"
+	"locationbot/internal/syncer"
+	"locationbot/internal/telegram"
 	"encoding/json"
 	"io/fs"
 	"log"
@@ -65,17 +71,46 @@ func jsonReply(w http.ResponseWriter, data any) {
 }
 func main() {
 	addr := os.Getenv("ADDR")
-	if addr == "" {
-		addr = ":8080"
-	}
+	if addr == "" { addr = ":8080" }
 	dist := os.Getenv("WEB_DIST")
-	if dist == "" {
-		dist = "web/dist"
-	}
+	if dist == "" { dist = "web/dist" }
 	if _, err := fs.Stat(os.DirFS("."), dist); err != nil {
-		log.Printf("web build unavailable at %s (API is still accessible)", dist)
+		log.Printf("web build unavailable at %s", dist)
 	}
-	srv := &http.Server{Addr: addr, Handler: routes(dist), ReadHeaderTimeout: 5 * time.Second}
-	log.Printf("Mini App demo serving at %s", addr)
-	log.Fatal(srv.ListenAndServe())
+	token := strings.TrimSpace(os.Getenv("BOT_TOKEN"))
+	if token == "" {token = strings.TrimSpace(os.Getenv("TEST_BOT_TOKEN"))}
+	dataDir := strings.TrimSpace(os.Getenv("DATA_DIR"))
+	if dataDir == "" {
+		if token=="" {dataDir = filepath.Join(os.TempDir(),"miniapp-demo")}
+		if token!="" {dataDir = "/app/runtime"}
+	}
+	if err := os.MkdirAll(dataDir,0700);err!=nil {log.Fatalf("runtime directory: %v",err)}
+	seedPath := filepath.Join(dataDir,"seed.json")
+	if _,err:=os.Stat(seedPath);os.IsNotExist(err){
+		src,readErr:=os.ReadFile("config/seed.json")
+		if readErr!=nil {log.Fatalf("seed read: %v",readErr)}
+		if err:=os.WriteFile(seedPath,src,0600);err!=nil {log.Fatalf("seed write: %v",err)}
+	}
+	overridePath:=os.Getenv("OVERRIDES_PATH")
+	if overridePath=="" { overridePath=filepath.Join(dataDir,"overrides.json") }
+	store,err:=catalog.NewWithBundled(dataDir,seedPath,overridePath)
+	if err!=nil {log.Fatalf("catalog: %v",err)}
+	var bot *telegram.Bot
+	ctx,stop:=signal.NotifyContext(context.Background(),syscall.SIGTERM,syscall.SIGINT)
+	defer stop()
+	if token!="" {
+		syncerService:=syncer.New(store,os.Getenv("YANDEX_DISK_PUBLIC_URL"))
+		bot,err=telegram.New(token,os.Getenv("MAP_CONSTRUCTOR_ID"),dataDir,store,syncerService,os.Getenv("ADMIN_IDS"))
+		if err!=nil {log.Fatalf("telegram: %v",err)}
+		go func(){
+			if err:=bot.Run(ctx);err!=nil&&ctx.Err()==nil {log.Fatalf("telegram bot stopped: %v",err)}
+		}()
+		log.Printf("Telegram long-polling and Mini App are sharing one data store")
+	}else{
+		log.Printf("BOT_TOKEN is missing; full catalog works, private actions require a test bot")
+	}
+	srv:=&http.Server{Addr:addr,Handler:(&appService{store:store,bot:bot,token:token}).handler(dist),ReadHeaderTimeout:5*time.Second}
+	go func(){<-ctx.Done();ctx2,cancel:=context.WithTimeout(context.Background(),10*time.Second);defer cancel();_ = srv.Shutdown(ctx2)}()
+	log.Printf("Mini App serving at %s; locations=%d",addr,len(store.List()))
+	if err:=srv.ListenAndServe();err!=nil&&err!=http.ErrServerClosed{log.Fatal(err)}
 }

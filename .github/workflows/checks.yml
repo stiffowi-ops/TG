@@ -35,7 +35,7 @@ jobs:
         run: docker build -t miniapp-bothost-check .
       - name: Smoke test with /app bind mount and Bothost PORT
         run: |
-          docker run -d --name miniapp-smoke -e PORT=18080 -p 18080:18080 -v "$PWD:/app:ro" miniapp-bothost-check
+          docker run -d --name miniapp-smoke -e PORT=18080 -e DATA_DIR=/tmp/miniapp-smoke -p 18080:18080 -v "$PWD:/app:ro" miniapp-bothost-check
           trap 'docker logs miniapp-smoke || true; docker rm -f miniapp-smoke >/dev/null || true' EXIT
           for i in $(seq 1 30); do
             if curl -fsS http://127.0.0.1:18080/api/health | grep -q '"ok":true'; then

@@ -22,7 +22,11 @@ func (b *Bot) configureTelegramMenu(ctx context.Context) {
 	if err != nil && ctx.Err() == nil {
 		log.Printf("Configure Telegram commands: %v", err)
 	}
-	_, err = b.call(ctx, "setChatMenuButton", map[string]any{"menu_button": map[string]string{"type": "commands"}})
+	menuButton:=any(map[string]string{"type":"commands"})
+	if appURL:=strings.TrimSpace(os.Getenv("MINIAPP_URL"));strings.HasPrefix(appURL,"https://") {
+		menuButton=map[string]any{"type":"web_app","text":"Открыть приложение","web_app":map[string]string{"url":appURL}}
+	}
+	_, err = b.call(ctx, "setChatMenuButton", map[string]any{"menu_button":menuButton})
 	if err != nil && ctx.Err() == nil {
 		log.Printf("Configure Telegram menu: %v", err)
 	}
