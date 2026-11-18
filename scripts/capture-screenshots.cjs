@@ -36,6 +36,14 @@ const path = require('node:path');
   await page.locator('.yandex-location-viewer iframe').waitFor();
   const widget=await page.locator('.yandex-location-viewer iframe').getAttribute('src');
   if(!widget?.includes('/map-widget/v1/')||!widget.includes('pt='))throw Error('Point widget URL missing: '+widget);
+  const viewerAboveMap=await page.evaluate(()=>{
+    const element=document.querySelector('.yandex-location-viewer__frame');
+    if(!element)return false;
+    const rect=element.getBoundingClientRect();
+    return document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)?.closest('.yandex-location-viewer')!==null;
+  });
+  if(!viewerAboveMap)throw Error('Map viewer is hidden below Leaflet overlays');
+  await page.waitForTimeout(3500);
   await page.screenshot({path:'screenshots/06-yandex-point-inside-app.png'});
   await page.getByRole('button',{name:'Вернуться в каталог'}).click();
   await page.locator('.geo-map-preview').waitFor();
