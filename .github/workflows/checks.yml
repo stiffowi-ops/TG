@@ -76,9 +76,9 @@ jobs:
         run: |
           mkdir -p /tmp/miniapp-playwright
           npm install --prefix /tmp/miniapp-playwright --no-audit --no-fund playwright@1.57.0
-          /tmp/miniapp-playwright/node_modules/.bin/playwright install --with-deps chromium
+          PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 /tmp/miniapp-playwright/node_modules/.bin/playwright install --with-deps chromium
       - name: Capture actual running UI on mobile viewport
-        run: NODE_PATH=/tmp/miniapp-playwright/node_modules node scripts/capture-screenshots.cjs
+        run: PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 NODE_PATH=/tmp/miniapp-playwright/node_modules node scripts/capture-screenshots.cjs
       - name: Upload original screenshots
         if: always()
         uses: actions/upload-artifact@v4
