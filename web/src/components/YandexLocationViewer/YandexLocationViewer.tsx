@@ -4,7 +4,7 @@ import type {Location} from '../../types';
 import {mapLink} from '../../demo';
 
 /** Standalone, keyless Yandex Maps iframe for a single catalog coordinate.
- * Not a JavaScript Maps API integration and does not affect Leaflet filters.
+ * Not a JavaScript Maps API integration; catalog filters are independent.
  */
 export function yandexPointWidgetURL(location:Location):string|null{
  const {latitude,longitude}=location;

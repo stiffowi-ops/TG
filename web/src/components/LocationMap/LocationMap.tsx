@@ -1,106 +1,191 @@
-import {useEffect,useMemo,useState} from 'react';
-import {ArrowRight, Heart, LocateFixed, MapPin, Minus, Plus, X} from 'lucide-react';
-import {AttributionControl,MapContainer,Marker,TileLayer,useMap} from 'react-leaflet';
-import {divIcon,latLngBounds} from 'leaflet';
+import {useEffect,useMemo,useRef,useState} from 'react';
+import {ArrowRight,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
+import {LngLatBounds,Map as MapLibreMap,Marker as MapLibreMarker} from 'maplibre-gl';
+import type {StyleSpecification} from 'maplibre-gl';
 import type {Location} from '../../types';
 import PhotoCarousel from '../PhotoCarousel/PhotoCarousel';
 import LocationArt from '../LocationArt/LocationArt';
-
 
 type Props={
  locations:Location[];selectedId:string|null;onSelect:(id:string|null)=>void;
  favorites:Set<string>;onFavorite:(id:string)=>void;onDetails:(location:Location)=>void;onOpenYandex:(location:Location)=>void;
 };
-const point=(location:Location)=>location.latitude!==undefined&&location.longitude!==undefined&&
+type Pin={marker:MapLibreMarker;element:HTMLButtonElement};
+
+const validPoint=(location:Location)=>location.latitude!==undefined&&location.longitude!==undefined&&
  Number.isFinite(location.latitude)&&Number.isFinite(location.longitude)&&
  Math.abs(location.latitude)<=90&&Math.abs(location.longitude)<=180;
-const pinIcon=(selected:boolean)=>divIcon({
- className: 'geo-pin-container',
- html:'<div class="geo-pin '+(selected?'geo-pin--active':'')+'"><span></span></div>',
- iconSize:selected?[51,63]:[36,46],iconAnchor:selected?[25,57]:[18,42]
-});
-function MapSync({locations,selected}: {locations:Location[];selected:Location|null}){
- const map=useMap();
- const signature=locations.map(l=>l.id).join(',');
- useEffect(()=>{
-  map.invalidateSize();
-  const points=locations.filter(point);
-  if(points.length===0)return;
-  if(points.length===1){
-   map.setView([points[0].latitude!,points[0].longitude!],14,{animate:false});
-  }else{
-   const bounds=latLngBounds(points.map(l=>[l.latitude!,l.longitude!]));
-   map.fitBounds(bounds,{padding:[45,45],maxZoom:12,animate:false});
-  }
- },[map,signature]);
- useEffect(()=>{
-  if(selected&&point(selected))map.flyTo([selected.latitude!,selected.longitude!],Math.max(13,map.getZoom()),{duration:.45});
- },[selected?.id,map]);
- return null;
-}
-function MapActions(){
- const map=useMap();
- const [geoError,setGeoError]=useState('');
- const locate=()=>{
-  if(!navigator.geolocation){setGeoError('Геолокация недоступна');return}
-  navigator.geolocation.getCurrentPosition(position=>{
-   setGeoError('');
-   map.flyTo([position.coords.latitude,position.coords.longitude],13,{duration:.5});
-  },()=>setGeoError('Проверьте разрешение на геолокацию'),{enableHighAccuracy:false,timeout:8000});
- };
- return <div className="geo-map-actions">
-  <button type="button" aria-label="Приблизить карту" onClick={()=>map.zoomIn()}><Plus size={22}/></button>
-  <button type="button" aria-label="Отдалить карту" onClick={()=>map.zoomOut()}><Minus size={22}/></button>
-  <button type="button" aria-label="Моё местоположение" onClick={locate}><LocateFixed size={21}/></button>
-  {geoError&&<span className="geo-map-actions__error" role="status">{geoError}</span>}
- </div>;
-}
+
+// MapLibre is only the rendering engine. We own the pins, UI, filters and interactions.
+// The OSM tile source can be swapped later without rewriting the catalog.
+const tileURL=import.meta.env.VITE_MAP_TILE_URL?.trim()||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const mapStyle:StyleSpecification={
+ version:8,
+ sources:{osm:{type:'raster',tiles:[tileURL],tileSize:256,minzoom:0,maxzoom:19,
+  attribution:'© OpenStreetMap contributors'}},
+ layers:[{id:'osm-base',type:'raster',source:'osm'}]
+};
+
 function MapPhoto({location}:{location:Location}){
  const photos=location.imageUrls?.length?location.imageUrls:location.imageUrl?[location.imageUrl]:[];
  return <PhotoCarousel photos={photos} fallback={<LocationArt location={location} compact/>} label={location.title} compact/>;
 }
+
 export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails,onOpenYandex}:Props){
- const points=useMemo(()=>locations.filter(point),[locations]);
+ const points=useMemo(()=>locations.filter(validPoint),[locations]);
+ const hasPoints=points.length>0;
+ const chosen=points.find(location=>location.id===selectedId)??null;
+ const containerRef=useRef<HTMLDivElement|null>(null);
+ const mapRef=useRef<MapLibreMap|null>(null);
+ const markersRef=useRef<Map<string,Pin>>(new Map());
+ const onSelectRef=useRef(onSelect);
+ onSelectRef.current=onSelect;
  const [tileFailures,setTileFailures]=useState(0);
- const tileUnavailable=tileFailures>=4;
- const chosen=points.find(l=>l.id===selectedId)??null;
- const mapCenter:[number,number]=points.length?[points[0].latitude!,points[0].longitude!]:[55.7512,37.6184];
+ const [mapUnavailable,setMapUnavailable]=useState(false);
+ const [geoError,setGeoError]=useState('');
+
+ useEffect(()=>{
+  if(!hasPoints||!containerRef.current)return;
+  let map:MapLibreMap|null=null;
+  let active=true;
+  setMapUnavailable(false);
+  setTileFailures(0);
+  try{
+   map=new MapLibreMap({
+    container:containerRef.current,style:mapStyle,
+    center:[37.6184,55.7512],zoom:11,minZoom:3,maxZoom:18,
+    attributionControl:false,scrollZoom:false,dragRotate:false,touchPitch:false,
+    renderWorldCopies:false
+   });
+   mapRef.current=map;
+   map.on('load',()=>{if(active)map?.resize()});
+   map.on('error',event=>{
+    if(!active)return;
+    const detail=String(event.error?.message||'');
+    if(/tile|source|request|fetch|network|403|404/i.test(detail))
+     setTileFailures(current=>Math.min(5,current+1));
+   });
+   map.on('sourcedata',event=>{
+    if(active&&event.sourceId==='osm'&&event.isSourceLoaded)
+     setTileFailures(0);
+   });
+  }catch(error){
+   console.error('Unable to start MapLibre map',error);
+   setMapUnavailable(true);
+   if(map){try{map.remove()}catch{/* Partially initialized WebGL context */}}
+   mapRef.current=null;
+  }
+  return()=>{
+   active=false;
+   markersRef.current.forEach(({marker})=>marker.remove());
+   markersRef.current.clear();
+   if(mapRef.current===map)mapRef.current=null;
+   if(map){try{map.remove()}catch{/* Browser may have discarded the WebGL context */}}
+  };
+ },[hasPoints]);
+
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(!map||!points.length)return;
+  // Reconcile marker locations after filtering without re-creating the map.
+  markersRef.current.forEach(({marker})=>marker.remove());
+  markersRef.current.clear();
+  for(const location of points){
+   const element=document.createElement('button');
+   element.type='button';
+   element.className='geo-pin-container';
+   element.setAttribute('aria-label','Выбрать локацию '+location.title);
+   element.title=location.title;
+   element.innerHTML='<span class="geo-pin"><span></span></span>';
+   element.addEventListener('click',event=>{event.stopPropagation();onSelectRef.current(location.id)});
+   const marker=new MapLibreMarker({element,anchor:'bottom'})
+    .setLngLat([location.longitude!,location.latitude!]).addTo(map);
+   markersRef.current.set(location.id,{marker,element});
+  }
+  if(points.length===1){
+   map.jumpTo({center:[points[0].longitude!,points[0].latitude!],zoom:14});
+  }else{
+   const bounds=new LngLatBounds();
+   points.forEach(location=>bounds.extend([location.longitude!,location.latitude!]));
+   map.fitBounds(bounds,{padding:45,maxZoom:12,duration:0});
+  }
+ },[points,hasPoints]);
+
+ useEffect(()=>{
+  markersRef.current.forEach(({element},id)=>{
+   const active=id===selectedId;
+   element.classList.toggle('geo-pin-container--active',active);
+   element.querySelector('.geo-pin')?.classList.toggle('geo-pin--active',active);
+   element.setAttribute('aria-pressed',String(active));
+  });
+  const target=points.find(location=>location.id===selectedId);
+  const map=mapRef.current;
+  if(target&&map){
+   map.flyTo({center:[target.longitude!,target.latitude!],
+    zoom:Math.max(13,map.getZoom()),duration:450,essential:true});
+  }
+ },[selectedId,points]);
+
+ const locate=()=>{
+  const map=mapRef.current;
+  if(!map){setGeoError('Карта недоступна на устройстве');return}
+  if(!navigator.geolocation){setGeoError('Геолокация недоступна');return}
+  navigator.geolocation.getCurrentPosition(position=>{
+   setGeoError('');
+   map.flyTo({center:[position.coords.longitude,position.coords.latitude],zoom:13,duration:500,essential:true});
+  },()=>setGeoError('Проверьте разрешение на геолокацию'),
+  {enableHighAccuracy:false,timeout:8000});
+ };
+
  return <div className="geo-map-layout">
-  {points.length?
+  {hasPoints?
    <div className="geo-map" role="region" aria-label="Интерактивная карта локаций">
-    <MapContainer center={mapCenter} zoom={11} scrollWheelZoom={false} zoomControl={false} attributionControl={false}
-     className="geo-map__tiles">
-     <AttributionControl position="bottomright" prefix={false}/>
-     <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={18}
-      eventHandlers={{
-       tileerror:()=>setTileFailures(v=>Math.min(5,v+1)),
-       tileload:()=>setTileFailures(0)
-      }}/>
-     <MapSync locations={points} selected={chosen}/>
-     {points.map(l=><Marker key={l.id} position={[l.latitude!,l.longitude!]}
-      icon={pinIcon(l.id===selectedId)} zIndexOffset={l.id===selectedId?1000:0}
-      eventHandlers={{click:()=>onSelect(l.id)}}/>)}
-     <MapActions/>
-    </MapContainer>
+    <div ref={containerRef} className="geo-map__tiles"/>
     <div className="geo-map__count"><MapPin size={15}/>{points.length} на карте</div>
-    {tileUnavailable&&<div className="geo-map__tile-notice" role="status">Подложка карты недоступна. Метки показаны по координатам.</div>}
-    {chosen&&<div className="geo-map-preview" role="group" aria-label={`Выбрана локация ${chosen.title}`}>
+    {mapUnavailable?
+     <div className="geo-map__fallback" role="status">
+      <MapPin size={27}/><strong>Карта недоступна на этом устройстве</strong>
+      <p>Локации остаются доступны для выбора и просмотра в Яндекс Картах.</p>
+      <div className="geo-map__fallback-list">
+       {points.slice(0,12).map(location=><button type="button" key={location.id}
+        onClick={()=>onSelect(location.id)}>{location.title}</button>)}
+      </div>
+     </div>:<div className="geo-map-actions">
+      <button type="button" aria-label="Приблизить карту" onClick={()=>mapRef.current?.zoomIn()}><Plus size={22}/></button>
+      <button type="button" aria-label="Отдалить карту" onClick={()=>mapRef.current?.zoomOut()}><Minus size={22}/></button>
+      <button type="button" aria-label="Моё местоположение" onClick={locate}><LocateFixed size={21}/></button>
+      {geoError&&<span className="geo-map-actions__error" role="status">{geoError}</span>}
+     </div>}
+    {!mapUnavailable&&tileFailures>=4&&<div className="geo-map__tile-notice" role="status">
+     Подложка карты временно недоступна. Метки сохраняют свои координаты.
+    </div>}
+    {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}>
      <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
      <div className="geo-map-preview__photo"><MapPhoto location={chosen}/></div>
      <div className="geo-map-preview__body">
       <button type="button" className="geo-map-preview__title geo-map-preview__title-button" onClick={()=>onDetails(chosen)}>{chosen.title}</button>
       <div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>
       <div className="geo-map-preview__actions">
-       <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)} aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'}>
+       <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)}
+        aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'}>
         <Heart size={18} fill={favorites.has(chosen.id)?'currentColor':'none'}/>
        </button>
-       <button type="button" className="geo-map-preview__details" onClick={()=>onOpenYandex(chosen)}>Открыть на карте <ArrowRight size={17}/></button>
+       <button type="button" className="geo-map-preview__details" onClick={()=>onOpenYandex(chosen)}>
+        Открыть на карте <ArrowRight size={17}/>
+       </button>
       </div>
      </div>
     </div>}
-   </div>
-   :<div className="geo-map-empty"><MapPin size={28}/><h3>Нет точек с координатами</h3><p>Попробуйте изменить фильтры или выбрать другую локацию.</p></div>}
-  {points.length<locations.length&&<p className="geo-map-notice">На карте отображаются только локации с подтверждёнными координатами. Остальные доступны в списке.</p>}
+    <div className="geo-map__attribution">
+     <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">
+      © OpenStreetMap contributors
+     </a>
+    </div>
+   </div>:
+   <div className="geo-map-empty"><MapPin size={28}/><h3>Нет точек с координатами</h3>
+    <p>Попробуйте изменить фильтры или выбрать другую локацию.</p></div>}
+  {points.length<locations.length&&<p className="geo-map-notice">
+   На карте отображаются только локации с подтверждёнными координатами. Остальные доступны в списке.
+  </p>}
  </div>;
 }

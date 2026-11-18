@@ -68,10 +68,10 @@
 .geo-map-layout{min-width:0}
 .geo-map{position:relative;width:100%;height:clamp(440px,68vh,700px);border:1px solid #E8DCCF;border-radius:21px;overflow:hidden;background:#EDE9E1;box-shadow:0 8px 22px #584B3A1C}
 .geo-map__tiles{width:100%;height:100%;z-index:0}
-.geo-map .leaflet-control-zoom{display:none}
-.geo-map .leaflet-control-attribution{font-size:9px;background:#FFFCF7D9}
 .geo-map__count{position:absolute;z-index:500;top:14px;left:13px;display:flex;align-items:center;gap:6px;padding:9px 12px;border-radius:12px;color:#425451;background:#FFFCF9ED;font-size:11px;font-weight:800;box-shadow:0 5px 15px #24392923;pointer-events:none}
-.geo-pin-container{background:transparent;border:0}
+.geo-pin-container{display:grid;place-items:center;width:49px;height:65px;padding:0;background:transparent;border:0;cursor:pointer;touch-action:manipulation}
+.geo-pin-container--active{z-index:2!important}
+.geo-pin-container:focus-visible{outline:3px solid #316E78;outline-offset:2px;border-radius:13px}
 .geo-pin{width:32px;height:40px;position:relative;border-radius:50% 50% 50% 3px;background:linear-gradient(130deg,#F6A24C,#E9731E);box-shadow:0 4px 7px #9A572550;border:3px solid #FFFBF2;transform:rotate(-45deg);transform-origin:center}
 .geo-pin span{display:block;position:absolute;left:9px;top:9px;width:10px;height:10px;border-radius:50%;background:#FFF6E8;box-shadow:0 1px 2px #8A4D2080}
 .geo-pin--active{width:44px;height:55px;background:linear-gradient(130deg,#FBAD4D,#E86F13);box-shadow:0 7px 10px #B66F406B;border-width:4px}
@@ -139,17 +139,23 @@
 /* Catalog already owns its header. Telegram top inset is applied once, not twice. */
 .inside-telegram-miniapp .catalog-page--redesigned{padding-top:var(--telegram-top-space,0px)!important}
 
-/* An honest fallback when third-party map tiles are blocked: abstract topo
-   texture, not fabricated roads. Pins retain real GPS positions. */
-.geo-map .leaflet-container{background-color:#F6EEE5;background-image:repeating-radial-gradient(ellipse at 34% 68%,transparent 0,transparent 23px,rgba(222,188,151,.16) 24px,transparent 25px),linear-gradient(150deg,#F7F0E8,#ECE2D6)}
+/* Neutral texture while OSM raster tiles are unavailable. It never invents roads. */
+.geo-map__tiles.maplibregl-map{background-color:#F6EEE5;background-image:repeating-radial-gradient(ellipse at 34% 68%,transparent 0,transparent 23px,rgba(222,188,151,.16) 24px,transparent 25px),linear-gradient(150deg,#F7F0E8,#ECE2D6)}
+.geo-map__tiles .maplibregl-canvas{outline:0}
+.geo-map__fallback{position:absolute;z-index:2;inset:0;display:flex;align-items:center;justify-content:center;gap:12px;flex-direction:column;text-align:center;background:#FFF8F1;padding:48px 24px 35px;color:#C26E36}
+.geo-map__fallback strong{color:#284045;font-size:15px}
+.geo-map__fallback p{max-width:320px;margin:0;font-size:12px;color:#697D80;line-height:1.5}
+.geo-map__fallback-list{display:flex;flex-wrap:wrap;justify-content:center;gap:7px;max-height:45%;overflow:auto}
+.geo-map__fallback-list button{border:1px solid #EED9C5;border-radius:10px;background:#FFFEFC;color:#A85E30;font-size:11px;padding:8px}
+
 .geo-map__tile-notice{position:absolute;z-index:504;top:58px;left:12px;right:68px;max-width:270px;border:1px solid #F0D9C6;background:#FFF9F0EB;border-radius:11px;padding:9px 12px;color:#9B6A44;font-size:10px;line-height:1.35;box-shadow:0 4px 11px #8D604224}
 @media(max-width:530px){.geo-map__tile-notice{font-size:9px;max-width:206px;right:55px}}
 
 
-/* Leaflet remains the map controller. Keep only the OSM copyright attribution. */
-.geo-map .leaflet-attribution-flag{display:none!important}
-.geo-map .leaflet-control-attribution{display:block!important;color:#5D6568;font:10px/1.4 system-ui,sans-serif!important;padding:2px 6px!important;border-radius:7px 0 0 0;background:#FFFDF8D9!important;box-shadow:none!important}
-.geo-map .leaflet-control-attribution a{color:#4C6868!important;text-decoration:underline!important}
+/* Map data credit remains visible, including when a preview card is open. */
+.geo-map__attribution{position:absolute;z-index:505;bottom:2px;right:5px;font:10px/1.4 system-ui,sans-serif;padding:2px 6px;border-radius:7px 0 0 0;background:#FFFDF8E8;box-shadow:none}
+.geo-map__attribution a{color:#4C6868!important;text-decoration:underline!important}
+
 .geo-map-preview__title-button{border:0;text-align:left;background:transparent;padding:0;cursor:pointer}
 .yandex-location-overlay{position:fixed;inset:0;z-index:10000;background:#FFF8F2;display:flex;flex-direction:column}
 .yandex-location-viewer{display:flex;flex-direction:column;min-height:0;height:100%;width:100%;max-width:900px;margin:auto;background:#FFF8F2}
