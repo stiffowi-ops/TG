@@ -1,0 +1,75 @@
+/* Independent first-screen components, painted entirely with replaceable assets. */
+body { background:var(--ui-background); }
+.site-header { background:#FFFCF9; border:0; flex:0 0 auto; }
+.site-header__inner { display:flex;align-items:center;justify-content:center;min-height:65px;padding:11px 20px; }
+.site-header__brand { display:block;text-align:center;line-height:1.05; }
+.site-header__wordmark { display:block;font-size:27px;letter-spacing:-1.25px;line-height:1.1;font-weight:850;color:var(--ui-ink); }
+.site-header__wordmark small { margin-top:5px;font-weight:650;font-size:9px;letter-spacing:1.0px;text-transform:uppercase;color:#89999B; }
+.brand-dot { color:var(--ui-accent); }
+
+.landing-home { width:100%;max-width:1160px;padding:4px 0 10px!important;margin:0 auto; }
+.landing-hero.hero-composition { background:linear-gradient(149deg,#FFF9F4 0%,#FFF3E9 57%,#F5E0CB 100%);border:1px solid #F5E5D8;border-radius:var(--ui-radius-hero);overflow:hidden;position:relative;min-height:550px;isolation:isolate;display:block;box-shadow:0 9px 24px rgba(146,90,45,.045); }
+.hero-composition:before { content:'';position:absolute;inset:0;z-index:0;pointer-events:none;background-image:var(--ui-hero-pattern);background-size:560px auto;background-repeat:no-repeat;background-position:top -75px right -100px;opacity:.30; }
+.landing-copy.hero-composition__copy { position:relative;z-index:3;padding:50px 50px;max-width:700px; }
+.landing-eyebrow { font-size:11px;line-height:1.7;font-weight:850;letter-spacing:1.35px;color:#CE641E;text-transform:uppercase; }
+.hero-composition__copy h1 { margin:23px 0 19px;color:var(--ui-ink);font-weight:850;letter-spacing:-2.3px;font-size:clamp(33px,4.4vw,55px);line-height:1.15; }
+.hero-composition__copy h1 em { color:var(--ui-accent);font-style:normal; }
+.hero-composition__copy p { font-size:15px;line-height:1.64;color:var(--ui-secondary);max-width:430px;margin:0 0 26px; }
+.primary-action.landing-cta { position:relative;z-index:5;display:inline-flex;align-items:center;justify-content:space-between;min-height:57px;gap:26px;padding:0 23px;border:1px solid var(--ui-accent);border-radius:var(--ui-radius-button);background:linear-gradient(120deg,#FB8A2D 0%,#EB6F19 100%);color:white;font-size:15px;font-weight:800;line-height:1.2;box-shadow:var(--ui-shadow-button);cursor:pointer; }
+.primary-action.landing-cta:hover { filter:brightness(1.045);transform:translateY(-1px); }
+.primary-action.landing-cta:active { transform:translateY(1px);filter:brightness(.97); }
+.hero-composition__scene.landing-scene { position:absolute;inset:auto 0 0 0;z-index:1;width:100%;height:58%;max-width:none;overflow:hidden;pointer-events:none;opacity:1; }
+.hero-composition__scene picture { display:block;height:100%;width:100%; }
+.hero-composition__scene img.landing-illustration { display:block;width:100%;height:100%;max-width:none;object-fit:cover;object-position:center 58%;filter:none; }
+.hero-composition__scene { -webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 17%,#000 100%);mask-image:linear-gradient(to bottom,transparent 0%,#000 17%,#000 100%); }
+.landing-shortcuts { width:100%;margin:11px 0 0;gap:11px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)); }
+.shortcut-card.landing-shortcut { isolation:isolate;display:flex;align-items:center;position:relative;min-width:0;text-align:left;min-height:100px;gap:13px;padding:14px 18px;border-radius:var(--ui-radius-card);background:var(--ui-surface-raised);border:1px solid #F0DFD1;box-shadow:var(--ui-shadow-soft);color:var(--ui-ink);overflow:hidden; }
+.shortcut-card:before { content:'';position:absolute;z-index:0;inset:0;background:var(--ui-shortcut-pattern) no-repeat center right;background-size:65% 100%;opacity:.42;pointer-events:none; }
+.shortcut-card .shortcut-icon { z-index:2;flex:0 0 53px;width:53px;height:53px;border-radius:14px;display:grid;place-items:center;background:#FFF0E5;color:var(--ui-accent); }
+.shortcut-card .shortcut-label { z-index:2;position:relative;flex:1 1 auto;font-weight:800;font-size:13px;line-height:1.35;max-width:270px; }
+.shortcut-card__art { z-index:1;position:absolute;right:21px;bottom:-10px;width:124px;height:auto;opacity:.66;pointer-events:none; }
+.shortcut-card--locations .shortcut-label { max-width:225px; }
+.shortcut-card--favorites .shortcut-card__art { width:112px;opacity:.82;right:18px;bottom:-23px; }
+.shortcut-card .shortcut-chevron { z-index:3;position:relative;flex:0 0 20px;color:#A86D4E; }
+.shortcut-card:hover { border-color:#EFB88E;transform:translateY(-2px); }
+.shortcut-card:active { background:#FFF5EC;transform:translateY(0); }
+.shortcut-card:focus-visible,.primary-action:focus-visible { outline:3px solid #F29A59;outline-offset:3px; }
+@media(max-width:780px){
+ .landing-home { padding:2px 0 8px!important; }
+ .landing-hero.hero-composition { min-height:510px; }
+ .landing-copy.hero-composition__copy { padding:38px 30px; }
+ .hero-composition__copy h1 { font-size:clamp(33px,6.7vw,45px); }
+ .hero-composition__scene.landing-scene { height:48%; }
+ .landing-shortcuts { grid-template-columns:1fr;gap:9px; }
+ .shortcut-card.landing-shortcut { min-height:75px;padding:10px 15px; }
+ .shortcut-card .shortcut-label { max-width:none; }
+ .shortcut-card__art { right:27px;max-height:100%; }
+}
+@media(max-width:530px){
+ .site-header__inner { min-height:58px;padding:9px 12px; }
+ .site-header__wordmark { font-size:24px; }
+ .site-header__wordmark small { font-size:8px;margin-top:4px; }
+ .landing-hero.hero-composition { min-height:var(--ui-hero-min-height);border-radius:20px; }
+ .landing-copy.hero-composition__copy { padding:29px 20px; }
+ .landing-eyebrow { font-size:9px;letter-spacing:.95px; }
+ .hero-composition__copy h1 { font-size:clamp(28px,7.25vw,36px);letter-spacing:-1.15px;line-height:1.14;margin:15px 0; }
+ .hero-composition__copy p { font-size:12px;line-height:1.58;max-width:340px;margin-bottom:19px; }
+ .primary-action.landing-cta { font-size:13px;min-height:48px;padding:0 17px;gap:22px;border-radius:14px; }
+ .hero-composition__scene.landing-scene { height:52%;inset:auto 0 0 0;width:100%; }
+ .hero-composition__scene img.landing-illustration { object-position:center bottom; }
+ .landing-shortcuts { gap:8px;margin-top:9px; }
+ .shortcut-card.landing-shortcut { min-height:65px;padding:9px 12px;gap:11px;border-radius:15px; }
+ .shortcut-card .shortcut-icon { flex-basis:43px;width:43px;height:43px;border-radius:12px; }
+ .shortcut-card .shortcut-icon svg { width:23px;height:23px; }
+ .shortcut-card .shortcut-label { font-size:12px;line-height:1.3;max-width:230px; }
+ .shortcut-card .shortcut-chevron { flex-basis:18px;width:18px;height:18px; }
+ .shortcut-card__art { width:96px;right:24px; }
+ .shortcut-card--favorites .shortcut-card__art { width:88px;bottom:-23px;right:20px; }
+}
+@media(max-width:365px){
+ .landing-hero.hero-composition { min-height:430px; }
+ .hero-composition__copy h1 { font-size:27px; }
+}
+@media(prefers-reduced-motion:reduce){
+ .shortcut-card,.primary-action { transition:none!important;transform:none!important; }
+}

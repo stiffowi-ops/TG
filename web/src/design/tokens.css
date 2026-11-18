@@ -1,0 +1,23 @@
+/* Karty Mini App visual tokens. Change a theme here, not in business logic. */
+:root {
+  --ui-ink: #0E333A;
+  --ui-secondary: #60767B;
+  --ui-subtle: #8D9C9F;
+  --ui-accent: #F77820;
+  --ui-accent-dark: #D95F13;
+  --ui-surface: #FFF9F4;
+  --ui-surface-raised: #FFFDFB;
+  --ui-outline: #F2DCCB;
+  --ui-background: #FBF8F4;
+  --ui-nav-ink: #7C8C91;
+  --ui-radius-hero: 22px;
+  --ui-radius-card: 17px;
+  --ui-radius-button: 15px;
+  --ui-spacing: 8px;
+  --ui-shadow-soft: 0 7px 20px rgba(107,75,54,.09);
+  --ui-shadow-button: 0 11px 19px rgba(225,103,24,.24);
+  --ui-hero-pattern: url('/assets/backgrounds/contours.svg');
+  --ui-shortcut-pattern: url('/assets/backgrounds/waves.svg');
+  --ui-hero-min-height: 452px;
+  --ui-nav-height: 69px;
+}

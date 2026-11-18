@@ -1,0 +1,39 @@
+# Дизайн-система Mini App «Локации»
+
+Первый этап: самостоятельные компоненты главного меню. Этот репозиторий содержит рабочие данные, заявки и админку. Изменение оформления не должно затрагивать их логику.
+
+## Структура
+
+- `web/src/components/Header/Header.tsx`: фирменная шапка и переход на главную.
+- `web/src/components/Hero/Hero.tsx`: баннер, заголовок, город, призыв к действию.
+- `web/src/components/PrimaryButton/PrimaryButton.tsx`: основная кнопка.
+- `web/src/components/ShortcutCard/ShortcutCard.tsx`: повторно используемая карточка быстрого действия.
+- `web/src/components/LandingPage/LandingPage.tsx`: только композиция главного экрана и маршруты кнопок.
+- `web/src/components/BottomNavigation/BottomNavigation.tsx`: нижнее меню, включая доступ администратора.
+- `web/src/design/assets.ts`: единый каталог путей сменных изображений.
+- `web/src/design/tokens.css`: палитра, размеры, тени, скругления и пути к декоративным текстурам.
+- `web/src/design/landing.css`: шапка, главный экран, CTA и карточки.
+- `web/src/design/navigation.css`: отдельные стили нижнего меню.
+- `web/public/assets/illustrations/hero-city.avif`: мобильная HD-иллюстрация (780×416, отображение до 390 CSS-пикселей, 2×).
+- `web/public/assets/illustrations/shortcut-building.svg`: декоративное здание в первой карточке.
+- `web/public/assets/illustrations/shortcut-favorite.svg`: декоративные карточки с сердцем.
+- `web/public/assets/backgrounds/contours.svg`: линии карты на баннере.
+- `web/public/assets/backgrounds/waves.svg`: волны на карточках.
+
+## Замена элементов
+
+**Фон или иллюстрация:** положить новый файл в `web/public/assets` и изменить только соответствующий путь в `web/src/design/assets.ts`. У `hero-city.avif` должен быть подходящий формат, рекомендуемое соотношение сторон около 1.9:1 и исходная ширина 780 px или больше для мобильного экрана 390 px. Не увеличивать исходные миниатюры растягиванием.
+
+**Цвет, тень, скругление:** менять `web/src/design/tokens.css`, не правя компоненты. Размеры для мобильного экрана можно перенастроить в `landing.css` и `navigation.css`.
+
+**Карточки:** каждый быстрый переход имеет отдельные свойства `label`, `icon`, `artwork`, `onClick`. Их можно переставлять в `LandingPage.tsx`. Навигация определяется в `BottomNavigation.tsx`.
+
+**Баннер и CTA:** изображение и тексты не запекаются в одну картинку. Тексты настоящие, адаптируются под ширину; кнопка доступна и кликабельна. Иконки Lucide остаются чёткими при масштабировании.
+
+**Границы Telegram:** `app-shell` использует единственный скроллер в `main-container`, нижняя панель закреплена вне этого скроллера. Не добавлять фиксированные большие пустые padding сверху или снизу.
+
+## Проверка изменений
+
+При push на `main` GitHub Actions собирает Go, React, Docker и снимает реальные скриншоты в Chromium с разрешением 390×844 CSS px, масштаб 2×. Изображения доступны в артефакте `miniapp-real-screenshots` проверки. Скриншот браузера не заменяет ручную проверку Telegram WebView на Android и iOS.
+
+**Изоляция:** исходный рабочий `stiffowi-ops/Karty` не меняется, клиентские данные и токены не добавляются в репозиторий.

@@ -1,7 +1,10 @@
 import React from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App';
+import './design/tokens.css';
 import './styles.css';
+import './design/landing.css';
+import './design/navigation.css';
 
 // A rendering error should never strand Telegram users on a completely white screen.
 class AppErrorBoundary extends React.Component<React.PropsWithChildren, {failed:boolean}> {

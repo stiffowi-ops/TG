@@ -1,12 +1,14 @@
 import {useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
+import Header from './components/Header/Header';
+import LandingPage from './components/LandingPage/LandingPage';
+import BottomNavigation from './components/BottomNavigation/BottomNavigation';
 import {
  ArrowLeft, ArrowRight, Building2, Check,
  CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3,
- Compass, ExternalLink, Heart, LayoutGrid, ListFilter, Map as MapIcon,
- MapPin, MessageCircle, Plus, Search, Send, ShieldCheck, SlidersHorizontal,
- Sparkles, X
+ ExternalLink, Heart, LayoutGrid, ListFilter, Map as MapIcon,
+ MapPin, Plus, Search, Send, ShieldCheck, SlidersHorizontal, X
 } from 'lucide-react';
 import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput} from './types';
 import {backupLocations, mapLink, MAX_COMPARE, MAX_UPDATES, normalize, prettyDate, statusLabel} from './demo';
@@ -59,16 +61,6 @@ function Pill({children,kind='neutral'}:{children:ReactNode;kind?:string}){retur
 function Empty({icon,title,description,action}:{icon:ReactNode;title:string;description:string;action?:ReactNode}){
  return <div className="empty"><div className="empty-symbol">{icon}</div><h3>{title}</h3><p>{description}</p>{action}</div>;
 }
-function BottomNav({tab,onTab,selected,admin}:{tab:Tab;onTab:(t:Tab)=>void;selected:number;admin:boolean}){
- const items:{id:Tab;label:string;icon:ReactNode}[]=[
-  {id:'home',label:'Локации',icon:<Compass size={22}/>},
-  {id:'map',label:'Карта',icon:<MapIcon size={22}/>},
-  {id:'favorites',label:'Избранное',icon:<Heart size={22}/>},
-  {id:'requests',label:'Мои заявки',icon:<MessageCircle size={22}/>},
- ];
- if(admin)items.push({id:"admin",label:"Управление",icon:<ShieldCheck size={22}/>});
- return <nav className="bottom-nav" aria-label="Основная навигация">{items.map(i=>{const active=tab===i.id||(i.id==='home'&&tab==='catalog');return <button type="button" key={i.id} aria-current={active?'page':undefined} className={`nav-item ${active?'active':''}`} onClick={()=>{tgHaptic();onTab(i.id)}}>{i.icon}<span>{i.label}</span>{i.id==='favorites'&&selected>0&&<span className="nav-count">{selected}</span>}</button>})}</nav>
-}
 function Status({status}:{status:CaseStatus}){return <span className={`status status-${status}`}>{statusLabel[status]}</span>}
 function Dialog({children,onClose,className=''}:{children:ReactNode;onClose:()=>void;className?:string}){
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',onKey);document.body.classList.add('has-dialog');return()=>{document.removeEventListener('keydown',onKey);document.body.classList.remove('has-dialog')}},[onClose]);
@@ -82,11 +74,6 @@ function LocationCard({l,saved,onDetails,onFavorite,compareMode=false,selected=f
    <div className="location-actions"><button className="text-action" onClick={()=>onDetails(l)}>Подробнее <ChevronRight size={16}/></button>{compareMode&&onSelect?<button className={`compare-selector ${selected?'checked':''}`} onClick={()=>onSelect(l.id)}>{selected?<Check size={16}/>:<Plus size={16}/>} {selected?'Выбрано':'Сравнить'}</button>:<button className="map-text-link" onClick={()=>openMap(mapLink(l))}><MapPin size={15}/> Карта</button>}</div>
   </div>
  </article>;
-}
-function LandingScene(){
- return <div className="landing-scene" aria-hidden="true">
-   <img className="landing-illustration" src="/assets/approved-city.webp" alt="" loading="eager" decoding="async"/>
- </div>;
 }
 function App(){
  const [tab,setTab]=useState<Tab>('home');
@@ -178,30 +165,13 @@ function App(){
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
-  <header className="app-header"><div className="header-inner"><button type="button" className="brand" onClick={()=>onTab('home')} aria-label="На главную"><span className="brand-text">Локации<span className="brand-dot">.</span><small>пространство возможностей</small></span></button></div></header>
+  <Header onHome={()=>onTab('home')}/>
   <main className="main-container">
-   {tab==='home'&&<section className="landing-home" aria-label="Главная страница">
-    <div className="landing-hero">
-     <div className="landing-copy">
-      <span className="landing-eyebrow">ВОЗМОЖНОСТИ ДЛЯ ВАШЕГО БИЗНЕСА</span>
-      <h1>Найдите место,<br/>где начнётся <em>рост.</em></h1>
-      <p>Изучайте локации, сравнивайте варианты и выбирайте точки, которые подходят Вашим планам.</p>
-      <button type="button" className="landing-cta" onClick={()=>onTab('catalog')}>Смотреть локации <ArrowRight size={20}/></button>
-     </div>
-     <LandingScene/>
-    </div>
-    <nav className="landing-shortcuts" aria-label="Возможности сервиса">
-     <button type="button" className="landing-shortcut" onClick={()=>onTab('catalog')}>
-      <span className="shortcut-icon"><MapPin size={25}/></span><span className="shortcut-label">Большое разнообразие локаций</span><ChevronRight size={20} className="shortcut-chevron"/>
-     </button>
-     <button type="button" className="landing-shortcut" onClick={()=>onTab('catalog',true)}>
-      <span className="shortcut-icon"><SlidersHorizontal size={25}/></span><span className="shortcut-label">Удобный подбор</span><ChevronRight size={20} className="shortcut-chevron"/>
-     </button>
-     <button type="button" className="landing-shortcut" onClick={()=>onTab('favorites')}>
-      <span className="shortcut-icon"><Heart size={25}/></span><span className="shortcut-label">Сохраняйте лучшее</span><ChevronRight size={20} className="shortcut-chevron"/>
-     </button>
-    </nav>
-   </section>}
+   {tab==='home'&&<LandingPage
+     onCatalog={()=>onTab('catalog')}
+     onSearch={()=>onTab('catalog',true)}
+     onFavorites={()=>onTab('favorites')}
+   />}
    {(tab==='catalog'||tab==='map')&&<>
     <section className="section-block catalog-page" id="catalog-results">
      <div className="catalog-page-heading">
@@ -255,7 +225,7 @@ function App(){
   </section>}
   </main>
   <footer className="site-footer"><span>Подбор локаций</span><span>Доступ к личным данным через Telegram</span></footer>
-  <BottomNav tab={tab} onTab={onTab} selected={favorites.length} admin={!!session?.admin}/>
+  <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin} onHaptic={tgHaptic}/>
   {toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
   {detail&&<Dialog onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><AreaArt location={detail}/></div><div className="detail-padding"><div className="detail-topline"><Pill>{detail.category}</Pill><span>№{detail.id}</span></div><h2>{detail.title}</h2><p className="detail-area"><MapPin size={17}/>{detail.area}</p><div className="detail-facts"><div><span>Широта</span><strong>{detail.latitude?.toFixed(4)??'не указана'}</strong></div><div><span>Долгота</span><strong>{detail.longitude?.toFixed(4)??'не указана'}</strong></div></div><div className="location-description">
  {([{title:'Ориентиры и транспорт',body:[detail.lineStatus,detail.landmarks].filter(Boolean).join(' · ')},{title:'Трафик и локация',body:detail.traffic},{title:'Кто платит',body:detail.payers},{title:'Окно возможностей',body:detail.opportunity},{title:'Почему именно здесь',body:detail.conclusion}]).map(item=><details key={item.title}><summary>{item.title}</summary><p>{item.body||'Информация пока не добавлена'}</p></details>)}
