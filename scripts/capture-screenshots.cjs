@@ -20,7 +20,7 @@ const path = require('node:path');
   await page.screenshot({path:'screenshots/02-catalog-real.png'});
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
   await page.locator('.geo-map .leaflet-container').waitFor({timeout:20000});
-  const pins=page.locator('.geo-pin');
+  const pins=page.locator('.geo-pin-container');
   await pins.first().waitFor({timeout:20000});
   await pins.first().click();
   await page.locator('.geo-map-preview').waitFor();
