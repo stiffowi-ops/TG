@@ -100,6 +100,7 @@ func (s *appService) handler(webDist string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter,r *http.Request){
 		w.Header().Set("X-Content-Type-Options","nosniff")
 		if r.Method=="GET"&&r.URL.Path=="/api/locations"&&s.store!=nil {
+			photosSyncing:=s.photos!=nil && s.photos.Running()
 			items:=s.store.List()
 			type loc struct {
 				ID string `json:"id"`
@@ -130,7 +131,7 @@ func (s *appService) handler(webDist string) http.Handler {
 					Opportunity:l.Opportunity,Conclusion:l.Conclusion,
 				})
 			}
-			jsonResponse(w,200,map[string]any{"locations":result,"demo":false})
+			jsonResponse(w,200,map[string]any{"locations":result,"demo":false,"photosSyncing":photosSyncing})
 			return
 		}
 		if (r.Method=="GET"||r.Method=="HEAD") && strings.HasPrefix(r.URL.Path,"/location-photos/") && s.photos!=nil {

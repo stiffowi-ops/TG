@@ -17,6 +17,7 @@ import(
  "path/filepath"
  "regexp"
  "sort"
+ "slices"
  "strconv"
  "strings"
  "sync"
@@ -31,7 +32,7 @@ const DefaultPublicURL="https://disk.yandex.ru/d/TpiMfBy9WROTGg"
 const maxImageBytes int64=18<<20
 var ErrBusy=errors.New("photo sync already running")
 var suffixNumber=regexp.MustCompile(`(?i)(?:[\s _.–—-]+|\s*\()(?:(?:фото|фотка|photo|image|img|ориентир)[\s_.–—-]*)?0*([1-9][0-9]?)\s*\)?$`)
-var prefixNumber=regexp.MustCompile(`^\s*[0-9]{2,4}\s*[-_.–— ]+\s*`)
+var prefixNumber=regexp.MustCompile(`^\s*([0-9]{2,4})\s*[-_.–— ]+\s*`)
 var photoOnly=regexp.MustCompile(`(?i)^(?:фото|фотка|photo|image|img|ориентир)?[\s_-]*0*([1-9][0-9]?)$`)
 
 type diskItem struct{Name string `json:"name"`;Type string `json:"type"`;Modified string `json:"modified"`;Size int64 `json:"size"`}
@@ -91,12 +92,20 @@ func matchFiles(files []entry,locations []catalog.Location)(map[string][]entry,[
   if !imageExt(file.item.Name){continue}
   stem,order:=stemOrder(file.item.Name)
   key:=Canonical(stem)
+  sourceName:=file.item.Name
   if parent:=Canonical(file.parent);parent!=""&&len(lookup[parent])>0{
    key=parent
+   sourceName=file.parent
    if m:=photoOnly.FindStringSubmatch(strings.TrimSuffix(file.item.Name,path.Ext(file.item.Name)));len(m)==2{order,_=strconv.Atoi(m[1])}
   }
   ids:=lookup[key]
   if len(ids)==0{if len(unmatched)<100{unmatched=append(unmatched,file.rel)};continue}
+  // A numbered filename can distinguish same-name stations in the catalog.
+  if len(ids)>1{
+   if prefix:=prefixNumber.FindStringSubmatch(sourceName);len(prefix)==2{
+    for _,id:=range ids{if id==prefix[1]{ids=[]string{id};break}}
+   }
+  }
   if len(ids)>1{if len(ambiguous)<100{ambiguous=append(ambiguous,file.rel)};continue}
   file.order=order
   matched[ids[0]]=append(matched[ids[0]],file)
@@ -145,6 +154,7 @@ func(s *Service) Report()Report{
  r.Failures=append([]string(nil),r.Failures...)
  return r
 }
+func(s *Service) Running()bool{return s.running.Load()}
 func(s *Service) Photos(id string)[]string{
  if !catalog.ValidID(id){return nil}
  s.mu.RLock();group:=append([]Photo(nil),s.manifest.Groups[id]...);s.mu.RUnlock()
@@ -256,6 +266,9 @@ func(s *Service) save(m Manifest)error{
 }
 func(s *Service) Run(ctx context.Context)(Report,error){
  if !s.running.CompareAndSwap(false,true){return s.Report(),ErrBusy}
+ return s.run(ctx)
+}
+func(s *Service) run(ctx context.Context)(Report,error){
  defer s.running.Store(false)
  s.mu.Lock();s.report.LastAttempt=time.Now().UTC();s.report.Error="";s.mu.Unlock()
  files,err:=s.list(ctx)
@@ -265,17 +278,21 @@ func(s *Service) Run(ctx context.Context)(Report,error){
   err=errors.New("no photo filenames match location names; photos preserved")
   s.setError(err);return s.Report(),err
  }
- s.mu.RLock();old:=s.manifest;s.mu.RUnlock()
- next:=Manifest{Groups:map[string][]Photo{},Updated:time.Now().UTC()}
- for id,g:=range old.Groups{next.Groups[id]=append([]Photo(nil),g...)}
+ next:=Manifest{Groups:map[string][]Photo{}}
+ s.mu.RLock()
+ next.Updated=s.manifest.Updated
+ for id,g:=range s.manifest.Groups{next.Groups[id]=g}
+ s.mu.RUnlock()
  failed:=[]string{};downloaded,unchanged:=0,0
  ids:=make([]string,0,len(groups))
  for id:=range groups{ids=append(ids,id)}
  sort.Strings(ids)
  for _,id:=range ids{
-  candidates:=groups[id];prev:=old.Groups[id];out:=[]Photo{}
+  candidates:=groups[id];prev:=next.Groups[id];out:=[]Photo{}
   for index,file:=range candidates{
-   var previous Photo;if index<len(prev){previous=prev[index]}
+   slot:=fmt.Sprintf("%s-%d",id,index+1)
+   var previous Photo
+   for _,p:=range prev{if strings.TrimSuffix(p.File,path.Ext(p.File))==slot{previous=p;break}}
    if previous.Source==file.rel&&previous.Modified==file.item.Modified&&previous.File!=""{
     if info,e:=os.Stat(filepath.Join(s.dir,previous.File));e==nil&&info.Mode().IsRegular(){
      out=append(out,previous);unchanged++;continue
@@ -294,8 +311,15 @@ func(s *Service) Run(ctx context.Context)(Report,error){
    }
    downloaded++;out=append(out,photo)
   }
-  if len(out)>0{next.Groups[id]=out}
+  if len(out)>0 && !slices.Equal(prev,out){
+   next.Groups[id]=out
+   if err=s.save(next);err!=nil{s.setError(err);return s.Report(),err}
+   s.mu.Lock()
+   s.manifest.Groups[id]=out
+   s.mu.Unlock()
+  }
  }
+ next.Updated=time.Now().UTC()
  if err=s.save(next);err!=nil{s.setError(err);return s.Report(),err}
  s.mu.Lock();s.manifest=next
  s.report.LastSuccess=next.Updated;s.report.Downloaded=downloaded;s.report.Unchanged=unchanged
@@ -305,9 +329,10 @@ func(s *Service) Run(ctx context.Context)(Report,error){
 }
 func(s *Service) setError(err error){s.mu.Lock();s.report.Error=err.Error();s.mu.Unlock()}
 func(s *Service) Start(ctx context.Context){
+ if !s.running.CompareAndSwap(false,true){return}
  go func(){
   attempt,cancel:=context.WithTimeout(ctx,45*time.Minute)
-  _,_=s.Run(attempt);cancel()
+  _,_=s.run(attempt);cancel()
   ticker:=time.NewTicker(12*time.Hour);defer ticker.Stop()
   for{select{
    case <-ctx.Done():return
@@ -317,7 +342,7 @@ func(s *Service) Start(ctx context.Context){
  }()
 }
 func(s *Service) Trigger()bool{
- if s.running.Load(){return false}
- go func(){ctx,cancel:=context.WithTimeout(context.Background(),45*time.Minute);defer cancel();_,_=s.Run(ctx)}()
+ if !s.running.CompareAndSwap(false,true){return false}
+ go func(){ctx,cancel:=context.WithTimeout(context.Background(),45*time.Minute);defer cancel();_,_=s.run(ctx)}()
  return true
 }
