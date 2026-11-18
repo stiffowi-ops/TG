@@ -60,6 +60,8 @@ function MapPhoto({location}:{location:Location}){
 }
 export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails}:Props){
  const points=useMemo(()=>locations.filter(point),[locations]);
+ const [tileFailures,setTileFailures]=useState(0);
+ const tileUnavailable=tileFailures>=4;
  const chosen=points.find(l=>l.id===selectedId)??null;
  const mapCenter:[number,number]=points.length?[points[0].latitude!,points[0].longitude!]:[55.7512,37.6184];
  return <div className="geo-map-layout">
@@ -68,7 +70,11 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     <MapContainer center={mapCenter} zoom={11} scrollWheelZoom={false} zoomControl={false}
      className="geo-map__tiles">
      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={18}/>
+      url="https://tile.openstreetmap.org/{z}/{x}/{y}.png" maxZoom={18}
+      eventHandlers={{
+       tileerror:()=>setTileFailures(v=>Math.min(5,v+1)),
+       tileload:()=>setTileFailures(0)
+      }}/>
      <ZoomControl position="topright"/>
      <MapSync locations={points} selected={chosen}/>
      {points.map(l=><Marker key={l.id} position={[l.latitude!,l.longitude!]}
@@ -77,6 +83,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
      <MapActions/>
     </MapContainer>
     <div className="geo-map__count"><MapPin size={15}/>{points.length} на карте</div>
+    {tileUnavailable&&<div className="geo-map__tile-notice" role="status">Подложка карты недоступна. Метки показаны по координатам.</div>}
     {chosen&&<div className="geo-map-preview" role="group" aria-label={`Выбрана локация ${chosen.title}`}>
      <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
      <div className="geo-map-preview__photo"><MapPhoto location={chosen}/></div>
