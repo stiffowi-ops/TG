@@ -62,7 +62,9 @@ func (b *Bot) IsMiniAdmin(id int64) bool {
 
 func (b *Bot) MiniFavorites(userID int64) []string {
 	if b==nil || b.favorites==nil || userID<=0 {return []string{}}
-	return b.favorites.IDs(userID)
+	ids := b.favorites.IDs(userID)
+	if ids == nil {return []string{}}
+	return ids
 }
 
 func (b *Bot) MiniToggleFavorite(userID int64, locationID string) ([]string,error) {

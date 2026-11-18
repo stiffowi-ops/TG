@@ -19,7 +19,7 @@ type WebApp = {
 declare global {interface Window {Telegram?:{WebApp?:WebApp}}}
 
 const heartKey = 'locations-prototype:favorites:v1';
-type MiniSession={admin:boolean;user:{id:number;username:string;firstName:string};favorites:string[];cases:DemoCase[]};
+type MiniSession={admin:boolean;user:{id:number;username:string;firstName:string};favorites:string[]|null;cases:DemoCase[]|null};
 async function miniApi<T>(path:string,options:RequestInit={}):Promise<T>{
  const initData=window.Telegram?.WebApp?.initData;
  if(!initData)throw Error('Откройте приложение через Telegram.');
@@ -32,7 +32,7 @@ async function miniApi<T>(path:string,options:RequestInit={}):Promise<T>{
 }
 
 function stored<T>(key:string, initial:T):T {
- try{const v=window.localStorage.getItem(key);return v?JSON.parse(v) as T:initial;}catch{return initial;}
+ try{const v=window.localStorage.getItem(key);if(!v)return initial;const parsed:unknown=JSON.parse(v);if(Array.isArray(initial))return (Array.isArray(parsed)?parsed.filter(x=>typeof x==='string'):initial) as T;return parsed as T;}catch{return initial;}
 }
 function useStoredState<T>(key:string,initial:T){
  const [value,setValue]=useState<T>(()=>stored(key,initial));
@@ -107,13 +107,13 @@ function App(){
  useEffect(()=>{let active=true;fetch('/api/locations').then(async response=>{if(!response.ok)throw new Error('no API');return response.json() as Promise<{locations:Location[]}>}).then(data=>{if(active&&data.locations?.length)setLocations(data.locations)}).catch(()=>{/* standalone UI preview uses bundled demo data */}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),3000);return()=>clearTimeout(t)},[toast]);
  useEffect(()=>{if(!window.Telegram?.WebApp?.initData)return;let active=true;
-  miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setCases(data.cases);setFavorites(data.favorites)}}).catch(err=>{if(active)setToast(err.message)});
+  miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setCases(Array.isArray(data.cases)?data.cases:[]);setFavorites(Array.isArray(data.favorites)?data.favorites:[])}}).catch(err=>{if(active)setToast(err.message)});
   return()=>{active=false};},[]);
  useEffect(()=>{if(tab!=='requests'||!session)return;
- miniApi<MiniSession>('/api/me').then(data=>setCases(data.cases)).catch(err=>setToast(err.message));
+ miniApi<MiniSession>('/api/me').then(data=>setCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message));
  },[tab,session?.user.id]);
  useEffect(()=>{if(tab!=='admin'||!session?.admin)return;setAdminBusy(true);
-  miniApi<{cases:DemoCase[]}>('/api/admin/cases').then(data=>setAdminCases(data.cases)).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
+  miniApi<{cases:DemoCase[]|null}>('/api/admin/cases').then(data=>setAdminCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
  },[tab,session?.admin]);
  const refreshCatalog=()=>fetch('/api/locations').then(async r=>r.json()).then((data:{locations:Location[]})=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
  useEffect(()=>{if(!detail||!session)return;miniApi('/api/locations/view',{method:'POST',body:JSON.stringify({id:detail.id})}).catch(()=>{});},[detail?.id,session?.user.id]);
@@ -130,8 +130,9 @@ function App(){
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
  const onTab=(t:Tab)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');window.scrollTo({top:0,behavior:'smooth'})};
  const favoriteToggle=async(id:string)=>{try{
-  const data=await miniApi<{favorites:string[]}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
-  setFavorites(data.favorites);setToast(data.favorites.includes(id)?'Добавлено в избранное':'Удалено из избранного')
+  const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
+  const next=Array.isArray(data.favorites)?data.favorites:[];
+  setFavorites(next);setToast(next.includes(id)?'Добавлено в избранное':'Удалено из избранного')
   }catch(err){setToast((err as Error).message)}};
  const compareToggle=(id:string)=>{setCompareIds(prev=>prev.includes(id)?prev.filter(x=>x!==id):prev.length>=MAX_COMPARE?(setToast('Для сравнения доступны 2–3 локации'),prev):[...prev,id])};
  const submitCase=async(data:NewCaseInput)=>{try{
