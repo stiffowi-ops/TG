@@ -52,6 +52,20 @@ jobs:
            console.log('BROWSER_RESULT',JSON.stringify(diagnostics));
            fs.writeFileSync('map-probe/report.json',JSON.stringify(diagnostics,null,2));
            await page.screenshot({path:'map-probe/yandex-constructor-iframe-mobile.png',fullPage:true});
+           // Verify that a specific catalogue coordinate can render within a keyless widget.
+           for(const [kind, params] of [
+             ['pt', new URLSearchParams({ll:'37.668590,55.692186',pt:'37.668590,55.692186,pm2rdm',z:'16'})],
+             ['whatshere',new URLSearchParams({ll:'37.668590,55.692186',z:'16',mode:'whatshere','whatshere[point]':'37.668590,55.692186','whatshere[zoom]':'16'})]
+           ]){
+             const widget='https://yandex.ru/map-widget/v1/?'+params.toString();
+             await page.setContent('<html><meta name="viewport" content="width=device-width, initial-scale=1"><body style="margin:0"><h2 style="font:16px Arial">Selected location / '+kind+'</h2><iframe title="selected location" style="height:90vh;width:100%;border:0" src="'+widget+'"></iframe></body></html>');
+             await page.waitForTimeout(6500);
+             const target=page.frames().find(f=>f.url().includes('map-widget'));
+             const summary={kind,url:target?.url(),bodyText:target?(await target.locator('body').innerText().catch(e=>'ERR '+e)).slice(0,280):'',iframes:page.frames().length};
+             console.log('POINT_WIDGET_RESULT',JSON.stringify(summary));
+             fs.writeFileSync('map-probe/point-'+kind+'.json',JSON.stringify(summary,null,2));
+             await page.screenshot({path:'map-probe/point-'+kind+'.png'});
+           }
            await browser.close();
           })().catch(e=>{console.log('BROWSER_FAILED',e.message);process.exit(1)});
           JS
