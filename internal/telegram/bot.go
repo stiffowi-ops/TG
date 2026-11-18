@@ -1005,7 +1005,7 @@ func (b *Bot) handle(ctx context.Context, u update) error {
 	}
 	switch {
 	case cmd == "/version":
-		return b.Send(ctx, chatID, "Karty "+botVersion, markup([]Button{cabinetButton(), menuButton()}))
+		return b.Send(ctx, chatID, "Локации · версия "+botVersion, markup([]Button{cabinetButton(), menuButton()}))
 	case cmd == "/myrequests" || strings.EqualFold(input, "Мои заявки") || input == "📋 Мои заявки":
 		defer b.observeVisitor(m.From, "Мои заявки", false)
 		return b.showCabinet(ctx, chatID, m.From.ID)
