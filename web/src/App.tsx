@@ -8,7 +8,7 @@ import {
  ArrowLeft, ArrowRight, Building2, Check,
  CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3,
  ExternalLink, Heart, LayoutGrid, ListFilter, Map as MapIcon,
- MapPin, Plus, Search, Send, ShieldCheck, SlidersHorizontal, X
+ MapPin, MessageCircle, Plus, Search, Send, ShieldCheck, SlidersHorizontal, Sparkles, X
 } from 'lucide-react';
 import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput} from './types';
 import {backupLocations, mapLink, MAX_COMPARE, MAX_UPDATES, normalize, prettyDate, statusLabel} from './demo';
