@@ -25,3 +25,23 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - run: npm run build
+  bothost:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate startup script
+        run: bash -n scripts/start-bothost.sh
+      - name: Build Bothost Docker image
+        run: docker build -t miniapp-bothost-check .
+      - name: Smoke test with /app bind mount and Bothost PORT
+        run: |
+          docker run -d --name miniapp-smoke -e PORT=18080 -p 18080:18080 -v "$PWD:/app:ro" miniapp-bothost-check
+          trap 'docker logs miniapp-smoke || true; docker rm -f miniapp-smoke >/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:18080/api/health | grep -q '"ok":true'; then
+              curl -fsS http://127.0.0.1:18080/ | grep -q '<html'
+              exit 0
+            fi
+            sleep 1
+          done
+          exit 1
