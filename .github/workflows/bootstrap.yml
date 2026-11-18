@@ -27,6 +27,8 @@ jobs:
           test -f web/src/styles.css
           test -f cmd/server/main.go
           test -f cmd/testbot/main.go
+          rm -f .github/workflows/checks.yml
+          git show HEAD:.github/workflows/bootstrap.yml > .github/workflows/bootstrap.yml
           git add -A
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
