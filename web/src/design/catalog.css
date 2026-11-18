@@ -151,7 +151,7 @@
 .geo-map .leaflet-control-attribution{display:block!important;color:#5D6568;font:10px/1.4 system-ui,sans-serif!important;padding:2px 6px!important;border-radius:7px 0 0 0;background:#FFFDF8D9!important;box-shadow:none!important}
 .geo-map .leaflet-control-attribution a{color:#4C6868!important;text-decoration:underline!important}
 .geo-map-preview__title-button{border:0;text-align:left;background:transparent;padding:0;cursor:pointer}
-.yandex-location-overlay{position:fixed;inset:0;z-index:120;background:#FFF8F2;display:flex;flex-direction:column}
+.yandex-location-overlay{position:fixed;inset:0;z-index:10000;background:#FFF8F2;display:flex;flex-direction:column}
 .yandex-location-viewer{display:flex;flex-direction:column;min-height:0;height:100%;width:100%;max-width:900px;margin:auto;background:#FFF8F2}
 .yandex-location-viewer__header{flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:68px;padding:calc(8px + env(safe-area-inset-top,0px)) 15px 10px;background:#FFFCF8;border-bottom:1px solid #EFE0D5}
 .yandex-location-viewer__back,.yandex-location-viewer__close{flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;border:1px solid #ECDCCB;border-radius:12px;background:#FFF3E8;color:#B95F22}
