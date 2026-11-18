@@ -160,7 +160,7 @@ function App(){
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
-  <Header onHome={()=>onTab('home')}/>
+  {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
   <main className="main-container">
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}

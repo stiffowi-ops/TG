@@ -135,3 +135,6 @@
  .geo-map-preview__details{font-size:11px;padding:0 3px;gap:4px}
  .geo-map-preview__favorite{width:32px;height:34px}
 }
+
+/* Catalog already owns its header. Telegram top inset is applied once, not twice. */
+.inside-telegram-miniapp .catalog-page--redesigned{padding-top:var(--telegram-top-space,0px)!important}
