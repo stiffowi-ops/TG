@@ -27,3 +27,6 @@ class AppErrorBoundary extends React.Component<React.PropsWithChildren, {failed:
  }
 }
 createRoot(document.getElementById('root')!).render(<React.StrictMode><AppErrorBoundary><App/></AppErrorBoundary></React.StrictMode>);
+
+import 'leaflet/dist/leaflet.css';
+import './design/catalog.css';

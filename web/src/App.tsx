@@ -2,14 +2,15 @@ import {useEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
+import CatalogPage from './components/CatalogPage/CatalogPage';
+import LocationCard from './components/LocationCard/LocationCard';
 import Header from './components/Header/Header';
 import LandingPage from './components/LandingPage/LandingPage';
 import BottomNavigation from './components/BottomNavigation/BottomNavigation';
 import {
  ArrowLeft, ArrowRight, Building2, Check,
- CheckCircle2, ChevronDown, ChevronRight, CircleHelp, Clock3,
- ExternalLink, Heart, LayoutGrid, ListFilter, Map as MapIcon,
- MapPin, MessageCircle, Plus, Search, Send, ShieldCheck, SlidersHorizontal, Sparkles, X
+ CheckCircle2, ChevronRight, CircleHelp, Clock3,
+ ExternalLink, Heart, MapPin, MessageCircle, Plus, Send, ShieldCheck, SlidersHorizontal, Sparkles, X
 } from 'lucide-react';
 import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput} from './types';
 import {backupLocations, mapLink, MAX_COMPARE, MAX_UPDATES, normalize, prettyDate, statusLabel} from './demo';
@@ -67,15 +68,6 @@ function Dialog({children,onClose,className=''}:{children:ReactNode;onClose:()=>
  useEffect(()=>{const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',onKey);document.body.classList.add('has-dialog');return()=>{document.removeEventListener('keydown',onKey);document.body.classList.remove('has-dialog')}},[onClose]);
  return <div className="dialog-overlay" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
 }
-function LocationCard({l,saved,onDetails,onFavorite,compareMode=false,selected=false,onSelect}:{l:Location;saved:boolean;onDetails:(l:Location)=>void;onFavorite:(id:string)=>void;compareMode?:boolean;selected?:boolean;onSelect?:(id:string)=>void}){
- return <article className={`location-card ${compareMode&&selected?'selected':''}`}>
-  <div className="location-art-wrap"><PhotoCarousel photos={l.imageUrls?.length?l.imageUrls:l.imageUrl?[l.imageUrl]:[]} fallback={<AreaArt location={l}/>} label={l.title} onOpen={()=>onDetails(l)}/><span className="location-tag">{l.category}</span></div>
-  <button type="button" className={`card-heart ${saved?'liked':''}`} onClick={()=>{tgHaptic();onFavorite(l.id)}} title={saved?'Удалить из избранного':'В избранное'} aria-label={saved?'Удалить из избранного':'Сохранить в избранное'}><Heart size={19} fill={saved?'currentColor':'none'}/></button>
-  <div className="location-body"><div className="location-overline"><MapPin size={13}/>{l.area}<span className="number">№{l.id}</span></div><h3>{l.title}</h3>
-   <div className="location-actions"><button className="text-action" onClick={()=>onDetails(l)}>Подробнее <ChevronRight size={16}/></button>{compareMode&&onSelect?<button className={`compare-selector ${selected?'checked':''}`} onClick={()=>onSelect(l.id)}>{selected?<Check size={16}/>:<Plus size={16}/>} {selected?'Выбрано':'Сравнить'}</button>:<button className="map-text-link" onClick={()=>openMap(mapLink(l))}><MapPin size={15}/> Карта</button>}</div>
-  </div>
- </article>;
-}
 function App(){
  const [tab,setTab]=useState<Tab>('home');
  const [focusSearch,setFocusSearch]=useState(false);
@@ -85,6 +77,7 @@ function App(){
  const [area,setArea]=useState('Все районы');
  const [category,setCategory]=useState('Все');
  const [showMap,setShowMap]=useState(false);
+ const [mapSelectedId,setMapSelectedId]=useState<string|null>(null);
  const [favorites,setFavorites]=useStoredState<string[]>(heartKey,[]);
  const [cases,setCases]=useState<DemoCase[]>([]);
   const [session,setSession]=useState<MiniSession|null>(null);
@@ -146,6 +139,7 @@ function App(){
  const filtered=useMemo(()=>locations.filter(l=>(category==='Все'||l.category===category)&&(area==='Все районы'||l.area===area)&&normalize(l.title).includes(normalize(query))),[locations,query,category,area]);
  const favoritesSet=new Set(favorites);
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
+ const goToLocationMap=(location:Location)=>{setMapSelectedId(location.id);setQuery('');setArea('Все районы');setCategory('Все');onTab('map')};
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
  const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
  const favoriteToggle=async(id:string)=>{try{
@@ -173,24 +167,19 @@ function App(){
      onSearch={()=>onTab('catalog',true)}
      onFavorites={()=>onTab('favorites')}
    />}
-   {(tab==='catalog'||tab==='map')&&<>
-    <section className="section-block catalog-page" id="catalog-results">
-     <div className="catalog-page-heading">
-      <button type="button" className="catalog-back" onClick={()=>onTab('home')}><ArrowLeft size={17}/> На главную</button>
-      <span className="overline">КАТАЛОГ</span>
-      <h1>Исследуйте локации</h1>
-      <p>Все варианты в одном месте. Найдите подходящий за пару кликов.</p>
-     </div>
-     <div className="filters"><label className="search-field"><Search size={19}/><input id="catalog-search" type="search" placeholder="Название локации или станции" value={query} onChange={e=>setQuery(e.target.value)} aria-label="Поиск локаций"/>{query&&<button onClick={()=>setQuery('')} aria-label="Очистить поиск"><X size={16}/></button>}</label><label className="filter-select"><ListFilter size={17}/><select aria-label="Район" value={area} onChange={e=>setArea(e.target.value)}>{areas.map(a=><option key={a}>{a}</option>)}</select><ChevronDown size={17}/></label></div>
-     <div className="catalog-toolbar"><div className="chip-row"><button className={`filter-chip ${category==='Все'?'active':''}`} onClick={()=>setCategory('Все')}>Все локации</button>{uniqueCategory.map(c=><button key={c} className={`filter-chip ${category===c?'active':''}`} onClick={()=>setCategory(c)}>{c}</button>)}</div><div className="view-switch"><button className={!showMap?'active':''} onClick={()=>setShowMap(false)} title="Карточки" aria-label="Карточки"><LayoutGrid size={18}/></button><button className={showMap?'active':''} onClick={()=>setShowMap(true)} title="Карта" aria-label="Карта"><MapIcon size={18}/></button></div></div>
-     <div className="catalog-results-summary"><span>Найдено: <strong>{filtered.length}</strong></span><span>Выберите подходящую локацию</span></div>
-     {showMap?<div className="map-panel"><div className="map-frame"><iframe title="Обзорная карта локаций" loading="lazy" src={`https://yandex.ru/map-widget/v1/?ll=37.6%2C55.65&z=10&pt=${encodeURIComponent(filtered.filter(l=>l.longitude!==undefined&&l.latitude!==undefined).slice(0,20).map(l=>`${l.longitude},${l.latitude},pm2rdm`).join('~'))}`}/><div className="map-info">Для точной точки откройте её в Яндекс Картах.</div></div><div className="map-aside"><h3>Локации на карте</h3><p>{filtered.length} вариантов</p><div className="map-list">{filtered.map(l=><button key={l.id} onClick={()=>setDetail(l)}><span className="map-aside-pin"><MapPin size={16}/></span><span>{l.title}<small>{l.area}</small></span><ChevronRight size={17}/></button>)}</div></div></div>:
-      filtered.length?<div className="card-grid">{filtered.map(l=><LocationCard key={l.id} l={l} saved={favoritesSet.has(l.id)} onDetails={setDetail} onFavorite={favoriteToggle}/>)}</div>:<Empty icon={<Search size={29}/>} title="Ничего не найдено" description="Попробуйте другое название или измените фильтры." action={<button className="btn secondary" onClick={()=>{setQuery('');setArea('Все районы');setCategory('Все')}}>Сбросить фильтры</button>}/>}
-     {loading&&<p className="discreet-loading">Загружаем каталог…</p>}
-    </section>
-   </>}
+   {(tab==='catalog'||tab==='map')&&<CatalogPage
+    locations={filtered} areas={areas} availableCategories={uniqueCategory}
+    query={query} onQuery={setQuery} area={area} onArea={setArea}
+    category={category} onCategory={setCategory}
+    view={showMap?'map':'list'} onView={view=>onTab(view==='map'?'map':'catalog')}
+    selectedId={mapSelectedId} onSelect={setMapSelectedId}
+    favorites={favoritesSet} onFavorite={favoriteToggle}
+    onDetails={setDetail} onMap={goToLocationMap}
+    onBack={()=>onTab('home')} onFavorites={()=>onTab('favorites')}
+    loading={loading}
+   />}
    {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
-    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} l={l} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
+    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={goToLocationMap} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
    {tab==='requests'&&<section className="section-block tab-section"><div className="section-heading request-heading"><div><span className="overline">ОБРАЩЕНИЯ</span><h1>Мои заявки</h1><p>Следите за статусом обращения и просматривайте историю в одном месте.</p></div><button className="btn primary" onClick={()=>setCreating('')}><Plus size={17}/> Новая заявка</button></div>
     {!session&&<div className="demo-notice"><ShieldCheck size={20}/><span>Для отправки заявки откройте приложение из Telegram.</span></div>}
