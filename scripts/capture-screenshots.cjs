@@ -1,0 +1,33 @@
+const { chromium } = require('playwright');
+const fs = require('node:fs');
+const path = require('node:path');
+(async () => {
+  const target=process.env.APP_URL || 'http://127.0.0.1:8080/';
+  fs.mkdirSync('screenshots',{recursive:true});
+  const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'ru-RU'});
+  const page=await context.newPage();
+  page.on('pageerror',e=>console.error('SCREENSHOT_JS_ERROR:',e.message));
+  await page.goto(target,{waitUntil:'networkidle',timeout:40000});
+  await page.locator('.landing-home').waitFor();
+  await page.locator('.landing-illustration').evaluate(async img=>{if(img instanceof HTMLImageElement && !img.complete) await new Promise(resolve=>{img.onload=resolve;img.onerror=resolve;});});
+  await page.screenshot({path:'screenshots/01-home-real.png'});
+  await page.getByRole('button',{name:/Смотреть локации/}).click();
+  await page.locator('.catalog-page').waitFor();
+  await page.screenshot({path:'screenshots/02-catalog-real.png'});
+  await page.locator('.main-container').evaluate(el=>{el.scrollTop=el.scrollHeight;});
+  await page.waitForTimeout(300);
+  await page.screenshot({path:'screenshots/03-catalog-bottom-real.png'});
+  await page.getByRole('button',{name:/Избранное/}).first().click();
+  await page.locator('.tab-section').waitFor();
+  await page.screenshot({path:'screenshots/04-favorites-real.png'});
+  await page.getByRole('button',{name:/Локации/}).first().click();
+  await page.locator('.landing-home').waitFor();
+  const info=await page.evaluate(()=>{
+    const m=document.querySelector('.main-container'),n=document.querySelector('.bottom-nav'),h=document.querySelector('.app-header');
+    return {width:innerWidth,height:innerHeight,documentScrollHeight:document.documentElement.scrollHeight,mainHeight:m.clientHeight,mainScrollHeight:m.scrollHeight,headerHeight:h.getBoundingClientRect().height,navHeight:n.getBoundingClientRect().height,heroImageLoaded:document.querySelector('.landing-illustration')?.complete};
+  });
+  fs.writeFileSync('screenshots/layout-metrics.json',JSON.stringify(info,null,2));
+  console.log('CAPTURE:',JSON.stringify(info));
+  await browser.close();
+})().catch(e=>{console.error(e);process.exit(1)});
