@@ -55,7 +55,7 @@
 .catalog-no-results p{font-size:13px;color:#8B9595}
 .catalog-no-results button{background:#F57D21;color:#fff;border:0;border-radius:12px;padding:12px 20px;font-weight:750}
 .catalog-filter-overlay{position:fixed;inset:0;z-index:90;display:flex;align-items:flex-end;justify-content:center;background:#1E2E3466;backdrop-filter:blur(4px)}
-.catalog-filter-sheet{width:100%;max-width:560px;background:#FFFDFB;border-radius:25px 25px 0 0;box-shadow:0 -12px 34px #382D2530;padding:23px 20px max(27px,env(safe-area-inset-bottom,0px));display:grid;gap:16px}
+.catalog-filter-sheet{width:100%;max-width:560px;background:#FFFDFB;border-radius:25px 25px 0 0;box-shadow:0 -12px 34px #382D2530;max-height:100%;overflow-y:auto;overscroll-behavior:contain;padding:23px 20px 27px;display:grid;gap:16px}
 .catalog-filter-sheet__header{display:flex;align-items:center;justify-content:space-between}
 .catalog-filter-sheet__header h2{font-size:23px;margin:0;color:var(--ui-ink)}
 .catalog-filter-sheet__header button{border:0;background:#FFF1E7;color:#B76732;border-radius:10px;width:38px;height:38px;display:grid;place-items:center}
@@ -136,8 +136,6 @@
  .geo-map-preview__favorite{width:32px;height:34px}
 }
 
-/* Catalog already owns its header. Telegram top inset is applied once, not twice. */
-.inside-telegram-miniapp .catalog-page--redesigned{padding-top:var(--telegram-top-space,0px)!important}
 
 /* Neutral texture while OSM raster tiles are unavailable. It never invents roads. */
 .geo-map__tiles.maplibregl-map{background-color:#F6EEE5;background-image:repeating-radial-gradient(ellipse at 34% 68%,transparent 0,transparent 23px,rgba(222,188,151,.16) 24px,transparent 25px),linear-gradient(150deg,#F7F0E8,#ECE2D6)}
@@ -158,14 +156,6 @@
 
 .geo-map-preview__title-button{border:0;text-align:left;background:transparent;padding:0;cursor:pointer}
 .yandex-location-overlay{position:fixed;inset:0;z-index:10000;background:#FFF8F2;display:flex;flex-direction:column}
-.yandex-location-overlay{
- --viewer-toolbar:var(--tg-content-safe-area-inset-top,0px);
- padding-top:calc(max(env(safe-area-inset-top,0px),var(--tg-safe-area-inset-top,0px)) + var(--viewer-toolbar));
- padding-left:calc(max(env(safe-area-inset-left,0px),var(--tg-safe-area-inset-left,0px)) + var(--tg-content-safe-area-inset-left,0px));
- padding-right:calc(max(env(safe-area-inset-right,0px),var(--tg-safe-area-inset-right,0px)) + var(--tg-content-safe-area-inset-right,0px));
- padding-bottom:calc(max(env(safe-area-inset-bottom,0px),var(--tg-safe-area-inset-bottom,0px)) + var(--tg-content-safe-area-inset-bottom,0px));
-}
-.telegram-fullscreen .yandex-location-overlay{--viewer-toolbar:max(48px,var(--tg-content-safe-area-inset-top,0px))}
 .yandex-location-viewer{display:flex;flex-direction:column;min-height:0;height:100%;width:100%;max-width:900px;margin:auto;background:#FFF8F2}
 .yandex-location-viewer__header{flex-shrink:0;display:flex;align-items:center;gap:12px;min-height:68px;padding:8px 15px 10px;background:#FFFCF8;border-bottom:1px solid #EFE0D5}
 .yandex-location-viewer__back,.yandex-location-viewer__close{flex-shrink:0;width:40px;height:40px;display:grid;place-items:center;border:1px solid #ECDCCB;border-radius:12px;background:#FFF3E8;color:#B95F22}
