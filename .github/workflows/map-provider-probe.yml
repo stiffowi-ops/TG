@@ -1,0 +1,64 @@
+name: Probe map providers (no changes to app)
+on:
+  workflow_dispatch:
+  push:
+    paths: [.github/workflows/map-provider-probe.yml]
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test network endpoints once
+        run: |
+          python3 - <<'PY'
+          import urllib.request,urllib.parse
+          cid='4e091ad95afb487039d07dc0667d6d596da173fe30cff48c7f2e234b7150d7f0'
+          urls={
+           'Yandex Constructor iframe':'https://yandex.ru/map-widget/v1/?'+urllib.parse.urlencode({'um':'constructor:'+cid,'source':'constructor'}),
+           'Yandex Constructor source':'https://yandex.ru/maps/?'+urllib.parse.urlencode({'um':'constructor:'+cid,'source':'constructorLink'}),
+           'One OSM Moscow tile':'https://tile.openstreetmap.org/12/2475/1276.png',
+          }
+          for label,url in urls.items():
+            try:
+              req=urllib.request.Request(url,headers={'User-Agent':'MiniApp-Map-Provider-Check/1.0'})
+              with urllib.request.urlopen(req,timeout=18) as res:
+                print(label, 'HTTP',res.status,'content_type',res.headers.get('Content-Type'),'XFO',res.headers.get('X-Frame-Options'),'CSP',str(res.headers.get('Content-Security-Policy'))[:230],'url',res.geturl()[:170])
+            except Exception as exc:print(label,'FAILED',type(exc).__name__,str(exc)[:300])
+          PY
+      - name: Install browser
+        run: |
+          npm install --no-audit --no-fund --no-save playwright@1.57.0
+          PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 npx playwright install chromium
+      - name: Render existing Yandex Constructor iframe in mobile Chromium
+        run: |
+          cat >/tmp/probe.cjs <<'JS'
+          const {chromium}=require(process.cwd()+'/node_modules/playwright');
+          const fs=require('fs');fs.mkdirSync('map-probe',{recursive:true});
+          const id='4e091ad95afb487039d07dc0667d6d596da173fe30cff48c7f2e234b7150d7f0';
+          const url='https://yandex.ru/map-widget/v1/?um=constructor%3A'+id+'&source=constructor';
+          (async()=>{
+           const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+           const page=await browser.newPage({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true});
+           const errors=[];
+           page.on('pageerror',e=>errors.push('JS '+e.message));
+           page.on('requestfailed',r=>{if(errors.length<35)errors.push(r.url().slice(0,120)+' '+r.failure()?.errorText)});
+           await page.setContent('<html lang="ru"><meta name="viewport" content="width=device-width, initial-scale=1"><body style="margin:0;background:#fff3e8"><header style="padding:14px;font:600 17px Arial">Миниапп: проверка Яндекс Конструктора</header><iframe title="Карта локаций" style="height:calc(100dvh - 60px);width:100%;border:0" src="'+url+'"></iframe></body></html>');
+           await page.waitForTimeout(11000);
+           const frame=page.frames().find(f=>f.url().includes('map-widget'));
+           const diagnostics={frameUrl:frame?.url(),frameTitle:frame?await frame.title().catch(e=>'ERR '+e):'',frameBodyText:frame?(await frame.locator('body').innerText().catch(e=>'ERR '+e)).slice(0,500):'',frameCount:page.frames().length,errors:errors.slice(0,30)};
+           console.log('BROWSER_RESULT',JSON.stringify(diagnostics));
+           fs.writeFileSync('map-probe/report.json',JSON.stringify(diagnostics,null,2));
+           await page.screenshot({path:'map-probe/yandex-constructor-iframe-mobile.png',fullPage:true});
+           await browser.close();
+          })().catch(e=>{console.log('BROWSER_FAILED',e.message);process.exit(1)});
+          JS
+          PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64 node /tmp/probe.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: yandex-constructor-map-probe
+          path: map-probe/
+          retention-days: 7
