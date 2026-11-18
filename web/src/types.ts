@@ -1,6 +1,6 @@
 export type Location = {
  id:string;title:string;category:string;area:string;
- latitude?:number;longitude?:number;mapUrl?:string;imageUrl?:string;
+ latitude?:number;longitude?:number;mapUrl?:string;imageUrl?:string;imageUrls?:string[];
  description?:string;landmarks?:string;lineStatus?:string;traffic?:string;payers?:string;opportunity?:string;conclusion?:string;
 };
 export type CaseStatus = 'received'|'working'|'resolved';

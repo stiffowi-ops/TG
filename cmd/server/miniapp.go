@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"locationbot/internal/catalog"
+	"locationbot/internal/photosync"
 	"locationbot/internal/adminbackup"
 	"path/filepath"
 	"locationbot/internal/telegram"
@@ -63,6 +64,7 @@ type appService struct {
 	store *catalog.Store
 	bot *telegram.Bot
 	token string
+	photos *photosync.Service
 }
 
 func jsonResponse(w http.ResponseWriter,status int,result any) {
@@ -107,6 +109,7 @@ func (s *appService) handler(webDist string) http.Handler {
 				Latitude *float64 `json:"latitude,omitempty"`
 				Longitude *float64 `json:"longitude,omitempty"`
 				ImageURL string `json:"imageUrl,omitempty"`
+				ImageURLs []string `json:"imageUrls,omitempty"`
 				MapURL string `json:"mapUrl,omitempty"`
 				Description string `json:"description,omitempty"`
 				Landmarks string `json:"landmarks,omitempty"`
@@ -121,12 +124,17 @@ func (s *appService) handler(webDist string) http.Handler {
 				result=append(result,loc{
 					ID:l.ID,Title:l.Title,Category:l.Category,Area:l.Category,
 					Latitude:l.Latitude,Longitude:l.Longitude,ImageURL:l.ImageURL,
+					ImageURLs:func()[]string{if s.photos!=nil {return s.photos.Photos(l.ID)};return nil}(),
 					MapURL:l.MapURL,Description:l.Description,Landmarks:l.Landmarks,
 					LineStatus:l.LineStatus,Traffic:l.Traffic,Payers:l.Payers,
 					Opportunity:l.Opportunity,Conclusion:l.Conclusion,
 				})
 			}
 			jsonResponse(w,200,map[string]any{"locations":result,"demo":false})
+			return
+		}
+		if (r.Method=="GET"||r.Method=="HEAD") && strings.HasPrefix(r.URL.Path,"/location-photos/") && s.photos!=nil {
+			s.photos.ServePhoto(w,r)
 			return
 		}
 		if r.Method=="GET" && strings.HasPrefix(r.URL.Path,"/media/") && s.store!=nil {
@@ -144,6 +152,15 @@ func (s *appService) handler(webDist string) http.Handler {
 		u,ok:=s.authenticated(w,r)
 		if !ok{return}
 		switch {
+        case r.Method=="GET" && r.URL.Path=="/api/admin/photos/status":
+            if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+            if s.photos==nil {jsonResponse(w,200,map[string]any{"enabled":false});return}
+            jsonResponse(w,200,s.photos.Report())
+        case r.Method=="POST" && r.URL.Path=="/api/admin/photos/sync":
+            if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+            if s.photos==nil {jsonResponse(w,503,map[string]string{"error":"photo sync unavailable"});return}
+            if !s.photos.Trigger(){jsonResponse(w,409,map[string]string{"error":"photo sync already running"});return}
+            jsonResponse(w,202,map[string]any{"started":true})
 		case r.Method=="POST"&&r.URL.Path=="/api/locations/view":
    var input struct{ID string `json:"id"`}
    if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"invalid request"});return}

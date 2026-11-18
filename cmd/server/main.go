@@ -5,6 +5,7 @@ import (
 	"os/signal"
 	"syscall"
 	"locationbot/internal/catalog"
+	"locationbot/internal/photosync"
 	"locationbot/internal/syncer"
 	"locationbot/internal/telegram"
 	"encoding/json"
@@ -95,6 +96,8 @@ func main() {
 	if overridePath=="" { overridePath=filepath.Join(dataDir,"overrides.json") }
 	store,err:=catalog.NewWithBundled(dataDir,seedPath,overridePath)
 	if err!=nil {log.Fatalf("catalog: %v",err)}
+	photoService,err:=photosync.New(store,os.Getenv("YANDEX_PHOTOS_URL"))
+	if err!=nil {log.Printf("photo sync unavailable: %v",err)}
 	var bot *telegram.Bot
 	ctx,stop:=signal.NotifyContext(context.Background(),syscall.SIGTERM,syscall.SIGINT)
 	defer stop()
@@ -109,7 +112,11 @@ func main() {
 	}else{
 		log.Printf("BOT_TOKEN is missing; full catalog works, private actions require a test bot")
 	}
-	srv:=&http.Server{Addr:addr,Handler:(&appService{store:store,bot:bot,token:token}).handler(dist),ReadHeaderTimeout:5*time.Second}
+	if photoService!=nil {
+		photoService.Start(ctx)
+		log.Printf("Yandex gallery synchronization enabled")
+	}
+	srv:=&http.Server{Addr:addr,Handler:(&appService{store:store,bot:bot,token:token,photos:photoService}).handler(dist),ReadHeaderTimeout:5*time.Second}
 	go func(){<-ctx.Done();ctx2,cancel:=context.WithTimeout(context.Background(),10*time.Second);defer cancel();_ = srv.Shutdown(ctx2)}()
 	log.Printf("Mini App serving at %s; locations=%d",addr,len(store.List()))
 	if err:=srv.ListenAndServe();err!=nil&&err!=http.ErrServerClosed{log.Fatal(err)}

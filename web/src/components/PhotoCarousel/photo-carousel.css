@@ -1,0 +1,17 @@
+/* Reusable gallery in catalog, favorites and location details. */
+.location-gallery{position:relative;width:100%;height:100%;min-height:0;overflow:hidden;isolation:isolate;background:#F9F0E6}
+.location-gallery__image-button,.location-gallery__fallback{position:absolute;inset:0;display:block;width:100%;height:100%;padding:0;border:0;background:transparent;overflow:hidden;cursor:pointer}
+.location-gallery__image{display:block;width:100%;height:100%;object-fit:cover;object-position:center;user-select:none}
+.location-gallery__fallback>.area-art{height:100%;width:100%}
+.location-gallery__arrow{position:absolute;z-index:2;top:50%;transform:translateY(-50%);display:grid;place-items:center;border:1px solid #FFFFFFB5;width:29px;height:33px;border-radius:12px;background:#FFFFFFE8;color:#314144;box-shadow:0 3px 11px #14272624}
+.location-gallery__arrow--prev{left:10px}
+.location-gallery__arrow--next{right:10px}
+.location-gallery__pagination{position:absolute;bottom:9px;left:50%;z-index:2;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:15px;background:#1C252A7A}
+.location-gallery__pagination button{width:6px;height:6px;border:0;padding:0;border-radius:50%;background:#FFFFFF85}
+.location-gallery__pagination button.active{width:16px;background:#fff;border-radius:5px}
+.location-gallery__count{position:absolute;right:9px;bottom:8px;z-index:2;background:#1C252A9C;color:#fff;border-radius:9px;padding:3px 7px;font-size:10px;font-weight:700}
+.location-gallery__pagination+.location-gallery__count{right:9px}
+.location-gallery--compact .location-gallery__arrow{width:26px;height:27px}
+.location-gallery__arrow:focus-visible,.location-gallery__pagination button:focus-visible{outline:2px solid #E97824;outline-offset:2px}
+.detail-art .location-gallery{height:100%;min-height:250px}
+@media(max-width:540px){.location-gallery__arrow{width:30px;height:30px}.location-gallery__pagination{bottom:8px}}

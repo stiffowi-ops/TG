@@ -3,6 +3,7 @@ import {createRoot} from 'react-dom/client';
 import App from './App';
 import './design/tokens.css';
 import './styles.css';
+import './components/PhotoCarousel/photo-carousel.css';
 import './design/landing.css';
 import './design/navigation.css';
 
