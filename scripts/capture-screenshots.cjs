@@ -22,7 +22,9 @@ const path = require('node:path');
   await page.locator('.geo-map .leaflet-container').waitFor({timeout:20000});
   const pins=page.locator('.geo-pin-container');
   await pins.first().waitFor({timeout:20000});
-  await pins.first().click();
+  // Keyboard selection avoids overlapping pins sharing the same coordinates.
+  await pins.first().focus();
+  await pins.first().press('Enter');
   await page.locator('.geo-map-preview').waitFor();
   await page.screenshot({path:'screenshots/05-map-selected-real.png'});
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Список'}).click();
