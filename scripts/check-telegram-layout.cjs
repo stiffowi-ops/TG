@@ -43,7 +43,11 @@ module.exports = async function checkTelegramLayout(context, target) {
         await home.waitFor();
         const scroll = await home.evaluate(el => ({
           main:el.scrollHeight-el.clientHeight,
-          page:document.documentElement.scrollHeight-document.documentElement.clientHeight
+          page:document.documentElement.scrollHeight-document.documentElement.clientHeight,
+          boxes:Object.fromEntries(['.home-viewport','.landing-home','.landing-hero','.landing-copy','.landing-scene','.landing-shortcuts'].map(selector=>{
+            const node=document.querySelector(selector), rect=node.getBoundingClientRect();
+            return [selector,[rect.width,rect.height,getComputedStyle(node).minHeight,getComputedStyle(node).display]];
+          }))
         }));
         assert.ok(scroll.main<=1 && scroll.page<=1,'Home scrolls '+JSON.stringify(scroll));
         const mainBox = await home.boundingBox();

@@ -89,7 +89,8 @@ body { background:var(--ui-background); }
 }
 @container home (max-height:550px) {
  .landing-hero.hero-composition { display:flex; flex-direction:column; }
- .hero-composition__scene.landing-scene { position:relative; inset:auto; height:0; min-height:0; flex:1; }
+ .hero-composition__scene.landing-scene { position:relative; inset:auto; min-height:0; flex:1 1 0; contain:size; }
+ .hero-composition__scene picture { position:absolute; inset:0; }
  .landing-copy.hero-composition__copy { padding:16px 18px; }
  .hero-composition__copy h1 { font-size:clamp(24px,6.3cqw,34px); margin:8px 0; }
  .hero-composition__copy p { font-size:12px; line-height:1.4; margin-bottom:11px; }
