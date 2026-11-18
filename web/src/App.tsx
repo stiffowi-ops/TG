@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react';
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
@@ -21,6 +21,12 @@ type WebApp = {
  HapticFeedback?:{impactOccurred(style:'light'|'medium'|'heavy'):void};
  initData?:string;
  isFullscreen?:boolean;
+ platform?:string;
+ onEvent?:(event:string,callback:()=>void)=>void;
+ offEvent?:(event:string,callback:()=>void)=>void;
+ isVerticalSwipesEnabled?:boolean;
+ disableVerticalSwipes?:()=>void;
+ enableVerticalSwipes?:()=>void;
  isVersionAtLeast?:(version:string)=>boolean;
  BackButton?:{isVisible:boolean;show():void;hide():void;onClick(callback:()=>void):void;offClick(callback:()=>void):void};
 };
@@ -98,32 +104,32 @@ function App(){
  const [creating,setCreating]=useState<string|null>(null);
  const [supplement,setSupplement]=useState<number|null>(null);
  const [toast,setToast]=useState('');
- useEffect(()=>{
-  const app=window.Telegram?.WebApp as (WebApp & {
-   contentSafeAreaInset?:{top?:number};
-   onEvent?:(event:string,callback:()=>void)=>void;
-   offEvent?:(event:string,callback:()=>void)=>void;
-  })|undefined;
-  const updateSafeArea=()=>{
-   const inTelegram=Boolean(app?.initData);
-   document.documentElement.classList.toggle('inside-telegram-miniapp',inTelegram);
-   document.documentElement.classList.toggle('telegram-fullscreen',Boolean(app?.isFullscreen));
-   // Respect the actual Telegram content inset, without a fabricated 76px gap.
-   // A number of Android Telegram WebViews already position their web content
-   // below the native toolbar, so reserving another 76px creates blank scroll.
-   const explicit=Number(app?.contentSafeAreaInset?.top)||0;
-   const cssInset=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tg-content-safe-area-inset-top'))||0;
-   document.documentElement.style.setProperty('--telegram-top-space',Math.max(0,explicit,cssInset)+'px');
+ useLayoutEffect(()=>{
+  const app=window.Telegram?.WebApp;
+  if(!app)return;
+  const root=document.documentElement;
+  const syncMode=()=>{
+   const inTelegram=Boolean(app.initData || app.isFullscreen || (app.platform && app.platform!=='unknown'));
+   root.classList.toggle('inside-telegram-miniapp',inTelegram);
+   root.classList.toggle('telegram-fullscreen',Boolean(app.isFullscreen));
   };
-  try{app?.ready();app?.expand();app?.setHeaderColor?.('#ffffff')}catch{/* standard browser */}
-  updateSafeArea();
-  app?.onEvent?.('contentSafeAreaChanged',updateSafeArea);
-  app?.onEvent?.('fullscreenChanged',updateSafeArea);
+  syncMode();
+  app.onEvent?.('fullscreenChanged',syncMode);
+  app.ready();
+  app.expand();
+  if(app.isVersionAtLeast?.('6.1'))app.setHeaderColor?.(app.isVersionAtLeast('6.9')?'#ffffff':'bg_color');
   return()=>{
-   app?.offEvent?.('contentSafeAreaChanged',updateSafeArea);
-   app?.offEvent?.('fullscreenChanged',updateSafeArea);
+   app.offEvent?.('fullscreenChanged',syncMode);
+   root.classList.remove('inside-telegram-miniapp','telegram-fullscreen');
   };
  },[]);
+ useEffect(()=>{
+  const app=window.Telegram?.WebApp;
+  if(tab!=='home'||!document.documentElement.classList.contains('inside-telegram-miniapp')||
+     !app?.isVersionAtLeast?.('7.7')||app.isVerticalSwipesEnabled===false)return;
+  app.disableVerticalSwipes?.();
+  return()=>app.enableVerticalSwipes?.();
+ },[tab]);
  useEffect(()=>{
   if(tab!=='catalog'||!focusSearch)return;
   document.getElementById('catalog-search')?.focus();
@@ -197,7 +203,7 @@ function App(){
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
   {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
-  <main className="main-container">
+  <main className={tab==='home'?'main-container home-viewport':'main-container'}>
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
      onSearch={()=>onTab('catalog',true)}

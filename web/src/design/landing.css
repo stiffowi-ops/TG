@@ -73,3 +73,39 @@ body { background:var(--ui-background); }
 @media(prefers-reduced-motion:reduce){
  .shortcut-card,.primary-action { transition:none!important;transform:none!important; }
 }
+
+/* Fit the landing page to the space between the wordmark and navigation.
+   Other tabs keep their content scroller. Intrinsic text sizes still allow zoom. */
+.home-viewport { container:home / size; }
+.home-viewport .landing-home { height:100%; display:flex; flex-direction:column; }
+.home-viewport .landing-hero { flex:0 1 550px; min-height:min-content; }
+.home-viewport .landing-shortcuts { flex:none; }
+
+@media (max-width:780px) {
+ .home-viewport .landing-hero { flex-basis:510px; }
+}
+@media (max-width:530px) {
+ .home-viewport .landing-hero { flex-basis:var(--ui-hero-min-height); }
+}
+@container home (max-height:550px) {
+ .landing-hero.hero-composition { display:flex; flex-direction:column; }
+ .hero-composition__scene.landing-scene { position:relative; inset:auto; height:0; min-height:0; flex:1; }
+ .landing-copy.hero-composition__copy { padding:16px 18px; }
+ .hero-composition__copy h1 { font-size:clamp(24px,6.3cqw,34px); margin:8px 0; }
+ .hero-composition__copy p { font-size:12px; line-height:1.4; margin-bottom:11px; }
+ .primary-action.landing-cta { min-height:44px; }
+ .shortcut-card.landing-shortcut { min-height:46px; padding:5px 12px; }
+ .shortcut-card .shortcut-icon { height:34px; width:34px; flex-basis:34px; }
+ .landing-shortcuts { gap:5px; }
+}
+@container home (max-width:550px) and (max-height:380px) {
+ .landing-shortcuts { grid-template-columns:repeat(3,minmax(0,1fr)); }
+ .shortcut-card.landing-shortcut { flex-direction:column; justify-content:center; gap:3px; text-align:center; padding:6px 3px; }
+ .shortcut-card .shortcut-icon { width:26px; height:26px; flex-basis:26px; }
+ .shortcut-card .shortcut-label { flex:none; font-size:11px; }
+ .shortcut-card__art,.shortcut-card .shortcut-chevron { display:none; }
+}
+@container home (min-width:551px) and (max-height:460px) {
+ .home-viewport .landing-home { display:grid; grid-template-columns:3fr 2fr; gap:10px; grid-template-rows:minmax(min-content,1fr); }
+ .home-viewport .landing-shortcuts { grid-template-columns:1fr; align-content:center; margin:0!important; }
+}
