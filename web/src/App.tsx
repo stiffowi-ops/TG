@@ -85,40 +85,9 @@ function LocationCard({l,saved,onDetails,onFavorite,compareMode=false,selected=f
 }
 function LandingScene(){
  return <div className="landing-scene" aria-hidden="true">
-  <svg className="landing-illustration" viewBox="0 0 740 410" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMax meet">
-   <defs>
-    <linearGradient id="landingGround" x1="115" y1="45" x2="570" y2="410" gradientUnits="userSpaceOnUse"><stop stopColor="#FFF8F0"/><stop offset="1" stopColor="#EBD6C4"/></linearGradient>
-    <linearGradient id="landingRiver" x1="140" y1="115" x2="640" y2="374" gradientUnits="userSpaceOnUse"><stop stopColor="#DCE5DE"/><stop offset="1" stopColor="#9CBEB4"/></linearGradient>
-    <linearGradient id="landingPin" x1="353" y1="170" x2="410" y2="297" gradientUnits="userSpaceOnUse"><stop stopColor="#F9A44C"/><stop offset="1" stopColor="#DF651B"/></linearGradient>
-    <linearGradient id="landingShop" x1="540" y1="240" x2="720" y2="410" gradientUnits="userSpaceOnUse"><stop stopColor="#FDE3C6"/><stop offset="1" stopColor="#D6A982"/></linearGradient>
-    <filter id="landingBlur"><feGaussianBlur stdDeviation="12"/></filter>
-   </defs>
-   <path d="M-20 362C116 284 167 259 244 260S440 314 517 265 653 151 765 193V425H-20Z" fill="url(#landingGround)"/>
-   <path d="M-20 355C104 310 166 224 240 237S378 337 459 308C557 273 607 204 771 182" stroke="#F6DFC6" strokeWidth="95"/>
-   <path d="M-20 356C104 311 166 225 240 238S378 338 459 309C557 274 607 205 771 183" stroke="url(#landingRiver)" strokeWidth="54" opacity=".78"/>
-   <path d="M-26 351C97 311 177 207 242 228S377 345 461 306 604 207 770 182" stroke="#FFFAF4" strokeWidth="6" opacity=".78"/>
-   <path d="M20 392L360 154L796 394M85 414L472 109M199 428L597 125M337 427L721 170M-30 286L557 430M31 206L685 412" stroke="#FFFDFB" strokeWidth="13" opacity=".8"/>
-   <path d="M20 392L360 154L796 394M85 414L472 109M199 428L597 125M337 427L721 170M-30 286L557 430M31 206L685 412" stroke="#E9C7A8" strokeWidth="2" opacity=".55"/>
-   <g opacity=".82"><path d="M0 303L69 259L69 343L0 385Z" fill="#E7CEBA"/><path d="M0 303L43 279L96 303L69 319Z" fill="#FFF2E2"/><path d="M67 302L117 266L162 295L117 328Z" fill="#F3DDC8"/><path d="M117 328L162 295V364L117 390Z" fill="#DCBFA7"/><path d="M197 189L247 161L278 176L227 211Z" fill="#FFECDC"/><path d="M227 211L278 176V246L227 284Z" fill="#EBD1BD"/><path d="M197 189L227 211V284L197 267Z" fill="#F3DECD"/></g>
-   <g opacity=".8"><path d="M455 163L487 138L520 158L489 181Z" fill="#FFF3E5"/><path d="M489 181L520 158V259L489 277Z" fill="#E5CBB5"/><path d="M455 163L489 181V277L455 260Z" fill="#F0D7C4"/><path d="M530 141L553 122L581 137L558 159Z" fill="#FFF6EA"/><path d="M558 159L581 137V240L558 261Z" fill="#DDBDA6"/></g>
-   <g opacity=".65" stroke="#D2A77C" strokeWidth="3"><path d="M481 195V246M503 178V237M545 165V222M566 159V216"/></g>
-   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#C76027" strokeWidth="18" opacity=".18" filter="url(#landingBlur)"/>
-   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round"/>
-   <path d="M18 376C117 331 170 297 235 309S325 359 410 328 527 249 632 270" stroke="#E97525" strokeWidth="4.5" strokeDasharray="8 11" strokeLinecap="round"/>
-   <circle cx="235" cy="309" r="12" fill="#FFF5EA" stroke="#E97525" strokeWidth="5"/>
-   <ellipse cx="371" cy="335" rx="88" ry="33" fill="#F6AE70" opacity=".28" filter="url(#landingBlur)"/>
-   <ellipse cx="371" cy="328" rx="72" ry="20" stroke="#FFFFFF" strokeWidth="5" opacity=".9"/>
-   <ellipse cx="371" cy="328" rx="53" ry="12" stroke="#F4A46B" strokeWidth="4" opacity=".95"/>
-   <path d="M368 195C326 195 304 225 304 256C304 292 368 343 368 343S432 292 432 256C432 224 410 195 368 195Z" fill="#A5451B" opacity=".18" transform="translate(4 10)"/>
-   <path d="M368 188C326 188 304 220 304 251C304 287 368 333 368 333S432 287 432 251C432 220 410 188 368 188Z" fill="url(#landingPin)" stroke="#FFF5E9" strokeWidth="5"/>
-   <circle cx="368" cy="252" r="22" fill="#FFF4E7" stroke="#D96821" strokeWidth="5"/>
-   <g transform="translate(524 229)"><path d="M11 46L149 0L214 37L81 87Z" fill="#FFEDDB"/><path d="M11 46L81 87V178L11 140Z" fill="#D5A47E"/><path d="M81 87L214 37V133L81 178Z" fill="url(#landingShop)" stroke="#FBE7D3" strokeWidth="4"/><path d="M11 46L81 87V104L11 64Z" fill="#E77A2D"/><path d="M81 87L214 37V59L81 108Z" fill="#E97824"/><path d="M94 111L142 93V166L94 177Z" fill="#9FBBB7" stroke="#F8E7D7" strokeWidth="5"/><path d="M151 90L199 72V144L151 164Z" fill="#9FBBB7" stroke="#F8E7D7" strokeWidth="5"/><path d="M96 124L141 107M153 103L196 87" stroke="#FBE4C4" strokeWidth="2"/><path d="M29 66L65 84V111L29 92Z" fill="#FFF1E0"/><path d="M40 71L54 78M40 78L54 85" stroke="#E97824" strokeWidth="3" strokeLinecap="round"/></g>
-   <g fill="#8AAB91" opacity=".88"><circle cx="103" cy="325" r="17"/><circle cx="123" cy="312" r="20"/><circle cx="148" cy="329" r="14"/><circle cx="610" cy="225" r="15"/><circle cx="628" cy="216" r="18"/><circle cx="652" cy="218" r="14"/></g>
-   <g fill="#71957A" opacity=".74"><circle cx="80" cy="348" r="14"/><circle cx="168" cy="338" r="12"/><circle cx="599" cy="238" r="12"/></g>
-  </svg>
+   <img className="landing-illustration" src="/assets/approved-city.webp" alt="" loading="eager" decoding="async"/>
  </div>;
 }
-
 function App(){
  const [tab,setTab]=useState<Tab>('home');
  const [focusSearch,setFocusSearch]=useState(false);
@@ -149,10 +118,12 @@ function App(){
   const updateSafeArea=()=>{
    const inTelegram=Boolean(app?.initData);
    document.documentElement.classList.toggle('inside-telegram-miniapp',inTelegram);
-   if(inTelegram){
-    const inset=Number(app?.contentSafeAreaInset?.top)||0;
-    document.documentElement.style.setProperty('--telegram-top-space',Math.max(76,inset)+'px');
-   }
+   // Respect the actual Telegram content inset, without a fabricated 76px gap.
+   // A number of Android Telegram WebViews already position their web content
+   // below the native toolbar, so reserving another 76px creates blank scroll.
+   const explicit=Number(app?.contentSafeAreaInset?.top)||0;
+   const cssInset=parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--tg-content-safe-area-inset-top'))||0;
+   document.documentElement.style.setProperty('--telegram-top-space',Math.max(0,explicit,cssInset)+'px');
   };
   try{app?.ready();app?.expand();app?.setHeaderColor?.('#ffffff')}catch{/* standard browser */}
   updateSafeArea();
@@ -188,7 +159,7 @@ function App(){
  const favoritesSet=new Set(favorites);
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
- const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');window.scrollTo({top:0,behavior:'smooth'})};
+ const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
  const favoriteToggle=async(id:string)=>{try{
   const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
   const next=Array.isArray(data.favorites)?data.favorites:[];

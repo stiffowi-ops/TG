@@ -165,3 +165,55 @@ body{background:var(--page-warm)}
  .bottom-nav .nav-item{min-width:0;flex:1}
 }
 @media(prefers-reduced-motion:reduce){.landing-cta,.landing-shortcut{transition:none}}
+
+/* Telegram WebView: a single content scroller bounded by a docked navigation.
+   Avoid page scroll bouncing into the blank outer document. */
+html,body,#root{height:100%;width:100%;margin:0;overflow:hidden;overscroll-behavior:none}
+#root{isolation:isolate}
+.app-shell{height:100dvh;height:var(--tg-viewport-height,100dvh);max-height:100dvh;min-height:0;overflow:hidden;display:flex;flex-direction:column}
+.app-header{flex:0 0 auto;padding-top:0!important;position:relative;top:auto;background:#FFFBF7}
+.inside-telegram-miniapp .app-header{padding-top:var(--telegram-top-space,0px)!important}
+.main-container{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:0!important}
+.main-container::-webkit-scrollbar{display:none}
+.site-footer{display:none!important}
+.bottom-nav{flex:0 0 auto;position:relative;z-index:35;left:auto;right:auto;bottom:auto;width:100%;max-width:100%;margin:0 auto;min-width:0;border-radius:18px 18px 0 0;padding-bottom:max(10px,env(safe-area-inset-bottom,0px));box-shadow:0 -7px 26px #6A574512}
+.landing-home{padding:5px 0 8px!important;margin:0 auto}
+.landing-hero{position:relative;min-height:525px;background:linear-gradient(120deg,#FFF8F1 0%,#FFF3EB 60%,#F5E9DE 100%)}
+.landing-hero:before{opacity:.27}
+.landing-copy{z-index:3}
+.landing-scene{z-index:2;left:auto;right:0;bottom:0;width:min(60%,720px);max-width:none;opacity:1;pointer-events:none}
+.landing-illustration{display:block;max-width:none;width:100%;height:auto;object-fit:contain;filter:none}
+.landing-shortcuts{margin:12px 0 0!important;gap:10px}
+.landing-shortcut{min-height:88px}
+.catalog-page{padding-bottom:8px}
+.tab-section{padding-bottom:12px}
+.catalog-page-heading{margin-bottom:16px}
+@media(max-width:780px){
+ .landing-hero{min-height:496px}
+ .landing-scene{left:-8%;right:auto;bottom:0;width:120%;max-width:none}
+ .landing-copy{padding:32px 30px}
+ .landing-copy p{max-width:370px}
+ .landing-shortcut{min-height:70px}
+}
+@media(max-width:530px){
+ .header-inner{min-height:58px;padding:9px 15px}
+ .brand-text{font-size:23px}
+ .brand-text small{font-size:8px;margin-top:4px}
+ .landing-home{padding-top:0!important}
+ .landing-hero{min-height:445px;overflow:hidden;border-radius:19px}
+ .landing-hero:before{opacity:.2}
+ .landing-copy{padding:29px 21px;max-width:100%}
+ .landing-copy h1{font-size:clamp(29px,7.2vw,36px);line-height:1.12;margin:15px 0}
+ .landing-copy p{font-size:12px;line-height:1.6;margin-bottom:19px}
+ .landing-cta{font-size:13px;min-height:47px;padding:0 17px;border-radius:13px}
+ .landing-scene{left:-12%;right:auto;width:131%;bottom:0}
+ .landing-shortcuts{gap:8px;margin-top:10px}
+ .landing-shortcut{min-height:63px;border-radius:15px;padding:9px 13px}
+ .catalog-page-heading{padding:23px 20px;border-radius:18px}
+ .catalog-page .card-grid{gap:10px}
+}
+@media(max-width:390px){
+ .landing-hero{min-height:427px}
+ .landing-copy h1{font-size:29px}
+ .landing-copy p{font-size:11.5px}
+}
