@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"example.com/mini-app-locations/internal/demo"
+	"locationbot/internal/demo"
 )
 
 func routes(webDist string) http.Handler {

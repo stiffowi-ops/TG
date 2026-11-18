@@ -1,0 +1,282 @@
+[
+  {
+    "id": "001",
+    "title": "Метро Остров Мечты",
+    "filename": "001 Метро Остров Мечты.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "002",
+    "title": "Метро Кленовый бульвар",
+    "filename": "002 Метро Кленовый бульвар.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "003",
+    "title": "Метро Курьяново",
+    "filename": "003 Метро Курьяново.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "004",
+    "title": "Метро Москворечье",
+    "filename": "004 Метро Москворечье.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "005",
+    "title": "Метро Кавказский бульвар",
+    "filename": "005 Метро Кавказский бульвар.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "006",
+    "title": "Метро Каспийская",
+    "filename": "006 Метро Каспийская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "007",
+    "title": "Метро Липецкая",
+    "filename": "007 Метро Липецкая.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "008",
+    "title": "Метро Лебедянская",
+    "filename": "008 Метро Лебедянская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "009",
+    "title": "Метро Бирюлёво",
+    "filename": "009 Метро Бирюлёво.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "010",
+    "title": "Метро Народное Ополчение",
+    "filename": "010 Метро Народное Ополчение.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "011",
+    "title": "Метро Липовая Роща",
+    "filename": "011 Метро Липовая Роща.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "012",
+    "title": "Метро Сосенки",
+    "filename": "012 Метро Сосенки.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "013",
+    "title": "Метро Летово",
+    "filename": "013 Метро Летово.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "014",
+    "title": "Метро Десна",
+    "filename": "014 Метро Десна.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "015",
+    "title": "Метро Кедровая",
+    "filename": "015 Метро Кедровая.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "016",
+    "title": "Метро Ватутинки",
+    "filename": "016 Метро Ватутинки.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "017",
+    "title": "Метро Троицк",
+    "filename": "017 Метро Троицк.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "018",
+    "title": "Метро Южный порт",
+    "filename": "018 Метро Южный порт.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "019",
+    "title": "Метро Солнечная",
+    "filename": "019 Метро Солнечная.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "020",
+    "title": "Метро Академика Черенкова",
+    "filename": "020 Метро Академика Черенкова.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "021",
+    "title": "Метро Красная Пахра",
+    "filename": "021 Метро Красная Пахра.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "022",
+    "title": "Метро Кинокластер (Москино)",
+    "filename": "022 Метро Кинокластер (Москино).png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "023",
+    "title": "Метро Красногорская",
+    "filename": "023 Метро Красногорская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "024",
+    "title": "Метро Писково",
+    "filename": "024 Метро Писково.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "025",
+    "title": "Метро Юрьев ручей",
+    "filename": "025 Метро Юрьев ручей.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "026",
+    "title": "Метро Цветочные поляны",
+    "filename": "026 Метро Цветочные поляны.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "027",
+    "title": "Метро Середнево",
+    "filename": "027 Метро Середнево.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "028",
+    "title": "Метро Большое Покровское",
+    "filename": "028 Метро Большое Покровское.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "029",
+    "title": "Метро Ярославская",
+    "filename": "029 Метро Ярославская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "030",
+    "title": "Метро Верейская",
+    "filename": "030 Метро Верейская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "031",
+    "title": "Метро Беловежская",
+    "filename": "031 Метро Беловежская.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "032",
+    "title": "Метро Сколтех",
+    "filename": "032 Метро Сколтех.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "033",
+    "title": "Метро Сколково",
+    "filename": "033 Метро Сколково.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "034",
+    "title": "Метро Медицинский центр",
+    "filename": "034 Метро Медицинский центр.png",
+    "category": "Метро",
+    "image_ext": ".png"
+  },
+  {
+    "id": "035",
+    "title": "МГСУ",
+    "filename": "035 МГСУ.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  },
+  {
+    "id": "036",
+    "title": "Ивантеевка",
+    "filename": "036 Ивантеевка.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  },
+  {
+    "id": "037",
+    "title": "Ивантеевка 2",
+    "filename": "037 Ивантеевка 2.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  },
+  {
+    "id": "038",
+    "title": "Фрязино",
+    "filename": "038 Фрязино.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  },
+  {
+    "id": "039",
+    "title": "Королёв 2",
+    "filename": "039 Королёв 2.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  },
+  {
+    "id": "040",
+    "title": "Королёв 3",
+    "filename": "040 Королёв 3.png",
+    "category": "Другие локации",
+    "image_ext": ".png"
+  }
+]

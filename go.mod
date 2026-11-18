@@ -1,3 +1,3 @@
-module example.com/mini-app-locations
+module locationbot
 
 go 1.23
