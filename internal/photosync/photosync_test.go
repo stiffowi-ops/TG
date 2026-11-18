@@ -41,3 +41,21 @@ func TestNoAmbiguousPhotoBinding(t *testing.T){
  got,_,ambiguous:=matchFiles(files,locations)
  if len(got)!=0||len(ambiguous)!=1 {t.Fatalf("ambiguous match should be skipped")}
 }
+
+func TestRealYandexFolderFileNames(t *testing.T){
+ locations:=[]catalog.Location{
+  {ID:"001",Title:"Метро Остров Мечты"},
+  {ID:"002",Title:"Метро Кленовый бульвар"},
+ }
+ files:=[]entry{
+  {item:diskItem{Name:"001 Метро Остров Мечты — 1.jpg"},rel:"001 Метро Остров Мечты — 1.jpg"},
+  {item:diskItem{Name:"001 Метро Остров Мечты — 2.jpg"},rel:"001 Метро Остров Мечты — 2.jpg"},
+  {item:diskItem{Name:"001 Метро Остров Мечты — 3.jpg"},rel:"001 Метро Остров Мечты — 3.jpg"},
+  {item:diskItem{Name:"002 Метро Кленовый бульвар — 1.jpg"},rel:"002 Метро Кленовый бульвар — 1.jpg"},
+ }
+ matched,unmatched,ambiguous:=matchFiles(files,locations)
+ if len(matched["001"])!=3 || len(matched["002"])!=1 || len(unmatched)!=0 || len(ambiguous)!=0 {
+  t.Fatalf("matching real files failed: matched=%v unmatched=%v ambiguous=%v",matched,unmatched,ambiguous)
+ }
+ for i,photo:=range matched["001"]{if photo.order!=i+1 {t.Fatalf("photo order %d at %d",photo.order,i)}}
+}

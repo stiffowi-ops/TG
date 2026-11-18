@@ -144,3 +144,12 @@
 .geo-map .leaflet-container{background-color:#F6EEE5;background-image:repeating-radial-gradient(ellipse at 34% 68%,transparent 0,transparent 23px,rgba(222,188,151,.16) 24px,transparent 25px),linear-gradient(150deg,#F7F0E8,#ECE2D6)}
 .geo-map__tile-notice{position:absolute;z-index:504;top:58px;left:12px;right:68px;max-width:270px;border:1px solid #F0D9C6;background:#FFF9F0EB;border-radius:11px;padding:9px 12px;color:#9B6A44;font-size:10px;line-height:1.35;box-shadow:0 4px 11px #8D604224}
 @media(max-width:530px){.geo-map__tile-notice{font-size:9px;max-width:206px;right:55px}}
+
+/* Official Yandex Maps v3 is an optional, independently replaceable provider. */
+.yandex-map-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:0}
+.yandex-map-loading{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);padding:11px 16px;border-radius:12px;background:#FFF9F1;color:#99643C;font-size:12px;font-weight:750;box-shadow:0 5px 15px #7B56351A}
+.yandex-location-pin{display:grid;place-items:center;width:32px;height:38px;border:3px solid #FFF5E9;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);background:linear-gradient(130deg,#FCAB51,#E66E1B);color:#FFF;box-shadow:0 3px 11px #6A371D4A;cursor:pointer;position:relative;font-size:16px;line-height:1;transition:filter .15s,scale .15s}
+.yandex-location-pin.is-selected{width:41px;height:47px;background:#E56212;filter:drop-shadow(0 0 6px #F98C44);scale:1.12;z-index:2}
+.yandex-location-pin:focus-visible{outline:3px solid #24383D;outline-offset:4px}
+
+.yandex-map-host{position:absolute;inset:0;width:100%;height:100%}

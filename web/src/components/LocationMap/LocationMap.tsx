@@ -5,6 +5,7 @@ import {divIcon,latLngBounds} from 'leaflet';
 import type {Location} from '../../types';
 import PhotoCarousel from '../PhotoCarousel/PhotoCarousel';
 import LocationArt from '../LocationArt/LocationArt';
+import YandexMapCanvas from './YandexMapCanvas';
 
 type Props={
  locations:Location[];selectedId:string|null;onSelect:(id:string|null)=>void;
@@ -61,12 +62,16 @@ function MapPhoto({location}:{location:Location}){
 export default function LocationMap({locations,selectedId,onSelect,favorites,onFavorite,onDetails}:Props){
  const points=useMemo(()=>locations.filter(point),[locations]);
  const [tileFailures,setTileFailures]=useState(0);
+ const [yandexKey,setYandexKey]=useState('');
+ const [yandexFailed,setYandexFailed]=useState(false);
+ useEffect(()=>{let live=true;fetch('/api/map/config').then(r=>r.ok?r.json():Promise.reject()).then((data:{key?:string})=>{if(live)setYandexKey(data.key||'')}).catch(()=>{});return()=>{live=false}},[]);
  const tileUnavailable=tileFailures>=4;
  const chosen=points.find(l=>l.id===selectedId)??null;
  const mapCenter:[number,number]=points.length?[points[0].latitude!,points[0].longitude!]:[55.7512,37.6184];
  return <div className="geo-map-layout">
   {points.length?
    <div className="geo-map" role="region" aria-label="Интерактивная карта локаций">
+    {yandexKey&&!yandexFailed?<YandexMapCanvas locations={points} selectedId={selectedId} onSelect={onSelect} apiKey={yandexKey} onFailure={()=>setYandexFailed(true)}/>:
     <MapContainer center={mapCenter} zoom={11} scrollWheelZoom={false} zoomControl={false}
      className="geo-map__tiles">
      <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -81,9 +86,9 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
       icon={pinIcon(l.id===selectedId)} zIndexOffset={l.id===selectedId?1000:0}
       eventHandlers={{click:()=>onSelect(l.id)}}/>)}
      <MapActions/>
-    </MapContainer>
+    </MapContainer>}
     <div className="geo-map__count"><MapPin size={15}/>{points.length} на карте</div>
-    {tileUnavailable&&<div className="geo-map__tile-notice" role="status">Подложка карты недоступна. Метки показаны по координатам.</div>}
+    {(tileUnavailable||yandexFailed)&&<div className="geo-map__tile-notice" role="status">{yandexFailed?"Яндекс Карты недоступны, включена резервная карта.":"Подложка карты недоступна. Метки показаны по координатам."}</div>}
     {chosen&&<div className="geo-map-preview" role="group" aria-label={`Выбрана локация ${chosen.title}`}>
      <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
      <div className="geo-map-preview__photo"><MapPhoto location={chosen}/></div>
