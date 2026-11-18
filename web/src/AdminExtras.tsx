@@ -7,7 +7,8 @@ type Metric={id:string;name:string;views:number;unique:number;additions:number;s
 type Visitor={userId:number;name:string;username:string;firstAt:string;lastAt:string;visits:number;hasLead:boolean;favorites:string[]};
 type Section={id:string;title:string;body:string;enabled:boolean};
 type Revision={title:string;category:string;description:string;rating:string;lat?:number;lon?:number;line_status:string;landmarks:string;map_url:string;sections:Section[]};
-type AdminSection='analytics'|'visitors'|'locations'|'backup';
+type AdminSection='analytics'|'visitors'|'locations'|'backup'|'photos';
+type PhotoReport={enabled:boolean;running?:boolean;lastAttempt?:string;lastSuccess?:string;matchedLocations?:number;imagesAvailable?:number;downloaded?:number;unchanged?:number;unmatched?:string[];ambiguous?:string[];failures?:string[];error?:string};
 const emptyRevision=():Revision=>({title:'',category:'Другие локации',description:'',rating:'',line_status:'',landmarks:'',map_url:'',sections:[
  {id:'traffic',title:'Трафик и локация',body:'',enabled:true},
  {id:'payers',title:'Кто платит',body:'',enabled:true},
@@ -37,6 +38,23 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
  const [create,setCreate]=useState(false);
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
+ const [photoReport,setPhotoReport]=useState<PhotoReport|null>(null);
+ const [photoBusy,setPhotoBusy]=useState(false);
+ const readPhotoReport=async()=>{
+  setPhotoBusy(true);
+  try{const report=await adminFetch<PhotoReport>('/api/admin/photos/status');setPhotoReport(report);setMessage('')}
+  catch(error){setMessage((error as Error).message)}
+  finally{setPhotoBusy(false)}
+ };
+ const syncPhotos=async()=>{
+  setPhotoBusy(true);
+  try{
+   await adminFetch('/api/admin/photos/sync',{method:'POST'});
+   setMessage('Синхронизация фотографий запущена. Обновите статус через несколько минут.');
+   const report=await adminFetch<PhotoReport>('/api/admin/photos/status');setPhotoReport(report);
+  }catch(error){setMessage((error as Error).message)}
+  finally{setPhotoBusy(false)}
+ };
  useEffect(()=>{let live=true;
   if(section!=='analytics'&&section!=='visitors')return;
   setBusy(true);
@@ -46,6 +64,7 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
    .catch(e=>{if(live)setMessage(e.message)}).finally(()=>{if(live)setBusy(false)});
   return()=>{live=false}
  },[section,metric,days]);
+ useEffect(()=>{if(section==='photos')void readPhotoReport()},[section]);
  const openLocation=async(id:string)=>{
   if(!id)return;
   setSelectedId(id);setCreate(false);setBusy(true);
@@ -86,6 +105,7 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
   {id:'visitors',label:'Посетители',icon:<Users size={18}/>},
   {id:'locations',label:'Локации',icon:<MapPin size={18}/>},
   {id:'backup',label:'Бэкапы',icon:<ShieldCheck size={18}/>},
+  {id:'photos',label:'Фото',icon:<RefreshCw size={18}/>},
  ];
  return <section className="admin-extras">
   <div className="admin-extras-tabs">{menu.map(item=><button key={item.id} type="button" className={section===item.id?'active':''} onClick={()=>{setSection(item.id);setMessage('')}}>{item.icon}{item.label}</button>)}</div>
@@ -136,6 +156,25 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
     <button className="btn primary" disabled={busy} onClick={saveLocation}><Save size={17}/>{create?'Создать локацию':'Сохранить изменения'}</button>
    </div>}
   </div>}
+  {section==='photos'&&<div className="admin-photo-sync">
+    <h2>Фотографии локаций</h2>
+    <p className="section-subtitle">Источник: публичная папка Яндекс Диска. До 3 фотографий на локацию, сопоставление по названию.</p>
+    <div className="admin-stats">
+     <div><small>Локаций с фото</small><strong>{photoReport?.matchedLocations??'—'}</strong></div>
+     <div><small>Доступно фотографий</small><strong>{photoReport?.imagesAvailable??'—'}</strong></div>
+     <div><small>Загружено в последней проверке</small><strong>{photoReport?.downloaded??'—'}</strong></div>
+    </div>
+    <p className="admin-explain">Состояние: {photoReport?.running?'Синхронизация выполняется':photoReport?.lastSuccess?'Синхронизация завершена':photoReport?.error?'Ошибка загрузки':'Ожидание первого запуска'}. Последнее успешное обновление: {photoReport?.lastSuccess?new Date(photoReport.lastSuccess).toLocaleString('ru-RU'):'ещё не выполнялось'}.</p>
+    <div className="admin-inline-fields">
+     <button className="btn secondary" onClick={()=>void readPhotoReport()} disabled={photoBusy}><RefreshCw size={17}/> Обновить статус</button>
+     <button className="btn primary" onClick={()=>void syncPhotos()} disabled={photoBusy||!!photoReport?.running}><RefreshCw size={17}/> Синхронизировать фото</button>
+    </div>
+    {photoReport?.error&&<p className="admin-explain" role="alert">Ошибка: {photoReport.error}</p>}
+    {!!photoReport?.unmatched?.length&&<details><summary>Не удалось сопоставить ({photoReport.unmatched.length} в отчёте)</summary><ul>{photoReport.unmatched.slice(0,50).map(name=><li key={name}>{name}</li>)}</ul></details>}
+    {!!photoReport?.ambiguous?.length&&<details><summary>Неоднозначные совпадения ({photoReport.ambiguous.length})</summary><ul>{photoReport.ambiguous.slice(0,50).map(name=><li key={name}>{name}</li>)}</ul></details>}
+    {!!photoReport?.failures?.length&&<details><summary>Ошибки загрузки ({photoReport.failures.length})</summary><ul>{photoReport.failures.slice(0,50).map(name=><li key={name}>{name}</li>)}</ul></details>}
+    <p className="admin-explain">Фотографии хранятся отдельно от карточек и заявок. Синхронизация не меняет названия, номера и описания локаций.</p>
+   </div>}
   {section==='backup'&&<div>
     <h2>Резервные копии</h2>
     <p className="section-subtitle">ZIP содержит каталог, историю заявок, избранное, аналитику и данные посетителей. Храни файл в безопасном месте.</p>
