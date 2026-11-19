@@ -3,7 +3,7 @@
 .bottom-navigation .bottom-navigation__item.nav-item { position:relative;flex:1;min-width:0;max-width:170px;display:flex;flex-direction:column;gap:2px;align-items:center;justify-content:center;padding:4px 2px;font-size:10px;color:var(--ui-nav-ink);font-weight:650;line-height:1.1;border-radius:12px; }
 .bottom-navigation .bottom-navigation__item.nav-item.active { color:var(--ui-accent);background:transparent; }
 .bottom-navigation .bottom-navigation__item.nav-item .bottom-navigation__icon {
- display:grid;place-items:center;position:relative;flex:0 0 38px;width:40px;height:38px;
+ display:grid;place-items:center;position:relative;flex:0 0 30px;width:36px;height:30px;
  border-radius:12px;background:transparent;
  transition:background-color 220ms ease,box-shadow 220ms ease,scale 160ms ease;
 }
