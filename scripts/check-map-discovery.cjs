@@ -21,7 +21,7 @@ module.exports=async function checkMapDiscovery(context,target){
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
   await page.locator('.geo-pin-container').first().waitFor({state:'attached'});
   // Two points almost coincide. Their cluster must be visible, but pins stay mounted.
-  const cluster=page.getByRole('button',{name:'Группа из 2 локаций'});
+  const cluster=page.getByRole('button',{name:'Группа из 2 локаций'}).first();
   await cluster.waitFor({timeout:20000});
   assert.equal(await page.locator('.geo-pin-container').count(),places.length);
   await cluster.evaluate(el=>el.click());
