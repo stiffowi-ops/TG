@@ -125,7 +125,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
   },()=>setGeoError('Проверьте разрешение на геолокацию'),{enableHighAccuracy:false,timeout:8000});
  };
  return <div className="geo-map-layout">
-  {hasPoints?<div className="geo-map" role="region" aria-label="Интерактивная карта локаций">
+  {hasPoints?<div className={`geo-map${chosen?' geo-map--preview-open':''}`} role="region" aria-label="Интерактивная карта локаций">
    <div ref={containerRef} className="geo-map__tiles"/>
    {mapUnavailable?<div className="geo-map__fallback" role="status">
     <MapPin size={27}/><strong>Карта недоступна на этом устройстве</strong>

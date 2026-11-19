@@ -30,7 +30,25 @@ const path = require('node:path');
   // Attribution must retain OpenStreetMap copyright without unwanted map engine branding.
   const attribution=await page.locator('.geo-map__attribution').innerText();
   if(!attribution.includes('OpenStreetMap'))throw Error('Missing OSM attribution: '+attribution);
+  // Attribution moves to the upper corner so it does not cover the selected location card.
+  const mapLayers = await page.evaluate(()=>{
+    const rect = selector=>document.querySelector(selector).getBoundingClientRect();
+    const credit=rect('.geo-map__attribution'),preview=rect('.geo-map-preview');
+    const overlap=!(credit.right<=preview.left||credit.left>=preview.right||credit.bottom<=preview.top||credit.top>=preview.bottom);
+    return {overlap,creditTop:credit.top,previewTop:preview.top};
+  });
+  if(mapLayers.overlap)throw Error('OpenStreetMap attribution overlaps the preview: '+JSON.stringify(mapLayers));
   if(await page.locator('.geo-map .leaflet-container').count())throw Error('Legacy map engine remains in the DOM');
+  await page.locator('.geo-map-preview__title-button').click();
+  const detailOverlay=page.locator('.detail-dialog');
+  await detailOverlay.waitFor();
+  const modalAboveMap=await page.evaluate(()=>{
+    const dialog=document.querySelector('.detail-dialog').getBoundingClientRect();
+    const x=dialog.left+dialog.width/2,y=dialog.top+Math.min(90,dialog.height/2);
+    return Boolean(document.elementFromPoint(x,y)?.closest('.detail-dialog'));
+  });
+  if(!modalAboveMap)throw Error('Location modal is hidden below map controls');
+  await detailOverlay.getByRole('button',{name:'Закрыть'}).click();
   await page.locator('.geo-map-preview').getByRole('button',{name:/Открыть на карте/}).click();
   await page.locator('.yandex-location-viewer iframe').waitFor();
   const widget=await page.locator('.yandex-location-viewer iframe').getAttribute('src');

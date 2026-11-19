@@ -1,5 +1,5 @@
 import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react';
-import type {ReactNode} from 'react';
+import type {ReactNode, MouseEvent as ReactMouseEvent} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
 import LocationArt from './components/LocationArt/LocationArt';
@@ -68,6 +68,10 @@ function useStoredState<T>(key:string,initial:T){
  return [value,setValue] as const;
 }
 function tgHaptic(){try{window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');}catch{/* browser mode */}}
+function onAppButtonClick(event:ReactMouseEvent<HTMLDivElement>){
+ const target=event.target;
+ if(target instanceof Element&&target.closest('button:not(:disabled)'))tgHaptic();
+}
 function openMap(url:string){const app=window.Telegram?.WebApp as WebApp & {openLink?:(url:string,options?:{try_instant_view?:boolean})=>void};if(app?.openLink){app.openLink(url);}else{window.open(url,'_blank','noopener,noreferrer');}}
 function Empty({icon,title,description,action}:{icon:ReactNode;title:string;description:string;action?:ReactNode}){
  return <div className="empty"><div className="empty-symbol">{icon}</div><h3>{title}</h3><p>{description}</p>{action}</div>;
@@ -200,8 +204,8 @@ function App(){
  }catch(err){setToast((err as Error).message)}};
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
- return <div className="app-shell">
-  {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
+ return <div className="app-shell" onClickCapture={onAppButtonClick}>
+  {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')} showBack={tab==='favorites'}/>}
   <main data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
@@ -255,7 +259,7 @@ function App(){
   </section>}
   </main>
   <footer className="site-footer"><span>Подбор локаций</span><span>Доступ к личным данным через Telegram</span></footer>
-  <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin} onHaptic={tgHaptic}/>
+  <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin}/>
   {toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
   {detail&&<Dialog hidden={Boolean(yandexLocation)} onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<LocationArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><h2>{detail.title}</h2>{detail.area&&<p className="detail-area"><MapPin size={17}/>{detail.area}</p>}<div className="location-description">
  {([{title:'Ориентиры и транспорт',body:[detail.lineStatus,detail.landmarks].filter(Boolean).join(' · ')},{title:'Трафик и локация',body:detail.traffic},{title:'Кто платит',body:detail.payers},{title:'Окно возможностей',body:detail.opportunity},{title:'Почему именно здесь',body:detail.conclusion}]).map(item=><details key={item.title}><summary>{item.title}</summary><p>{item.body||'Информация пока не добавлена'}</p></details>)}
