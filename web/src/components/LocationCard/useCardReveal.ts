@@ -14,14 +14,17 @@ export default function useCardReveal(){
     const item=entry.target as HTMLElement;
     if(entry.isIntersecting){
      seen.current.add(item.dataset.locationId!);
-     delete item.dataset.revealPending;
      io.unobserve(item);
+     requestAnimationFrame(()=>{if(item.isConnected)delete item.dataset.revealPending});
     }else{
      item.dataset.revealPending='';
     }
    }
   },{root:card.closest('main')});
 
+  // Mark every new, unseen card before paint. Otherwise above-fold cards
+  // can render fully visible and the reveal never actually starts.
+  card.dataset.revealPending='';
   io.observe(card);
   return ()=>{
    io.unobserve(card);
