@@ -24,8 +24,8 @@ export default function BottomNavigation({tab,onNavigate,savedCount,isAdmin}:Bot
    return <button type="button" key={item.id} aria-current={active?'page':undefined}
     className={`nav-item bottom-navigation__item ${active?'active':''}`}
     onClick={()=>onNavigate(item.id)}>
-    <Icon size={22} strokeWidth={active?2.15:1.85} aria-hidden="true"/>
-    <span>{item.label}</span>
+    <span className="bottom-navigation__icon" aria-hidden="true"><Icon size={22} strokeWidth={active?2.15:1.85}/></span>
+    <span className="bottom-navigation__label">{item.label}</span>
     {item.id==='favorites'&&savedCount>0&&<span className="nav-count">{savedCount}</span>}
    </button>;
   })}
