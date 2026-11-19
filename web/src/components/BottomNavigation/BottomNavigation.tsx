@@ -9,7 +9,7 @@ type BottomNavigationProps={
  onHaptic?:()=>void;
 };
 
-export default function BottomNavigation({tab,onNavigate,savedCount,isAdmin,onHaptic}:BottomNavigationProps){
+export default function BottomNavigation({tab,onNavigate,savedCount,isAdmin}:BottomNavigationProps){
  const items=[
   {id:'home' as const,label:'Локации',icon:Compass},
   {id:'map' as const,label:'Карта',icon:MapIcon},
@@ -23,7 +23,7 @@ export default function BottomNavigation({tab,onNavigate,savedCount,isAdmin,onHa
    const Icon=item.icon;
    return <button type="button" key={item.id} aria-current={active?'page':undefined}
     className={`nav-item bottom-navigation__item ${active?'active':''}`}
-    onClick={()=>{onHaptic?.();onNavigate(item.id)}}>
+    onClick={()=>onNavigate(item.id)}>
     <Icon size={22} strokeWidth={active?2.15:1.85} aria-hidden="true"/>
     <span>{item.label}</span>
     {item.id==='favorites'&&savedCount>0&&<span className="nav-count">{savedCount}</span>}
