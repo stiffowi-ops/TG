@@ -50,7 +50,11 @@ module.exports = async function checkMapPhotos(context, target) {
     await page.getByRole('button',{name:'Настроить фильтры'}).tap();
     await page.getByRole('dialog',{name:'Фильтры локаций'}).waitFor();
     await coveredBy('.catalog-filter-overlay');
-    assert.equal(await page.getByRole('link',{name:/OpenStreetMap/}).count(),0);
+    const attribution = page.locator('.geo-map__attribution a');
+    assert.equal(await attribution.evaluate(link=>{
+      link.focus({preventScroll:true});
+      return document.activeElement===link;
+    }),false,'The background attribution took focus through the filter sheet');
     await page.screenshot({path:'screenshots/map-filters.png'});
     await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
     await page.getByRole('link',{name:/OpenStreetMap/}).waitFor();
