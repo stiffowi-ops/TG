@@ -96,6 +96,34 @@
 .geo-map-preview__details{min-height:38px;flex:1;min-width:0;padding:0 6px;border:0;border-radius:11px;background:linear-gradient(120deg,#F78C2C,#E9711A);color:white;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:5px;white-space:nowrap}
 .geo-map-preview__details svg{flex-shrink:0}
 @media(prefers-reduced-motion:reduce){.geo-map-preview__description-arrow{transition:none}}
+
+/* Cluster markers replace overlapping pins; the selected pin remains above all clusters. */
+.geo-cluster-marker{
+ width:40px;height:40px;display:grid;place-items:center;border:3px solid #FFFDFB;
+ border-radius:50%;background:#F37B19;color:white;font-size:14px;font-weight:850;
+ box-shadow:0 2px 0 #CB5F18,0 0 0 6px #F47B1930,0 5px 14px #78452F55;
+ cursor:pointer;touch-action:manipulation;
+}
+.geo-cluster-marker:focus-visible{outline:3px solid #D95F13;outline-offset:7px}
+.geo-user-point{width:17px;height:17px;background:#3188EF;border:3px solid white;border-radius:50%;box-shadow:0 0 0 6px #3188EF38,0 3px 10px #154E8866;pointer-events:none}
+.geo-map-preview__browse{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:24px;color:#8A786D;font-size:11px;font-weight:700}
+.geo-map-preview__browse button{width:27px;height:27px;flex:0 0 27px;display:grid;place-items:center;border:1px solid #EBDDD0;border-radius:9px;background:#FFF8F1;color:#D96F24}
+.geo-map-preview__browse button:disabled{opacity:.35}
+.geo-map-preview__browse>span{min-width:0;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.geo-nearby,.geo-cluster-sheet{position:absolute;z-index:4;bottom:15px;left:12px;right:12px;padding:12px;background:#FFFDFBFA;border:1px solid #EEDCCC;border-radius:17px;box-shadow:0 8px 24px #3A30284D}
+.geo-nearby__heading,.geo-cluster-sheet__heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:13px;color:#304349}
+.geo-nearby__heading button,.geo-cluster-sheet__heading button{border:0;background:#FFF2E8;color:#D97125;border-radius:9px;width:29px;height:29px;display:grid;place-items:center}
+.geo-nearby__list,.geo-cluster-sheet__list{display:flex;flex-direction:column;gap:3px;overflow-y:auto;max-height:175px;overscroll-behavior:contain}
+.geo-nearby__list button,.geo-cluster-sheet__list button{width:100%;display:flex;align-items:center;gap:8px;text-align:left;background:transparent;border:0;border-bottom:1px solid #F4E9DF;color:#294047;min-height:37px;padding:6px 4px;font-size:12px;font-weight:650}
+.geo-nearby__list button>span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.geo-nearby__list button>small{white-space:nowrap;color:#CE6B22;font-size:11px;font-weight:800}
+.geo-nearby__list button>svg,.geo-cluster-sheet__list button>svg{margin-left:auto;color:#E37B2F;flex-shrink:0}
+@media(max-width:530px){
+ .geo-map-preview__browse{font-size:10px;min-height:23px}
+ .geo-map-preview__browse button{width:24px;height:24px;flex-basis:24px}
+ .geo-nearby,.geo-cluster-sheet{left:7px;right:7px;bottom:12px;padding:9px;border-radius:15px}
+}
+
 .geo-map-empty{min-height:340px;border:1px dashed #E4D4C5;border-radius:20px;background:#FFF9F2;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#D17C3D;text-align:center;padding:20px}
 .geo-map-empty h3{color:var(--ui-ink);margin:13px 0 0}
 .geo-map-empty p{max-width:260px;font-size:13px;color:#697C7D}
