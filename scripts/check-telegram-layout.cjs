@@ -160,10 +160,24 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Карта'}).tap();
       await back.tap();
       await nav.getByRole('button',{name:'Мои заявки'}).tap();
+      await page.getByRole('heading',{name:'Мои заявки'}).waitFor();
+      const requestsBack = page.locator('.requests-page-header .catalog-page-heading__back');
+      const requestsBackBox = await requestsBack.boundingBox();
+      const requestsHeaderBox = await page.locator('.requests-page-header .site-header__inner').boundingBox();
+      for(const key of ['x','y','width','height']){
+        assert.ok(Math.abs(requestsBackBox[key]-catalogBackBox[key])<1,
+          'Requests back arrow differs from catalog '+key+': '+JSON.stringify({requests:requestsBackBox,catalog:catalogBackBox}));
+        assert.ok(Math.abs(requestsHeaderBox[key]-catalogHeaderBox[key])<1,
+          'Requests header differs from catalog '+key);
+      }
+      assert.deepEqual(await brandMetrics(),homeBrand,'Requests header differs from home');
       await page.getByRole('button',{name:'Новая заявка'}).tap();
       await page.getByRole('dialog').getByRole('button',{name:'Закрыть',exact:true}).tap();
       await nav.getByRole('button',{name:'Избранное'}).tap();
       await page.locator('.catalog-page-heading__back').tap();
+      await nav.getByRole('button',{name:'Мои заявки'}).tap();
+      await page.locator('.requests-page-header .catalog-page-heading__back').tap();
+      await home.waitFor();
 
       await page.setViewportSize({width:320,height:568});
       await viewport(568,fullscreen?24:0,fullscreen?48:0,fullscreen?16:0);
