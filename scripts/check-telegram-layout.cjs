@@ -34,16 +34,20 @@ module.exports = async function checkTelegramLayout(context, target) {
         assert.equal(await nav.getByRole('button').count(),fullscreen?5:4);
         const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
           const box = button.getBoundingClientRect();
-          const icon = button.querySelector('svg').getBoundingClientRect();
-          const label = button.querySelector('span:not(.nav-count)').getBoundingClientRect();
+          const iconBox = button.querySelector('.bottom-navigation__icon').getBoundingClientRect();
+          const icon = button.querySelector('.bottom-navigation__icon svg').getBoundingClientRect();
+          const label = button.querySelector('.bottom-navigation__label').getBoundingClientRect();
           const center = rect => rect.left + rect.width / 2;
-          return {background:getComputedStyle(button).backgroundColor,
-            iconOffset:center(icon)-center(box), labelOffset:center(label)-center(box),
-            paddingDifference:(icon.top-box.top)-(box.bottom-label.bottom)};
+          return {background:getComputedStyle(button.querySelector('.bottom-navigation__icon')).backgroundColor,
+            iconOffset:center(icon)-center(iconBox),
+            highlightOffset:center(iconBox)-center(box),
+            labelOffset:center(label)-center(box),
+            iconInsetX:(icon.left-iconBox.left)-(iconBox.right-icon.right),
+            iconInsetY:(icon.top-iconBox.top)-(iconBox.bottom-icon.bottom)};
         });
         assert.notEqual(metrics.background,'rgba(0, 0, 0, 0)');
-        for (const offset of [metrics.iconOffset,metrics.labelOffset,metrics.paddingDifference])
-          assert.ok(Math.abs(offset)<1,'Off-center active button: '+JSON.stringify(metrics));
+        for (const offset of [metrics.iconOffset,metrics.highlightOffset,metrics.labelOffset,metrics.iconInsetX,metrics.iconInsetY])
+          assert.ok(Math.abs(offset)<1,'Off-center active highlight: '+JSON.stringify(metrics));
       }
       async function viewport(stableHeight, systemTop, toolbarTop, bottom, left = 0) {
         await page.evaluate(({stableHeight,systemTop,toolbarTop,bottom,left})=>{
