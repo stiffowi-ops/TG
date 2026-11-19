@@ -1,3 +1,4 @@
+import {createPortal} from 'react-dom';
 import {Check, RotateCcw, X} from 'lucide-react';
 import DistrictFilter from '../DistrictFilter/DistrictFilter';
 import CategoryTabs from '../CategoryTabs/CategoryTabs';
@@ -18,9 +19,10 @@ export default function CatalogFilters({area,areas,onArea,category,available,onC
    <ViewSwitcher view={view} onChange={onView}/>
   </div>
   <CategoryTabs value={category} onChange={onCategory} available={available}/>
-  {open&&<div className="catalog-filter-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}>
+  {open&&createPortal(<div className="catalog-filter-overlay" role="presentation" onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}
+   onKeyDown={e=>{if(e.key==='Escape')onClose()}}>
    <section className="catalog-filter-sheet" role="dialog" aria-modal="true" aria-label="Фильтры локаций">
-    <div className="catalog-filter-sheet__header"><h2>Фильтры</h2><button type="button" aria-label="Закрыть фильтры" onClick={onClose}><X size={23}/></button></div>
+    <div className="catalog-filter-sheet__header"><h2>Фильтры</h2><button type="button" autoFocus aria-label="Закрыть фильтры" onClick={onClose}><X size={23}/></button></div>
     <p>Настройте подбор под Ваши планы.</p>
     <label className="catalog-filter-sheet__label">Район</label>
     <DistrictFilter value={area} areas={areas} onChange={onArea}/>
@@ -31,6 +33,6 @@ export default function CatalogFilters({area,areas,onArea,category,available,onC
      <button type="button" className="catalog-apply" onClick={onClose}><Check size={18}/>Показать локации</button>
     </div>
    </section>
-  </div>}
+  </div>,document.getElementById('catalog-dialogs')!)}
  </>;
 }

@@ -1,7 +1,6 @@
-import {useState,type RefCallback} from 'react';
+import type {RefCallback} from 'react';
 import {Search} from 'lucide-react';
 import type {Location} from '../../types';
-import CatalogHeader from '../CatalogHeader/CatalogHeader';
 import CatalogSearch from '../CatalogSearch/CatalogSearch';
 import CatalogFilters from '../CatalogFilters/CatalogFilters';
 import LocationCard from '../LocationCard/LocationCard';
@@ -9,6 +8,7 @@ import LocationMap from '../LocationMap/LocationMap';
 import type {CatalogView} from '../ViewSwitcher/ViewSwitcher';
 
 type Props={
+ filtersOpen:boolean;setFiltersOpen:(open:boolean)=>void;
  observeCard:RefCallback<HTMLElement>;
  locations:Location[];areas:string[];availableCategories:string[];
  query:string;onQuery:(query:string)=>void;
@@ -18,19 +18,18 @@ type Props={
  selectedId:string|null;onSelect:(id:string|null)=>void;
  favorites:Set<string>;onFavorite:(id:string)=>void;
  onDetails:(location:Location)=>void;onMap:(location:Location)=>void;
- onBack:()=>void;onFavorites:()=>void;loading:boolean;
+ loading:boolean;
 };
 
 export default function CatalogPage({
- locations,observeCard,areas,availableCategories,query,onQuery,area,onArea,category,onCategory,
+ filtersOpen,setFiltersOpen,locations,observeCard,areas,availableCategories,query,onQuery,area,onArea,category,onCategory,
  view,onView,selectedId,onSelect,favorites,onFavorite,onDetails,onMap,
- onBack,onFavorites,loading
+ loading
 }:Props){
- const [filtersOpen,setFiltersOpen]=useState(false);
  const activeFilters=Number(area!=='Все районы')+Number(category!=='Все');
  const reset=()=>{onArea('Все районы');onCategory('Все')};
  return <section className="section-block catalog-page catalog-page--redesigned" id="catalog-results">
-  <CatalogHeader onBack={onBack} onFavorites={onFavorites}/>
+  <p className="catalog-intro">Найдите подходящее место для Вашего бизнеса</p>
   <div className="catalog-page__controls">
    <CatalogSearch value={query} onChange={onQuery} onOpenFilters={()=>setFiltersOpen(true)} activeFilters={activeFilters}/>
    <CatalogFilters area={area} areas={areas} onArea={onArea} category={category}

@@ -1,6 +1,7 @@
 /* Stage 2: completely independent catalog list and map visual layers. */
-.catalog-page--redesigned{padding:0 0 14px!important;max-width:1050px;margin:auto;min-width:0}
-.catalog-page .site-header{background:transparent}
+.catalog-page--redesigned,.site-header--section{max-width:1050px;margin-inline:auto}
+.catalog-page--redesigned{padding:0 0 14px!important;min-width:0}
+.site-header--section{width:100%;background:transparent}
 .catalog-intro{margin:4px 0 16px;text-align:center;color:#79898C;font-size:12px;line-height:1.5}
 .catalog-page-heading__back{left:0}
 .catalog-page-heading__favorite{right:0}
@@ -94,7 +95,7 @@
 @media(max-width:530px){
  .catalog-page--redesigned{padding:0 0 9px!important}
  .catalog-intro{font-size:11px}
- .catalog-page-heading__back,.catalog-page-heading__favorite{width:40px;height:40px;border-radius:13px}
+.catalog-page-heading__back,.catalog-page-heading__favorite{width:40px;height:40px;border-radius:13px}
  .catalog-page__controls{gap:10px}
  .catalog-search{min-height:51px;padding:0 13px}
  .catalog-search input{font-size:13px}

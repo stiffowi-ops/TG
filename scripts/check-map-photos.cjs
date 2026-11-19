@@ -38,6 +38,26 @@ module.exports = async function checkMapPhotos(context, target) {
     await page.getByRole('button',{name:/Смотреть локации/}).click();
     const switcher = page.locator('.catalog-view-switcher');
     await switcher.getByRole('button',{name:'Карта'}).click();
+    const controls = page.locator('.geo-map-actions button, .geo-map__attribution a');
+    const coveredBy = async overlaySelector => {
+      const hits = await controls.evaluateAll((nodes,selector) => nodes.map(node => {
+        const r = node.getBoundingClientRect();
+        const x = r.left + r.width/2, y = r.top + r.height/2;
+        return !!document.elementFromPoint(x,y)?.closest(selector);
+      }),overlaySelector);
+      assert.deepEqual(hits,[true,true,true,true],'Zoom, geolocation or attribution escaped '+overlaySelector);
+    };
+    await page.getByRole('button',{name:'Настроить фильтры'}).tap();
+    await page.getByRole('dialog',{name:'Фильтры локаций'}).waitFor();
+    await coveredBy('.catalog-filter-overlay');
+    const attribution = page.locator('.geo-map__attribution a');
+    assert.equal(await attribution.evaluate(link=>{
+      link.focus({preventScroll:true});
+      return document.activeElement===link;
+    }),false,'The background attribution took focus through the filter sheet');
+    await page.screenshot({path:'screenshots/map-filters.png'});
+    await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
+    await page.getByRole('link',{name:/OpenStreetMap/}).waitFor();
     const pin = page.getByRole('button',{name:'Выбрать локацию '+location.title});
     await pin.tap();
     const oldPin = await pin.elementHandle();
@@ -70,6 +90,7 @@ module.exports = async function checkMapPhotos(context, target) {
     }
     await photo.tap();
     const details = page.locator('.detail-dialog');
+    await coveredBy('.dialog-overlay');
     await details.getByRole('button',{name:'Следующее фото'}).tap();
     const detailPhoto = details.locator('.location-gallery__image');
     await detailPhoto.evaluate(img => img.decode());

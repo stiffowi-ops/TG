@@ -118,9 +118,14 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Карта'}).tap();
       await checkActiveButton();
       assert.deepEqual(await brandMetrics(),homeBrand,'Map header differs from home');
+      const mapBackBounds = await back.boundingBox();
       await page.locator('.catalog-page-heading__favorite').tap();
       await page.getByRole('heading',{name:/Избранное/}).waitFor();
-      await nav.getByRole('button',{name:'Карта'}).tap();
+      const favoritesBack = page.getByRole('button',{name:'Назад',exact:true});
+      assert.deepEqual(await favoritesBack.boundingBox(),mapBackBounds,'Favorites arrow moved');
+      assert.deepEqual(await brandMetrics(),homeBrand,'Favorites wordmark moved');
+      await favoritesBack.tap();
+      await page.locator('.geo-map').waitFor();
       await back.tap();
       await nav.getByRole('button',{name:'Мои заявки'}).tap();
       await page.getByRole('button',{name:'Новая заявка'}).tap();
