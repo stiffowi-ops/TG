@@ -205,7 +205,7 @@ function App(){
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell" onClickCapture={onAppButtonClick}>
-  {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')} showBack={tab==='favorites'}/>}
+  {(tab!=='catalog'&&tab!=='map'&&tab!=='favorites')&&<Header onHome={()=>onTab('home')}/>}
   <main data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
@@ -223,6 +223,7 @@ function App(){
     onBack={()=>onTab('home')} onFavorites={()=>onTab('favorites')}
     loading={loading}
    />}
+   {tab==='favorites'&&<div className="section-block catalog-page catalog-page--redesigned favorites-page-header"><Header onHome={()=>onTab('home')} showBack/></div>}
    {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
     {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} observeCard={observeCard} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
