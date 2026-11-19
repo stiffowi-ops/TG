@@ -21,7 +21,7 @@ const path = require('node:path');
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
   await page.locator('.geo-map .maplibregl-map').waitFor({timeout:20000});
   const pins=page.locator('.geo-pin-container');
-  await pins.first().waitFor({timeout:20000});
+  await pins.first().waitFor({state:'attached',timeout:20000});
   // Some real locations share coordinates; DOM click verifies the MapLibre click handler
   // without another marker occluding the tested one in the screenshot viewport.
   await pins.first().evaluate(marker=>marker.click());
