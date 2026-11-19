@@ -120,13 +120,29 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.deepEqual(await brandMetrics(),homeBrand,'Map header differs from home');
       await page.locator('.catalog-page-heading__favorite').tap();
       await page.getByRole('heading',{name:/Избранное/}).waitFor();
+      const favoriteBack = page.locator('.catalog-page-heading__back');
+      const favoriteBrand = page.locator('.site-header__wordmark');
+      const favoriteHeader = await page.evaluate(() => {
+        const header = document.querySelector('.site-header__inner').getBoundingClientRect();
+        const brand = document.querySelector('.site-header__wordmark').getBoundingClientRect();
+        const left = document.querySelector('.catalog-page-heading__back').getBoundingClientRect();
+        const right = document.querySelector('.catalog-page-heading__spacer').getBoundingClientRect();
+        return {headerCenter:header.left+header.width/2,brandCenter:brand.left+brand.width/2,
+          leftGap:left.left-header.left,rightGap:header.right-right.right,mirror:Math.abs(left.width-right.width)};
+      });
+      assert.ok(Math.abs(favoriteHeader.headerCenter-favoriteHeader.brandCenter)<1,'Favorites logo not centered');
+      assert.ok(favoriteHeader.mirror<1 && Math.abs(favoriteHeader.leftGap-favoriteHeader.rightGap)<1,'Favorites arrows are not symmetric');
+      assert.equal(await favoriteBack.getAttribute('aria-label'),'На главную');
+      assert.ok(await favoriteBrand.isVisible());
+      await favoriteBack.tap();
+      await home.waitFor();
       await nav.getByRole('button',{name:'Карта'}).tap();
       await back.tap();
       await nav.getByRole('button',{name:'Мои заявки'}).tap();
       await page.getByRole('button',{name:'Новая заявка'}).tap();
       await page.getByRole('dialog').getByRole('button',{name:'Закрыть',exact:true}).tap();
       await nav.getByRole('button',{name:'Избранное'}).tap();
-      await page.getByRole('button',{name:'На главную'}).tap();
+      await page.locator('.catalog-page-heading__back').tap();
 
       await page.setViewportSize({width:320,height:568});
       await viewport(568,fullscreen?24:0,fullscreen?48:0,fullscreen?16:0);
