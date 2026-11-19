@@ -3,7 +3,6 @@ const assert=require('node:assert/strict');
 
 module.exports=async function checkMapDiscovery(context,target){
  const page=await context.newPage();
- const origin=new URL(target).origin;
  try{
   const places=[
    {id:'A',title:'Первая точка',area:'Москва',category:'Метро',latitude:55.7000,longitude:37.6500},
@@ -14,8 +13,15 @@ module.exports=async function checkMapDiscovery(context,target){
   await page.route('**/telegram-web-app.js*',route=>route.fulfill({contentType:'application/javascript',body:''}));
   await page.route('**/api/me',route=>route.fulfill({json:{user:{id:1},favorites:[]}}));
   await page.route('**/api/locations',route=>route.fulfill({json:{locations:places}}));
-  await context.grantPermissions(['geolocation'],{origin});
-  await context.setGeolocation({latitude:55.70001,longitude:37.65001});
+  // The browser permission backend can vary between runner environments.
+  // Feed deterministic coordinates through the same geolocation callback API.
+  await page.addInitScript(()=>{
+   Object.defineProperty(navigator,'geolocation',{configurable:true,value:{
+    getCurrentPosition(success){success({coords:{latitude:55.70001,longitude:37.65001}})},
+    watchPosition(){return 1},
+    clearWatch(){}
+   }});
+  });
   await page.goto(target);
   await page.getByRole('button',{name:'Смотреть локации'}).click();
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
@@ -57,6 +63,5 @@ module.exports=async function checkMapDiscovery(context,target){
   console.log('Verified clustered pins, carousel selection, nearest distances, and geolocation permission.');
  }finally{
   await page.close();
-  await context.clearPermissions();
  }
 };
