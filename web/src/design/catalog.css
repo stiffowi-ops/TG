@@ -57,7 +57,7 @@
 .catalog-reset{background:#FFF5ED;color:#AD6030;border:1px solid #EFDACA}
 .catalog-apply{background:#F57B1F;color:#FFF;border:1px solid #E66A16}
 .geo-map-layout{min-width:0}
-.geo-map{position:relative;width:100%;height:clamp(440px,68vh,700px);border:1px solid #E8DCCF;border-radius:21px;overflow:hidden;background:#EDE9E1;box-shadow:0 8px 22px #584B3A1C}
+.geo-map{isolation:isolate;position:relative;width:100%;height:clamp(440px,68vh,700px);border:1px solid #E8DCCF;border-radius:21px;overflow:hidden;background:#EDE9E1;box-shadow:0 8px 22px #584B3A1C}
 .geo-map__tiles{width:100%;height:100%;z-index:0}
 .geo-pin-container{display:grid;place-items:center;width:49px;height:65px;padding:0;background:transparent;border:0;cursor:pointer;touch-action:manipulation}
 .geo-pin-container--active{z-index:2!important}
