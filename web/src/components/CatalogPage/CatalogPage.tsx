@@ -37,10 +37,7 @@ export default function CatalogPage({
     onView={onView} activeFilters={activeFilters} reset={reset}
     open={filtersOpen} onClose={()=>setFiltersOpen(false)}/>
   </div>
-  <div className="catalog-results-summary catalog-results-summary--modern" aria-live="polite">
-   <span>Найдено: <strong>{locations.length}</strong></span>
-   <span>{view==='map'?'Выберите метку на карте':'Выберите подходящую локацию'}</span>
-  </div>
+  <p className="catalog-view-hint">{view==='map'?'Выберите метку на карте':'Выберите подходящую локацию'}</p>
   {view==='map'?
    <LocationMap locations={locations} selectedId={selectedId} onSelect={onSelect}
     favorites={favorites} onFavorite={onFavorite} onDetails={onDetails} onOpenYandex={onMap}/>:
