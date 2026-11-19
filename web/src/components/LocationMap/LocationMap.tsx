@@ -127,7 +127,6 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
  return <div className="geo-map-layout">
   {hasPoints?<div className="geo-map" role="region" aria-label="Интерактивная карта локаций">
    <div ref={containerRef} className="geo-map__tiles"/>
-   <div className="geo-map__count"><MapPin size={15}/>{points.length} на карте</div>
    {mapUnavailable?<div className="geo-map__fallback" role="status">
     <MapPin size={27}/><strong>Карта недоступна на этом устройстве</strong>
     <p>Локации остаются доступны для выбора и просмотра в Яндекс Картах.</p>
@@ -157,6 +156,5 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    </div>}
    <div className="geo-map__attribution"><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">© OpenStreetMap contributors</a></div>
   </div>:<div className="geo-map-empty"><MapPin size={28}/><h3>Нет точек с координатами</h3><p>Попробуйте изменить фильтры или выбрать другую локацию.</p></div>}
-  {points.length<locations.length&&<p className="geo-map-notice">На карте отображаются только локации с подтверждёнными координатами. Остальные доступны в списке.</p>}
  </div>;
 }
