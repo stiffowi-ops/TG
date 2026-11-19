@@ -7,6 +7,7 @@ const path = require('node:path');
   const browser=await chromium.launch({headless:true,args:['--no-sandbox','--enable-unsafe-swiftshader']});
   const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,isMobile:true,hasTouch:true,locale:'ru-RU'});
   const page=await context.newPage();
+  await require('./check-map-discovery.cjs')(context,target);
   page.on('pageerror',e=>console.error('SCREENSHOT_JS_ERROR:',e.message));
   await page.goto(target,{waitUntil:'networkidle',timeout:40000});
   await page.locator('.landing-home').waitFor();
@@ -21,7 +22,7 @@ const path = require('node:path');
   await page.locator('.catalog-view-switcher').getByRole('button',{name:'Карта'}).click();
   await page.locator('.geo-map .maplibregl-map').waitFor({timeout:20000});
   const pins=page.locator('.geo-pin-container');
-  await pins.first().waitFor({timeout:20000});
+  await pins.first().waitFor({state:'attached',timeout:20000});
   // Some real locations share coordinates; DOM click verifies the MapLibre click handler
   // without another marker occluding the tested one in the screenshot viewport.
   await pins.first().evaluate(marker=>marker.click());

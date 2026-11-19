@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRight,FileText,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
+import {ArrowRight,ChevronLeft,ChevronRight,FileText,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
 import {LngLatBounds,Map as MapLibreMap,Marker as MapLibreMarker} from 'maplibre-gl';
 import type {StyleSpecification} from 'maplibre-gl';
 import type {Location} from '../../types';
@@ -11,6 +11,15 @@ type Props={
  favorites:Set<string>;onFavorite:(id:string)=>void;onDetails:(location:Location)=>void;onOpenYandex:(location:Location)=>void;
 };
 type Pin={marker:MapLibreMarker;element:HTMLButtonElement};
+type UserPoint={latitude:number;longitude:number};
+const distanceKm=(from:UserPoint,to:Location)=>{
+ const toRadians=(n:number)=>n*Math.PI/180;
+ const deltaLat=toRadians(to.latitude!-from.latitude);
+ const deltaLng=toRadians(to.longitude!-from.longitude);
+ const a=Math.sin(deltaLat/2)**2+Math.cos(toRadians(from.latitude))*Math.cos(toRadians(to.latitude!))*Math.sin(deltaLng/2)**2;
+ return 6371*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+};
+const readableDistance=(km:number)=>km<1?Math.round(km*1000)+' м':km.toFixed(1).replace('.',',')+' км';
 const validPoint=(l:Location)=>l.latitude!==undefined&&l.longitude!==undefined&&Number.isFinite(l.latitude)&&Number.isFinite(l.longitude)&&Math.abs(l.latitude)<=90&&Math.abs(l.longitude)<=180;
 const tileURL=import.meta.env.VITE_MAP_TILE_URL?.trim()||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const mapStyle:StyleSpecification={version:8,sources:{osm:{type:'raster',tiles:[tileURL],tileSize:256,minzoom:0,maxzoom:19,attribution:'© OpenStreetMap contributors'}},layers:[{id:'osm-base',type:'raster',source:'osm'}]};
@@ -25,11 +34,135 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
  const containerRef=useRef<HTMLDivElement|null>(null);
  const mapRef=useRef<MapLibreMap|null>(null);
  const markersRef=useRef<Map<string,Pin>>(new Map());
+ const clusterMarkersRef=useRef<Map<string,Pin>>(new Map());
+ const clusterUpdateRef=useRef<()=>void>(()=>{});
+ const userMarkerRef=useRef<MapLibreMarker|null>(null);
+ const pointsRef=useRef(points);
+ pointsRef.current=points;
+ const selectedRef=useRef(selectedId);
+ selectedRef.current=selectedId;
  const onSelectRef=useRef(onSelect);
  onSelectRef.current=onSelect;
+ const swipeRef=useRef<{x:number;y:number}|null>(null);
+ const [nearbyPoint,setNearbyPoint]=useState<UserPoint|null>(null);
+ const [expandedCluster,setExpandedCluster]=useState<string[]|null>(null);
+ const nearby=useMemo(()=>nearbyPoint?points.map(location=>({location,km:distanceKm(nearbyPoint,location)}))
+  .sort((a,b)=>a.km-b.km||a.location.title.localeCompare(b.location.title,'ru')):[],[points,nearbyPoint]);
+ const ordered=nearbyPoint?nearby.map(item=>item.location):points;
+ const selectedIndex=ordered.findIndex(location=>location.id===selectedId);
+ const changeSelected=(step:number)=>{
+  if(!ordered.length)return;
+  const next=(selectedIndex+step+ordered.length)%ordered.length;
+  onSelect(ordered[next].id);
+ };
+ const selectedDistance=nearby.find(item=>item.location.id===selectedId)?.km;
  const [tileFailures,setTileFailures]=useState(0);
  const [mapUnavailable,setMapUnavailable]=useState(false);
  const [geoError,setGeoError]=useState('');
+
+ // Lightweight screen-space clustering. Keep existing K markers mounted so gallery
+ // refreshes, selection and favorites never recreate their DOM nodes.
+ clusterUpdateRef.current=()=>{
+  const map=mapRef.current;
+  if(!map)return;
+  const locations=pointsRef.current;
+  const pins=markersRef.current;
+  const cellSize=55;
+  const groups=new Map<number,number[]>();
+  const parents=locations.map((_,index)=>index);
+  const find=(index:number):number=>{
+   while(parents[index]!==index){parents[index]=parents[parents[index]];index=parents[index]}
+   return index;
+  };
+  const buckets=new Map<string,Array<{index:number;x:number;y:number}>>();
+  const locationsOnScreen:Array<{index:number;x:number;y:number}>=[];
+  for(let index=0;index<locations.length;index++){
+   const location=locations[index];
+   const marker=pins.get(location.id);
+   if(marker)marker.element.style.visibility='visible';
+   if(!marker||location.id===selectedRef.current)continue;
+   const p=map.project([location.longitude!,location.latitude!]);
+   if(p.x< -cellSize||p.y< -cellSize||p.x>map.getContainer().clientWidth+cellSize||p.y>map.getContainer().clientHeight+cellSize)continue;
+   const cellX=Math.floor(p.x/cellSize),cellY=Math.floor(p.y/cellSize);
+   for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++){
+    for(const entry of buckets.get((cellX+dx)+':'+(cellY+dy))??[]){
+     if((entry.x-p.x)**2+(entry.y-p.y)**2<=cellSize**2){
+      const rootA=find(index),rootB=find(entry.index);
+      if(rootA!==rootB)parents[rootA]=rootB;
+     }
+    }
+   }
+   const key=cellX+':'+cellY;
+   const bucket=buckets.get(key)??[];
+   bucket.push({index,x:p.x,y:p.y});
+   buckets.set(key,bucket);
+   locationsOnScreen.push({index,x:p.x,y:p.y});
+  }
+  for(const entry of locationsOnScreen){
+   const root=find(entry.index);
+   const group=groups.get(root)??[];
+   group.push(entry.index);
+   groups.set(root,group);
+  }
+  const surviving=new Set<string>();
+  for(const indexes of groups.values()){
+   if(indexes.length<2)continue;
+   const ids=indexes.map(index=>locations[index].id).sort();
+   const key=ids.join('|');
+   surviving.add(key);
+   let x=0,y=0;
+   for(const index of indexes){
+    const location=locations[index];
+    const position=map.project([location.longitude!,location.latitude!]);
+    x+=position.x;y+=position.y;
+    const pin=pins.get(location.id);
+    if(pin)pin.element.style.visibility='hidden';
+   }
+   const center=map.unproject([x/indexes.length,y/indexes.length]);
+   let pin=clusterMarkersRef.current.get(key);
+   if(!pin){
+    const element=document.createElement('button');
+    element.type='button';
+    element.className='geo-cluster-marker';
+    element.textContent=String(ids.length);
+    element.setAttribute('aria-label','Группа из '+ids.length+' локаций');
+    element.title=ids.length+' локаций — приблизить';
+    element.addEventListener('click',event=>{
+     event.stopPropagation();
+     const current=mapRef.current;
+     if(!current)return;
+     if(current.getZoom()>=17.5){
+      setExpandedCluster(ids);
+     }else{
+      const bounds=new LngLatBounds();
+      ids.forEach(id=>{
+       const location=pointsRef.current.find(l=>l.id===id);
+       if(location)bounds.extend([location.longitude!,location.latitude!]);
+      });
+      const center=current.unproject([
+       ids.reduce((sum,id)=>{
+        const loc=pointsRef.current.find(l=>l.id===id);
+        return sum+(loc?current.project([loc.longitude!,loc.latitude!]).x:0);
+       },0)/ids.length,
+       ids.reduce((sum,id)=>{
+        const loc=pointsRef.current.find(l=>l.id===id);
+        return sum+(loc?current.project([loc.longitude!,loc.latitude!]).y:0);
+       },0)/ids.length
+      ]);
+      current.easeTo({center,zoom:Math.min(18,current.getZoom()+2),duration:320,essential:true});
+     }
+    });
+    const marker=new MapLibreMarker({element,anchor:'center'}).setLngLat(center).addTo(map);
+    pin={marker,element};
+    clusterMarkersRef.current.set(key,pin);
+   }else{
+    pin.marker.setLngLat(center);
+   }
+  }
+  for(const [key,pin] of clusterMarkersRef.current){
+   if(!surviving.has(key)){pin.marker.remove();clusterMarkersRef.current.delete(key)}
+  }
+ };
 
  useEffect(()=>{
   if(!hasPoints||!containerRef.current)return;
@@ -42,7 +175,9 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     zoom:11,minZoom:3,maxZoom:18,attributionControl:false,scrollZoom:false,
     dragRotate:false,touchPitch:false,renderWorldCopies:false});
    mapRef.current=map;
-   map.on('load',()=>{if(active)map?.resize()});
+   map.on('load',()=>{if(active){map?.resize();clusterUpdateRef.current()}});
+   map.on('moveend',()=>{if(active)clusterUpdateRef.current()});
+   map.on('resize',()=>{if(active)clusterUpdateRef.current()});
    map.on('error',event=>{
     if(!active)return;
     const detail=String(event.error?.message||'');
@@ -61,6 +196,10 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    active=false;
    markersRef.current.forEach(({marker})=>marker.remove());
    markersRef.current.clear();
+   clusterMarkersRef.current.forEach(({marker})=>marker.remove());
+   clusterMarkersRef.current.clear();
+   userMarkerRef.current?.remove();
+   userMarkerRef.current=null;
    if(mapRef.current===map)mapRef.current=null;
    if(map){try{map.remove()}catch{/* Browser may have lost WebGL context */}}
   };
@@ -75,7 +214,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    const pin=pins.get(location.id);
    const coords=pin?.marker.getLngLat();
    return pin?.element.title===location.title&&coords?.lat===location.latitude&&coords?.lng===location.longitude;
-  }))return;
+  })){clusterUpdateRef.current();return;}
   markersRef.current.forEach(({marker})=>marker.remove());
   markersRef.current.clear();
   for(const location of points){
@@ -104,6 +243,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    points.forEach(location=>bounds.extend([location.longitude!,location.latitude!]));
    map.fitBounds(bounds,{padding:45,maxZoom:12,duration:0});
   }
+  clusterUpdateRef.current();
  },[points,hasPoints]);
 
  useEffect(()=>{
@@ -114,7 +254,20 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    element.classList.toggle('geo-pin-container--favorite',favorites.has(id));
    element.setAttribute('aria-pressed',String(active));
   });
+  clusterUpdateRef.current();
  },[selectedId,points,favorites]);
+
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(!map||!nearbyPoint)return;
+  if(!userMarkerRef.current){
+   const el=document.createElement('span');
+   el.className='geo-user-point';
+   el.setAttribute('aria-label','Ваше местоположение');
+   userMarkerRef.current=new MapLibreMarker({element:el,anchor:'center'}).setLngLat([nearbyPoint.longitude,nearbyPoint.latitude]).addTo(map);
+  }
+  userMarkerRef.current.setLngLat([nearbyPoint.longitude,nearbyPoint.latitude]);
+ },[nearbyPoint,hasPoints]);
 
  const latitude=chosen?.latitude;
  const longitude=chosen?.longitude;
@@ -128,10 +281,14 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
   const map=mapRef.current;
   if(!map){setGeoError('Карта недоступна на устройстве');return}
   if(!navigator.geolocation){setGeoError('Геолокация недоступна');return}
+  setGeoError('Определяем местоположение…');
   navigator.geolocation.getCurrentPosition(position=>{
+   const user={latitude:position.coords.latitude,longitude:position.coords.longitude};
    setGeoError('');
-   map.flyTo({center:[position.coords.longitude,position.coords.latitude],zoom:13,duration:500,essential:true});
-  },()=>setGeoError('Проверьте разрешение на геолокацию'),{enableHighAccuracy:false,timeout:8000});
+   setNearbyPoint(user);
+   setExpandedCluster(null);
+   map.flyTo({center:[user.longitude,user.latitude],zoom:Math.max(11,map.getZoom()),duration:500,essential:true});
+  },error=>setGeoError(error.code===1?'Доступ к геолокации запрещён. Разрешите его в браузере.':'Не удалось определить местоположение. Попробуйте ещё раз.'),{enableHighAccuracy:false,timeout:10000,maximumAge:60000});
  };
  return <div className="geo-map-layout">
   {hasPoints?<div className={`geo-map${chosen?' geo-map--preview-open':''}`} role="region" aria-label="Интерактивная карта локаций">
@@ -149,11 +306,41 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     {geoError&&<span className="geo-map-actions__error" role="status">{geoError}</span>}
    </div>}
    {!mapUnavailable&&tileFailures>=4&&<div className="geo-map__tile-notice" role="status">Подложка карты временно недоступна. Метки сохраняют свои координаты.</div>}
-   {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}>
+   {expandedCluster&&<div className="geo-cluster-sheet" role="group" aria-label="Локации в одной точке">
+    <div className="geo-cluster-sheet__heading"><strong>Локации рядом ({expandedCluster.length})</strong><button type="button" aria-label="Закрыть список локаций" onClick={()=>setExpandedCluster(null)}><X size={17}/></button></div>
+    <div className="geo-cluster-sheet__list">{expandedCluster.map(id=>{
+     const location=points.find(p=>p.id===id);
+     return location?<button type="button" key={id} onClick={()=>{onSelect(id);setExpandedCluster(null)}}>{location.title}<ArrowRight size={15}/></button>:null;
+    })}</div>
+   </div>}
+   {nearbyPoint&&!chosen&&<div className="geo-nearby" role="region" aria-label="Ближайшие локации">
+    <div className="geo-nearby__heading"><strong>Рядом со мной</strong><button type="button" onClick={()=>{setNearbyPoint(null);userMarkerRef.current?.remove();userMarkerRef.current=null}} aria-label="Закрыть ближайшие локации"><X size={17}/></button></div>
+    <div className="geo-nearby__list">{nearby.slice(0,6).map(({location,km})=><button type="button" key={location.id} onClick={()=>onSelect(location.id)}>
+     <span>{location.title}</span><small>{readableDistance(km)}</small><ArrowRight size={15}/>
+    </button>)}</div>
+   </div>}
+   {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}
+    onTouchStart={event=>{swipeRef.current={x:event.touches[0].clientX,y:event.touches[0].clientY}}}
+    onTouchEnd={event=>{
+     const start=swipeRef.current;
+     swipeRef.current=null;
+     if(!start)return;
+     const dx=event.changedTouches[0].clientX-start.x;
+     const dy=event.changedTouches[0].clientY-start.y;
+     if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.3){
+      // Photo gallery has its own swipe gesture: only card body swipes navigate locations.
+      if(!(event.target instanceof Element && event.target.closest('.geo-map-preview__photo')))changeSelected(dx<0?1:-1);
+     }
+    }}>
     <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
     <div className="geo-map-preview__photo"><MapPhoto location={chosen} onOpen={()=>onDetails(chosen)}/></div>
     <div className="geo-map-preview__body">
      <h3 className="geo-map-preview__title">{chosen.title}</h3>
+     <div className="geo-map-preview__browse" role="group" aria-label="Листать локации">
+      <button type="button" aria-label="Предыдущая локация" onClick={()=>changeSelected(-1)} disabled={ordered.length<2}><ChevronLeft size={17}/></button>
+      <span>{selectedIndex+1} из {ordered.length}{selectedDistance!==undefined?' · '+readableDistance(selectedDistance):''}</span>
+      <button type="button" aria-label="Следующая локация" onClick={()=>changeSelected(1)} disabled={ordered.length<2}><ChevronRight size={17}/></button>
+     </div>
      <button type="button" className="geo-map-preview__description" onClick={()=>onDetails(chosen)}>
       <FileText size={17} aria-hidden="true"/><span>Описание локации</span><ArrowRight className="geo-map-preview__description-arrow" size={18} aria-hidden="true"/>
      </button>
