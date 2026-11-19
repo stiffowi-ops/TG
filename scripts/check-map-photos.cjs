@@ -48,7 +48,7 @@ module.exports = async function checkMapPhotos(context, target) {
     const oldPin = await pin.elementHandle();
     const preview = page.locator('.geo-map-preview');
     await preview.locator('.location-gallery__fallback').waitFor();
-    assert.equal(await pin.locator('.geo-pin__letter').innerText(),'К');
+    assert.equal(await pin.locator('.geo-pin__letter').textContent(),'К');
     assert.equal(await preview.getByRole('button',{name:'Описание локации'}).count(),1);
     await preview.getByRole('button',{name:'В избранное'}).tap();
     await page.waitForFunction(()=>document.querySelector('.geo-pin-container--favorite .geo-pin__heart'));
