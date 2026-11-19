@@ -93,6 +93,7 @@ const path = require('node:path');
   fs.writeFileSync('screenshots/layout-metrics.json',JSON.stringify(info,null,2));
   console.log('CAPTURE:',JSON.stringify(info));
   await require('./check-map-photos.cjs')(context,target);
+  await require('./check-map-discovery.cjs')(context,target);
   await require('./check-telegram-layout.cjs')(context,target);
   await require('./check-motion.cjs')(context,target);
   await browser.close();
