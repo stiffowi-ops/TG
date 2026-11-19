@@ -47,6 +47,14 @@ module.exports=async function checkMapDiscovery(context,target){
   // The nearby list must be explicitly permission-gated and distance sorted.
   await preview.getByRole('button',{name:'Закрыть карточку'}).click();
   await page.getByRole('button',{name:'Моё местоположение'}).click();
+  await page.waitForTimeout(350);
+  console.log('NEARBY_DIAGNOSTIC',JSON.stringify(await page.evaluate(()=>({
+   error:document.querySelector('.geo-map-actions__error')?.textContent,
+   nearby:document.querySelector('.geo-nearby')?.textContent,
+   preview:document.querySelector('.geo-map-preview__title')?.textContent,
+   hasGeolocation:!!navigator.geolocation,
+   geolocationFn:String(navigator.geolocation?.getCurrentPosition).slice(0,110)
+  }))));
   const nearby=page.getByRole('region',{name:'Ближайшие локации'});
   await nearby.waitFor({timeout:12000});
   await nearby.getByRole('button',{name:/Ближайшая точка/}).waitFor({timeout:8000});
