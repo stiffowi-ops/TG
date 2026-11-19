@@ -32,6 +32,10 @@ module.exports = async function checkTelegramLayout(context, target) {
       const home = page.locator('.home-viewport');
       async function checkActiveButton(){
         assert.equal(await nav.getByRole('button').count(),fullscreen?5:4);
+        await page.waitForFunction(()=>{
+          const icon=document.querySelector('.bottom-navigation [aria-current="page"] .bottom-navigation__icon');
+          return icon&&getComputedStyle(icon).backgroundColor!=='rgba(0, 0, 0, 0)';
+        });
         const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
           const box = button.getBoundingClientRect();
           const iconBox = button.querySelector('.bottom-navigation__icon').getBoundingClientRect();
