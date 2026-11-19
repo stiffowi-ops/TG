@@ -1,8 +1,8 @@
 /* Independent first-screen components, painted entirely with replaceable assets. */
 body { background:var(--ui-background); }
 .site-header { background:#FFFCF9; border:0; flex:0 0 auto; }
-.site-header__inner { display:flex;align-items:center;justify-content:center;min-height:65px;padding:11px 20px; }
-.site-header__brand { display:block;text-align:center;line-height:1.05; }
+.site-header__inner { position:relative;display:flex;align-items:center;justify-content:center;min-height:65px;padding:11px 20px; }
+.site-header__brand { margin:0;display:block;text-align:center;line-height:1.05; }
 .site-header__wordmark { display:block;font-size:27px;letter-spacing:-1.25px;line-height:1.1;font-weight:850;color:var(--ui-ink); }
 .site-header__wordmark small { margin-top:5px;font-weight:650;font-size:9px;letter-spacing:1.0px;text-transform:uppercase;color:#89999B; }
 .brand-dot { color:var(--ui-accent); }
