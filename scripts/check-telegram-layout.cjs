@@ -111,6 +111,8 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.deepEqual(await brandMetrics(),homeBrand,'List header differs from home');
       const back = page.locator('.catalog-page-heading__back');
       assert.ok((await back.boundingBox()).y >= (fullscreen?72:0));
+      const catalogBackBox = await back.boundingBox();
+      const catalogHeaderBox = await page.locator('.catalog-page .site-header__inner').boundingBox();
       await page.getByRole('button',{name:'Настроить фильтры'}).tap();
       await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
       const cards = page.locator('.catalog-location-grid article');
@@ -129,7 +131,17 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.deepEqual(await brandMetrics(),homeBrand,'Map header differs from home');
       await page.locator('.catalog-page-heading__favorite').tap();
       await page.getByRole('heading',{name:/Избранное/}).waitFor();
-      const favoriteBack = page.locator('.catalog-page-heading__back');
+      const favoriteBack = page.locator('.favorites-page-header .catalog-page-heading__back');
+      const favoriteBackBox = await favoriteBack.boundingBox();
+      const favoriteHeaderBox = await page.locator('.favorites-page-header .site-header__inner').boundingBox();
+      for(const key of ['x','y','width','height']){
+        assert.ok(Math.abs(favoriteBackBox[key]-catalogBackBox[key])<1,
+          'Favorites back arrow differs from catalog '+key+': '+JSON.stringify({favorites:favoriteBackBox,catalog:catalogBackBox}));
+      }
+      for(const key of ['x','y','width','height']){
+        assert.ok(Math.abs(favoriteHeaderBox[key]-catalogHeaderBox[key])<1,
+          'Favorites header differs from catalog '+key);
+      }
       const favoriteBrand = page.locator('.site-header__wordmark');
       const favoriteHeader = await page.evaluate(() => {
         const header = document.querySelector('.site-header__inner').getBoundingClientRect();
