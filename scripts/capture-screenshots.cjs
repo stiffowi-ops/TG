@@ -26,6 +26,13 @@ const path = require('node:path');
   // without another marker occluding the tested one in the screenshot viewport.
   await pins.first().evaluate(marker=>marker.click());
   await page.locator('.geo-map-preview').waitFor();
+  const activePin=page.locator('.geo-pin-container--active');
+  if(await activePin.count()!==1)throw Error('Expected exactly one selected custom pin');
+  if(!await activePin.locator('.geo-pin__letter').evaluate(el=>el.textContent==='К'))
+    throw Error('Custom marker must show the Cyrillic K');
+  if(!await activePin.locator('.geo-pin__svg').count())
+    throw Error('Custom SVG marker is missing');
+  await page.locator('.geo-map-preview').getByRole('button',{name:'Описание локации'}).waitFor();
   await page.screenshot({path:'screenshots/05-map-selected-real.png'});
   // Attribution must retain OpenStreetMap copyright without unwanted map engine branding.
   const attribution=await page.locator('.geo-map__attribution').innerText();
@@ -39,7 +46,7 @@ const path = require('node:path');
   });
   if(mapLayers.overlap)throw Error('OpenStreetMap attribution overlaps the preview: '+JSON.stringify(mapLayers));
   if(await page.locator('.geo-map .leaflet-container').count())throw Error('Legacy map engine remains in the DOM');
-  await page.locator('.geo-map-preview__title-button').click();
+  await page.locator('.geo-map-preview').getByRole('button',{name:'Описание локации'}).click();
   const detailOverlay=page.locator('.detail-dialog');
   await detailOverlay.waitFor();
   const modalAboveMap=await page.evaluate(()=>{
