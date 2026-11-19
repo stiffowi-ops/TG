@@ -97,7 +97,7 @@ body { background:var(--ui-background); }
  .primary-action.landing-cta { min-height:44px; }
  .shortcut-card.landing-shortcut { min-height:46px; padding:5px 12px; }
  .shortcut-card .shortcut-icon { height:34px; width:34px; flex-basis:34px; }
- .landing-shortcuts { gap:5px; }
+ .landing-shortcuts { gap:5px; margin-top:6px!important; }
 }
 @container home (max-width:550px) and (max-height:380px) {
  .landing-shortcuts { grid-template-columns:repeat(3,minmax(0,1fr)); }
