@@ -88,6 +88,7 @@ body { background:var(--ui-background); }
  .home-viewport .landing-hero { flex-basis:var(--ui-hero-min-height); }
 }
 @container home (max-height:550px) {
+ .landing-home { padding-bottom:0!important; }
  .landing-hero.hero-composition { display:flex; flex-direction:column; }
  .hero-composition__scene.landing-scene { position:relative; inset:auto; min-height:0; flex:1 1 0; contain:size; }
  .hero-composition__scene picture { position:absolute; inset:0; }
