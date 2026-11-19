@@ -43,7 +43,8 @@ module.exports=async function checkMapDiscovery(context,target){
   await page.getByRole('button',{name:'Моё местоположение'}).click();
   const nearby=page.getByRole('region',{name:'Ближайшие локации'});
   await nearby.waitFor({timeout:12000});
-  const names=await nearby.locator('button > span').allInnerTexts();
+  await nearby.getByRole('button',{name:/Ближайшая точка/}).waitFor({timeout:8000});
+  const names=await nearby.locator('.geo-nearby__list button > span').allInnerTexts();
   assert.deepEqual(names.slice(0,2),['Ближайшая точка','Первая точка']);
   assert.ok((await nearby.innerText()).includes('м'));
   await nearby.getByRole('button',{name:/Ближайшая точка/}).click();
