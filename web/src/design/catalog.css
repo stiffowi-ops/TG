@@ -1,14 +1,10 @@
 /* Stage 2: completely independent catalog list and map visual layers. */
-.catalog-page--redesigned{padding:6px 0 14px!important;max-width:1050px;margin:auto;min-width:0}
-.catalog-page-heading--modern{position:relative;overflow:hidden;background:transparent;border:0;border-radius:0;box-shadow:none;padding:5px 0 17px;margin:0;min-height:0}
-.catalog-page-heading--modern:before,.catalog-page-heading--modern:after{display:none}
-.catalog-page-heading__row{display:flex;align-items:center;gap:13px}
-.catalog-page-heading__row>div{flex:1;min-width:0}
-.catalog-page-heading__back,.catalog-page-heading__favorite{display:grid;place-items:center;flex-shrink:0;width:43px;height:43px;border:1px solid #EBDDD0;border-radius:14px;background:#FFF8F1;color:#D86B25;box-shadow:0 4px 12px #75513C0D}
-.catalog-page-heading__row h1{font-size:clamp(27px,3.4vw,35px);margin:0;line-height:1.1;letter-spacing:-1.2px;color:var(--ui-ink)}
-.catalog-page-heading__row h1 span{color:var(--ui-accent)}
-.catalog-page-heading__eyebrow{display:block;font-size:9px;font-weight:800;letter-spacing:1px;color:#C9783D;margin-bottom:3px}
-.catalog-page-heading--modern>p{margin:8px 0 0 57px;color:#79898C;font-size:12px}
+.catalog-page--redesigned{padding:0 0 14px!important;max-width:1050px;margin:auto;min-width:0}
+.catalog-page .site-header{background:transparent}
+.catalog-intro{margin:4px 0 16px;text-align:center;color:#79898C;font-size:12px;line-height:1.5}
+.catalog-page-heading__back{left:0}
+.catalog-page-heading__favorite{right:0}
+.catalog-page-heading__back,.catalog-page-heading__favorite{position:absolute;top:50%;transform:translateY(-50%);display:grid;place-items:center;flex-shrink:0;width:43px;height:43px;border:1px solid #EBDDD0;border-radius:14px;background:#FFF8F1;color:#D86B25;box-shadow:0 4px 12px #75513C0D}
 .catalog-page__controls{display:grid;gap:12px}
 .catalog-search-row{display:flex;gap:10px;align-items:stretch;min-width:0}
 .catalog-search{flex:1;min-width:0;min-height:55px;display:flex;align-items:center;gap:12px;background:#FFFEFC;border:1px solid #EADDD2;border-radius:16px;padding:0 16px;box-shadow:0 5px 18px #6853460C;color:#927F70}
@@ -102,11 +98,8 @@
 }
 @media(max-width:530px){
  .catalog-page--redesigned{padding:0 0 9px!important}
- .catalog-page-heading--modern{padding:4px 0 15px}
- .catalog-page-heading__row h1{font-size:27px}
- .catalog-page-heading__eyebrow{font-size:8px;letter-spacing:.6px}
+ .catalog-intro{font-size:11px}
  .catalog-page-heading__back,.catalog-page-heading__favorite{width:40px;height:40px;border-radius:13px}
- .catalog-page-heading--modern>p{margin-left:52px;font-size:11px}
  .catalog-page__controls{gap:10px}
  .catalog-search{min-height:51px;padding:0 13px}
  .catalog-search input{font-size:13px}

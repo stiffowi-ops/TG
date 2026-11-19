@@ -57,15 +57,29 @@ module.exports = async function checkTelegramLayout(context, target) {
         }
         assert.equal(await page.evaluate(()=>Telegram.WebApp.isVerticalSwipesEnabled),false);
       }
+      // Compare the rendered letters, not the width of their containing element.
+      const brandMetrics = () => page.locator('.site-header__wordmark').evaluate(mark =>
+        [mark,mark.querySelector('small')].map(el => {
+          const text = document.createRange();
+          text.selectNodeContents(el.firstChild);
+          const rect = text.getBoundingClientRect();
+          const style = getComputedStyle(el);
+          return {center:Math.round(rect.x+rect.width/2), top:Math.round(rect.y),
+            font:style.fontSize, family:style.fontFamily, weight:style.fontWeight,
+            tracking:style.letterSpacing, color:style.color};
+        })
+      );
       // The SDK may deliver insets after first paint and change its live height while expanding.
       await viewport(height,fullscreen?24:0,fullscreen?48:0,fullscreen?20:0);
       await homeFits();
+      const homeBrand = await brandMetrics();
       const firstNav = await nav.boundingBox();
       assert.equal(firstNav.y + firstNav.height, height - (fullscreen?20:0));
       await page.evaluate(()=>document.documentElement.style.setProperty('--tg-viewport-height','418px'));
       assert.deepEqual(await nav.boundingBox(),firstNav);
 
       await home.getByRole('button',{name:'Смотреть локации'}).tap();
+      assert.deepEqual(await brandMetrics(),homeBrand,'List header differs from home');
       const back = page.locator('.catalog-page-heading__back');
       assert.ok((await back.boundingBox()).y >= (fullscreen?72:0));
       await page.getByRole('button',{name:'Настроить фильтры'}).tap();
@@ -73,6 +87,10 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.locator('.location-card__title').first().tap();
       await page.locator('.detail-dialog .dialog-close').tap();
       await back.tap();
+      await nav.getByRole('button',{name:'Карта'}).tap();
+      assert.deepEqual(await brandMetrics(),homeBrand,'Map header differs from home');
+      await page.locator('.catalog-page-heading__favorite').tap();
+      await page.getByRole('heading',{name:/Избранное/}).waitFor();
       await nav.getByRole('button',{name:'Карта'}).tap();
       await back.tap();
       await nav.getByRole('button',{name:'Мои заявки'}).tap();
