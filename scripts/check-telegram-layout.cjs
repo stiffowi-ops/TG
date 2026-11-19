@@ -12,19 +12,39 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.route('**/telegram-web-app.js*', route => route.fulfill({
         contentType:'application/javascript',
         body:`window.Telegram = {WebApp:{
-          platform:'android', initData:'', isFullscreen:${fullscreen}, isExpanded:true,
+          platform:'android', initData:'layout-test', isFullscreen:${fullscreen}, isExpanded:true,
           isVersionAtLeast:()=>true, ready(){}, expand(){}, setHeaderColor(){},
           isVerticalSwipesEnabled:true,
           disableVerticalSwipes(){this.isVerticalSwipesEnabled=false},
           enableVerticalSwipes(){this.isVerticalSwipesEnabled=true}
         }};`
       }));
+      await page.route('**/api/me', route => route.fulfill({json:{
+        user:{id:1}, admin:fullscreen, favorites:[], cases:[]
+      }}));
+      await page.route('**/api/locations/view', route => route.fulfill({json:{ok:true}}));
       const station = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
         latitude:55.69218672, longitude:37.66859046};
-      await page.route('**/api/locations', route => route.fulfill({json:{locations:[station]}}));
+      const town = {...station,id:'036',title:'Ивантеевка',area:'Другие локации',category:'Другие локации'};
+      await page.route('**/api/locations', route => route.fulfill({json:{locations:[station,town]}}));
       await page.goto(target);
       const nav = page.getByRole('navigation',{name:'Основная навигация'});
       const home = page.locator('.home-viewport');
+      async function checkActiveButton(){
+        assert.equal(await nav.getByRole('button').count(),fullscreen?5:4);
+        const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
+          const box = button.getBoundingClientRect();
+          const icon = button.querySelector('svg').getBoundingClientRect();
+          const label = button.querySelector('span:not(.nav-count)').getBoundingClientRect();
+          const center = rect => rect.left + rect.width / 2;
+          return {background:getComputedStyle(button).backgroundColor,
+            iconOffset:center(icon)-center(box), labelOffset:center(label)-center(box),
+            paddingDifference:(icon.top-box.top)-(box.bottom-label.bottom)};
+        });
+        assert.notEqual(metrics.background,'rgba(0, 0, 0, 0)');
+        for (const offset of [metrics.iconOffset,metrics.labelOffset,metrics.paddingDifference])
+          assert.ok(Math.abs(offset)<1,'Off-center active button: '+JSON.stringify(metrics));
+      }
       async function viewport(stableHeight, systemTop, toolbarTop, bottom, left = 0) {
         await page.evaluate(({stableHeight,systemTop,toolbarTop,bottom,left})=>{
           const css = document.documentElement.style;
@@ -84,10 +104,19 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.ok((await back.boundingBox()).y >= (fullscreen?72:0));
       await page.getByRole('button',{name:'Настроить фильтры'}).tap();
       await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
-      await page.locator('.location-card__title').first().tap();
+      const cards = page.locator('.catalog-location-grid article');
+      await cards.filter({hasText:town.title}).waitFor();
+      const cardLines = async card => (await card.innerText()).split(/\n+/).map(line=>line.trim()).filter(Boolean);
+      assert.deepEqual(await cardLines(cards.first()),[station.title,station.area,'На карте']);
+      assert.deepEqual(await cardLines(cards.last()),[town.title,'На карте']);
+      await cards.last().getByRole('button',{name:town.title,exact:true}).tap();
+      const details = page.locator('.detail-dialog');
+      assert.equal(await details.getByText(town.category,{exact:true}).count(),0);
+      assert.ok(!(await details.innerText()).includes('№'+town.id));
       await page.locator('.detail-dialog .dialog-close').tap();
       await back.tap();
       await nav.getByRole('button',{name:'Карта'}).tap();
+      await checkActiveButton();
       assert.deepEqual(await brandMetrics(),homeBrand,'Map header differs from home');
       await page.locator('.catalog-page-heading__favorite').tap();
       await page.getByRole('heading',{name:/Избранное/}).waitFor();
@@ -102,6 +131,7 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.setViewportSize({width:320,height:568});
       await viewport(568,fullscreen?24:0,fullscreen?48:0,fullscreen?16:0);
       await homeFits();
+      await checkActiveButton();
       await page.setViewportSize({width:780,height:390});
       await viewport(390,0,fullscreen?48:0,0,fullscreen?24:0);
       await homeFits();

@@ -14,6 +14,5 @@ export default function LocationArt({location,compact=false}:{location:Location;
   <div className="art-buildings"><i/><i/><i/><i/><i/><i/></div>
   <div className="art-line"/><div className="art-road"/>
   <span className="art-mark"><MapPin size={16} strokeWidth={2.6}/></span>
-  {!compact&&!hasPhoto&&<span className="image-disclaimer">Демо-иллюстрация · ожидается фото</span>}
  </div>;
 }
