@@ -30,3 +30,4 @@ createRoot(document.getElementById('root')!).render(<React.StrictMode><AppErrorB
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import './design/catalog.css';
+import './design/motion.css';

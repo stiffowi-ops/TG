@@ -1,10 +1,12 @@
 import {ArrowUpRight, Check, ChevronRight, Heart, MapPin, Plus} from 'lucide-react';
+import type {RefCallback} from 'react';
 import type {Location} from '../../types';
 import PhotoCarousel from '../PhotoCarousel/PhotoCarousel';
 import LocationArt from '../LocationArt/LocationArt';
 
 export type LocationCardProps={
  location:Location;
+ observeCard:RefCallback<HTMLElement>;
  saved:boolean;
  onDetails:(location:Location)=>void;
  onFavorite:(id:string)=>void;
@@ -15,10 +17,10 @@ export type LocationCardProps={
 };
 
 export default function LocationCard({
- location,saved,onDetails,onFavorite,onMap,compareMode=false,selected=false,onSelect
+ location,observeCard,saved,onDetails,onFavorite,onMap,compareMode=false,selected=false,onSelect
 }:LocationCardProps){
  const photos=location.imageUrls?.length?location.imageUrls:location.imageUrl?[location.imageUrl]:[];
- return <article className={`location-card location-card--editorial ${selected?'selected':''}`}>
+ return <article ref={observeCard} data-location-id={location.id} className={`location-card location-card--editorial ${selected?'selected':''}`}>
   <div className="location-art-wrap location-card__media">
    <PhotoCarousel photos={photos} fallback={<LocationArt location={location}/>} label={location.title} onOpen={()=>onDetails(location)}/>
    <button type="button" className={`card-heart location-card__heart ${saved?'liked':''}`}

@@ -5,6 +5,7 @@ import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
 import LocationArt from './components/LocationArt/LocationArt';
 import CatalogPage from './components/CatalogPage/CatalogPage';
 import LocationCard from './components/LocationCard/LocationCard';
+import useCardReveal from './components/LocationCard/useCardReveal';
 import YandexLocationViewer from './components/YandexLocationViewer/YandexLocationViewer';
 import Header from './components/Header/Header';
 import LandingPage from './components/LandingPage/LandingPage';
@@ -78,6 +79,8 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
 }
 function App(){
  const [tab,setTab]=useState<Tab>('home');
+ const [hasNavigated,setHasNavigated]=useState(false);
+ const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
  const [locations,setLocations]=useState<Location[]>(backupLocations);
  const [loading,setLoading]=useState(true);
@@ -179,7 +182,7 @@ function App(){
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
  const showYandexLocation=(location:Location)=>{setYandexLocation(location)};
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
- const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
+ const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;if(t!==tab)setHasNavigated(true);setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
  const favoriteToggle=async(id:string)=>{try{
   const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
   const next=Array.isArray(data.favorites)?data.favorites:[];
@@ -199,14 +202,14 @@ function App(){
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
   {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
-  <main className={tab==='home'?'main-container home-viewport':'main-container'}>
+  <main data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
      onSearch={()=>onTab('catalog',true)}
      onFavorites={()=>onTab('favorites')}
    />}
    {(tab==='catalog'||tab==='map')&&<CatalogPage
-    locations={filtered} areas={areas} availableCategories={uniqueCategory}
+    locations={filtered} observeCard={observeCard} areas={areas} availableCategories={uniqueCategory}
     query={query} onQuery={setQuery} area={area} onArea={setArea}
     category={category} onCategory={setCategory}
     view={showMap?'map':'list'} onView={view=>onTab(view==='map'?'map':'catalog')}
@@ -217,7 +220,7 @@ function App(){
     loading={loading}
    />}
    {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
-    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
+    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} observeCard={observeCard} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
    {tab==='requests'&&<section className="section-block tab-section"><div className="section-heading request-heading"><div><span className="overline">ОБРАЩЕНИЯ</span><h1>Мои заявки</h1><p>Следите за статусом обращения и просматривайте историю в одном месте.</p></div><button className="btn primary" onClick={()=>setCreating('')}><Plus size={17}/> Новая заявка</button></div>
     {!session&&<div className="demo-notice"><ShieldCheck size={20}/><span>Для отправки заявки откройте приложение из Telegram.</span></div>}
