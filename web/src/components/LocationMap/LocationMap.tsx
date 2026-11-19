@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRight,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
+import {ArrowRight,FileText,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
 import {LngLatBounds,Map as MapLibreMap,Marker as MapLibreMarker} from 'maplibre-gl';
 import type {StyleSpecification} from 'maplibre-gl';
 import type {Location} from '../../types';
@@ -84,7 +84,15 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    element.className='geo-pin-container';
    element.setAttribute('aria-label','Выбрать локацию '+location.title);
    element.title=location.title;
-   element.innerHTML='<span class="geo-pin"><span></span></span>';
+   // Keep the actual geographic anchor at the tip; animate only the SVG,
+   // never the positioned MapLibre marker wrapper.
+   element.innerHTML=`<span class="geo-pin" aria-hidden="true">
+    <svg class="geo-pin__svg" viewBox="0 0 40 53" focusable="false">
+     <path class="geo-pin__shape" d="M20 2.5C10.7 2.5 3 9.9 3 19.3c0 8.4 5.6 15.2 14 17.1L20 50l3-13.6c8.4-1.9 14-8.7 14-17.1C37 9.9 29.3 2.5 20 2.5Z"/>
+     <text class="geo-pin__letter" x="20" y="26.2" text-anchor="middle">К</text>
+    </svg>
+    <span class="geo-pin__heart" aria-hidden="true">♥</span>
+   </span>`;
    element.addEventListener('click',event=>{event.stopPropagation();onSelectRef.current(location.id)});
    const marker=new MapLibreMarker({element,anchor:'bottom'})
     .setLngLat([location.longitude!,location.latitude!]).addTo(map);
@@ -103,9 +111,10 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    const active=id===selectedId;
    element.classList.toggle('geo-pin-container--active',active);
    element.querySelector('.geo-pin')?.classList.toggle('geo-pin--active',active);
+   element.classList.toggle('geo-pin-container--favorite',favorites.has(id));
    element.setAttribute('aria-pressed',String(active));
   });
- },[selectedId,points]);
+ },[selectedId,points,favorites]);
 
  const latitude=chosen?.latitude;
  const longitude=chosen?.longitude;
@@ -144,13 +153,15 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
     <div className="geo-map-preview__photo"><MapPhoto location={chosen} onOpen={()=>onDetails(chosen)}/></div>
     <div className="geo-map-preview__body">
-     <button type="button" className="geo-map-preview__title geo-map-preview__title-button" onClick={()=>onDetails(chosen)}>{chosen.title}</button>
-     {chosen.area&&<div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>}
+     <h3 className="geo-map-preview__title">{chosen.title}</h3>
+     <button type="button" className="geo-map-preview__description" onClick={()=>onDetails(chosen)}>
+      <FileText size={17} aria-hidden="true"/><span>Описание локации</span><ArrowRight className="geo-map-preview__description-arrow" size={18} aria-hidden="true"/>
+     </button>
      <div className="geo-map-preview__actions">
-      <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)} aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'}>
-       <Heart size={18} fill={favorites.has(chosen.id)?'currentColor':'none'}/>
+      <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)} aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'} aria-pressed={favorites.has(chosen.id)}>
+       <Heart size={19} fill={favorites.has(chosen.id)?'currentColor':'none'}/>
       </button>
-      <button type="button" className="geo-map-preview__details" onClick={()=>onOpenYandex(chosen)}>Открыть на карте <ArrowRight size={17}/></button>
+      <button type="button" className="geo-map-preview__details" onClick={()=>onOpenYandex(chosen)}><MapPin size={16} aria-hidden="true"/>Открыть на карте <ArrowRight size={16} aria-hidden="true"/></button>
      </div>
     </div>
    </div>}
