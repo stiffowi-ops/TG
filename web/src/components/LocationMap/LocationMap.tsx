@@ -264,7 +264,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    const el=document.createElement('span');
    el.className='geo-user-point';
    el.setAttribute('aria-label','Ваше местоположение');
-   userMarkerRef.current=new MapLibreMarker({element:el,anchor:'center'}).addTo(map);
+   userMarkerRef.current=new MapLibreMarker({element:el,anchor:'center'}).setLngLat([nearbyPoint.longitude,nearbyPoint.latitude]).addTo(map);
   }
   userMarkerRef.current.setLngLat([nearbyPoint.longitude,nearbyPoint.latitude]);
  },[nearbyPoint,hasPoints]);
