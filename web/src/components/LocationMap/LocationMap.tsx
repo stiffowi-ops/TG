@@ -257,6 +257,18 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
   clusterUpdateRef.current();
  },[selectedId,points,favorites]);
 
+ useEffect(()=>{
+  const map=mapRef.current;
+  if(!map||!nearbyPoint)return;
+  if(!userMarkerRef.current){
+   const el=document.createElement('span');
+   el.className='geo-user-point';
+   el.setAttribute('aria-label','Ваше местоположение');
+   userMarkerRef.current=new MapLibreMarker({element:el,anchor:'center'}).addTo(map);
+  }
+  userMarkerRef.current.setLngLat([nearbyPoint.longitude,nearbyPoint.latitude]);
+ },[nearbyPoint,hasPoints]);
+
  const latitude=chosen?.latitude;
  const longitude=chosen?.longitude;
  useEffect(()=>{
@@ -269,10 +281,14 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
   const map=mapRef.current;
   if(!map){setGeoError('Карта недоступна на устройстве');return}
   if(!navigator.geolocation){setGeoError('Геолокация недоступна');return}
+  setGeoError('Определяем местоположение…');
   navigator.geolocation.getCurrentPosition(position=>{
+   const user={latitude:position.coords.latitude,longitude:position.coords.longitude};
    setGeoError('');
-   map.flyTo({center:[position.coords.longitude,position.coords.latitude],zoom:13,duration:500,essential:true});
-  },()=>setGeoError('Проверьте разрешение на геолокацию'),{enableHighAccuracy:false,timeout:8000});
+   setNearbyPoint(user);
+   setExpandedCluster(null);
+   map.flyTo({center:[user.longitude,user.latitude],zoom:Math.max(11,map.getZoom()),duration:500,essential:true});
+  },error=>setGeoError(error.code===1?'Доступ к геолокации запрещён. Разрешите его в браузере.':'Не удалось определить местоположение. Попробуйте ещё раз.'),{enableHighAccuracy:false,timeout:10000,maximumAge:60000});
  };
  return <div className="geo-map-layout">
   {hasPoints?<div className={`geo-map${chosen?' geo-map--preview-open':''}`} role="region" aria-label="Интерактивная карта локаций">
@@ -290,11 +306,41 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     {geoError&&<span className="geo-map-actions__error" role="status">{geoError}</span>}
    </div>}
    {!mapUnavailable&&tileFailures>=4&&<div className="geo-map__tile-notice" role="status">Подложка карты временно недоступна. Метки сохраняют свои координаты.</div>}
-   {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}>
+   {expandedCluster&&<div className="geo-cluster-sheet" role="group" aria-label="Локации в одной точке">
+    <div className="geo-cluster-sheet__heading"><strong>Локации рядом ({expandedCluster.length})</strong><button type="button" aria-label="Закрыть список локаций" onClick={()=>setExpandedCluster(null)}><X size={17}/></button></div>
+    <div className="geo-cluster-sheet__list">{expandedCluster.map(id=>{
+     const location=points.find(p=>p.id===id);
+     return location?<button type="button" key={id} onClick={()=>{onSelect(id);setExpandedCluster(null)}}>{location.title}<ArrowRight size={15}/></button>:null;
+    })}</div>
+   </div>}
+   {nearbyPoint&&!chosen&&<div className="geo-nearby" role="region" aria-label="Ближайшие локации">
+    <div className="geo-nearby__heading"><strong>Рядом со мной</strong><button type="button" onClick={()=>{setNearbyPoint(null);userMarkerRef.current?.remove();userMarkerRef.current=null}} aria-label="Закрыть ближайшие локации"><X size={17}/></button></div>
+    <div className="geo-nearby__list">{nearby.slice(0,6).map(({location,km})=><button type="button" key={location.id} onClick={()=>onSelect(location.id)}>
+     <span>{location.title}</span><small>{readableDistance(km)}</small><ArrowRight size={15}/>
+    </button>)}</div>
+   </div>}
+   {chosen&&<div className="geo-map-preview" role="group" aria-label={'Выбрана локация '+chosen.title}
+    onTouchStart={event=>{swipeRef.current={x:event.touches[0].clientX,y:event.touches[0].clientY}}}
+    onTouchEnd={event=>{
+     const start=swipeRef.current;
+     swipeRef.current=null;
+     if(!start)return;
+     const dx=event.changedTouches[0].clientX-start.x;
+     const dy=event.changedTouches[0].clientY-start.y;
+     if(Math.abs(dx)>70&&Math.abs(dx)>Math.abs(dy)*1.3){
+      // Photo gallery has its own swipe gesture: only card body swipes navigate locations.
+      if(!(event.target instanceof Element && event.target.closest('.geo-map-preview__photo')))changeSelected(dx<0?1:-1);
+     }
+    }}>
     <button type="button" className="geo-map-preview__close" aria-label="Закрыть карточку" onClick={()=>onSelect(null)}><X size={17}/></button>
     <div className="geo-map-preview__photo"><MapPhoto location={chosen} onOpen={()=>onDetails(chosen)}/></div>
     <div className="geo-map-preview__body">
      <h3 className="geo-map-preview__title">{chosen.title}</h3>
+     <div className="geo-map-preview__browse" role="group" aria-label="Листать локации">
+      <button type="button" aria-label="Предыдущая локация" onClick={()=>changeSelected(-1)} disabled={ordered.length<2}><ChevronLeft size={17}/></button>
+      <span>{selectedIndex+1} из {ordered.length}{selectedDistance!==undefined?' · '+readableDistance(selectedDistance):''}</span>
+      <button type="button" aria-label="Следующая локация" onClick={()=>changeSelected(1)} disabled={ordered.length<2}><ChevronRight size={17}/></button>
+     </div>
      <button type="button" className="geo-map-preview__description" onClick={()=>onDetails(chosen)}>
       <FileText size={17} aria-hidden="true"/><span>Описание локации</span><ArrowRight className="geo-map-preview__description-arrow" size={18} aria-hidden="true"/>
      </button>
