@@ -3,8 +3,10 @@
  to { opacity:1; transform:translate3d(0,0,0); }
 }
 
+@keyframes home-enter {from {opacity:0;} to {opacity:1;}}
+
 @media (prefers-reduced-motion: no-preference) {
- .main-container[data-navigated] .landing-home > *,
+ .main-container[data-navigated] .landing-home > * { animation:home-enter 300ms ease-out both; }
  .main-container[data-navigated] > .tab-section,
  .main-container[data-navigated] .catalog-intro,
  .main-container[data-navigated] .catalog-page__controls > :not(.catalog-filter-overlay),
