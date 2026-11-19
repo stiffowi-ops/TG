@@ -21,3 +21,19 @@
   transition:none;
  }
 }
+
+/* Press feedback uses the independent scale property, preserving positioned icons and transforms. */
+@media (prefers-reduced-motion: no-preference) {
+ .app-shell button:not(:disabled) {
+  transition-property:transform, scale, background-color, border-color, box-shadow, color, filter;
+  transition-duration:160ms;
+  transition-timing-function:cubic-bezier(.22,1,.36,1);
+  -webkit-tap-highlight-color:transparent;
+ }
+ .app-shell button:not(:disabled):active {
+  scale:.965;
+  filter:brightness(.97);
+ }
+ .app-shell .bottom-navigation__item.nav-item:not(:disabled):active,
+ .app-shell .geo-map-actions>button:not(:disabled):active {scale:.94}
+}
