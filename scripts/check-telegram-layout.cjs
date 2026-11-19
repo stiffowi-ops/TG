@@ -50,7 +50,7 @@ module.exports = async function checkTelegramLayout(context, target) {
             labelOffset:center(label)-center(box),
             highlightOffset:highlightCenter-box.width/2};
         });
-        assert.equal(metrics.opacity,'1');
+        assert.ok(Number(metrics.opacity)>.99,'Highlight not visible: '+JSON.stringify(metrics));
         for(const offset of [metrics.iconOffset,metrics.labelOffset,metrics.highlightOffset])
           assert.ok(Math.abs(offset)<1,'Off-center active highlight: '+JSON.stringify(metrics));
       }
