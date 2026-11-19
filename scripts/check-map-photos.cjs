@@ -26,6 +26,11 @@ module.exports = async function checkMapPhotos(context, target) {
 
     const location = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
       latitude:55.69218672, longitude:37.66859046};
+    let markedFavorite=false;
+    await page.route('**/api/favorites/toggle',route=>{
+      markedFavorite=!markedFavorite;
+      return route.fulfill({json:{favorites:markedFavorite?[location.id]:[]}});
+    });
     const photos = [1, 2, 3].map(i => '/location-photos/test-' + i + '.png');
     const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP4P4EBAAQhAZBKIMbQAAAAAElFTkSuQmCC', 'base64');
     await page.route('**/location-photos/test-*.png', route => route.fulfill({contentType:'image/png', body:png}));
@@ -43,6 +48,15 @@ module.exports = async function checkMapPhotos(context, target) {
     const oldPin = await pin.elementHandle();
     const preview = page.locator('.geo-map-preview');
     await preview.locator('.location-gallery__fallback').waitFor();
+    assert.equal(await pin.locator('.geo-pin__letter').innerText(),'К');
+    assert.equal(await preview.getByRole('button',{name:'Описание локации'}).count(),1);
+    await preview.getByRole('button',{name:'В избранное'}).tap();
+    await page.waitForFunction(()=>document.querySelector('.geo-pin-container--favorite .geo-pin__heart'));
+    assert.equal(await preview.getByRole('button',{name:'Удалить из избранного'}).getAttribute('aria-pressed'),'true');
+    assert.equal(await oldPin.evaluate(el=>el.isConnected),true);
+    await preview.getByRole('button',{name:'Удалить из избранного'}).tap();
+    await page.waitForFunction(()=>!document.querySelector('.geo-pin-container--favorite'));
+
     photosReady = true;
     const photo = preview.locator('.location-gallery__image');
     await photo.waitFor({timeout:35000});
@@ -68,8 +82,12 @@ module.exports = async function checkMapPhotos(context, target) {
       await preview.waitFor();
       assert.equal(await photo.getAttribute('src'), photos[1]);
     }
-    await photo.tap();
+    await preview.getByRole('button',{name:'Описание локации'}).tap();
     const details = page.locator('.detail-dialog');
+    await details.waitFor();
+    await details.getByRole('button',{name:'Закрыть'}).tap();
+    await photo.tap();
+    await details.waitFor();
     await details.getByRole('button',{name:'Следующее фото'}).tap();
     const detailPhoto = details.locator('.location-gallery__image');
     await detailPhoto.evaluate(img => img.decode());
