@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
@@ -79,6 +79,10 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
 }
 function App(){
  const [tab,setTab]=useState<Tab>('home');
+ const mainRef=useRef<HTMLElement>(null);
+ const favoritesOrigin=useRef<{tab:Tab;scrollTop:number}>({tab:'home',scrollTop:0});
+ const nextScrollTop=useRef(0);
+ const [filtersOpen,setFiltersOpen]=useState(false);
  const [hasNavigated,setHasNavigated]=useState(false);
  const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
@@ -182,7 +186,23 @@ function App(){
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
  const showYandexLocation=(location:Location)=>{setYandexLocation(location)};
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
- const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;if(t!==tab)setHasNavigated(true);setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
+ const modalOpen=filtersOpen||Boolean(detail||yandexLocation||compareOpen||activeCase)||creating!==null||supplement!==null;
+ useLayoutEffect(()=>{
+  if(mainRef.current)mainRef.current.scrollTop=nextScrollTop.current;
+ },[tab]);
+ const onTab=(t:Tab,openSearch=false,scrollTop=0)=>{
+  if(t==='admin'&&!session?.admin)return;
+  if(t!==tab){
+   if(t==='favorites')favoritesOrigin.current={tab,scrollTop:mainRef.current?.scrollTop??0};
+   setHasNavigated(true);
+  }else if(mainRef.current){
+   mainRef.current.scrollTop=scrollTop;
+  }
+  nextScrollTop.current=scrollTop;
+  setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);
+  setFiltersOpen(false);setShowMap(t==='map');
+ };
+ const backFromFavorites=()=>onTab(favoritesOrigin.current.tab,false,favoritesOrigin.current.scrollTop);
  const favoriteToggle=async(id:string)=>{try{
   const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
   const next=Array.isArray(data.favorites)?data.favorites:[];
@@ -200,15 +220,22 @@ function App(){
  }catch(err){setToast((err as Error).message)}};
  const uniqueCategory=Array.from(new Set(locations.map(l=>l.category)));
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
+ const catalogTab=tab==='catalog'||tab==='map';
+ const hasSectionHeader=catalogTab||tab==='favorites';
+ const goHome=()=>onTab('home');
  return <div className="app-shell">
-  {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
-  <main data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
+  <div className="app-content" inert={modalOpen}>
+  {!hasSectionHeader&&<Header onHome={goHome}/>}
+  <main ref={mainRef} data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
+   {hasSectionHeader&&<Header onHome={goHome} onBack={catalogTab?goHome:backFromFavorites}
+    backLabel={catalogTab?'На главную':'Назад'} onFavorites={catalogTab?()=>onTab('favorites'):undefined}/>}
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
      onSearch={()=>onTab('catalog',true)}
      onFavorites={()=>onTab('favorites')}
    />}
-   {(tab==='catalog'||tab==='map')&&<CatalogPage
+   {catalogTab&&<CatalogPage
+    filtersOpen={filtersOpen} setFiltersOpen={setFiltersOpen}
     locations={filtered} observeCard={observeCard} areas={areas} availableCategories={uniqueCategory}
     query={query} onQuery={setQuery} area={area} onArea={setArea}
     category={category} onCategory={setCategory}
@@ -216,10 +243,10 @@ function App(){
     selectedId={mapSelectedId} onSelect={setMapSelectedId}
     favorites={favoritesSet} onFavorite={favoriteToggle}
     onDetails={setDetail} onMap={showYandexLocation}
-    onBack={()=>onTab('home')} onFavorites={()=>onTab('favorites')}
     loading={loading}
    />}
-   {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
+   {tab==='favorites'&&<section className="section-block tab-section">
+    <div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
     {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} observeCard={observeCard} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
    {tab==='requests'&&<section className="section-block tab-section"><div className="section-heading request-heading"><div><span className="overline">ОБРАЩЕНИЯ</span><h1>Мои заявки</h1><p>Следите за статусом обращения и просматривайте историю в одном месте.</p></div><button className="btn primary" onClick={()=>setCreating('')}><Plus size={17}/> Новая заявка</button></div>
@@ -256,6 +283,8 @@ function App(){
   </main>
   <footer className="site-footer"><span>Подбор локаций</span><span>Доступ к личным данным через Telegram</span></footer>
   <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin} onHaptic={tgHaptic}/>
+  </div>
+  <div id="catalog-dialogs"/>
   {toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
   {detail&&<Dialog hidden={Boolean(yandexLocation)} onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<LocationArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><h2>{detail.title}</h2>{detail.area&&<p className="detail-area"><MapPin size={17}/>{detail.area}</p>}<div className="location-description">
  {([{title:'Ориентиры и транспорт',body:[detail.lineStatus,detail.landmarks].filter(Boolean).join(' · ')},{title:'Трафик и локация',body:detail.traffic},{title:'Кто платит',body:detail.payers},{title:'Окно возможностей',body:detail.opportunity},{title:'Почему именно здесь',body:detail.conclusion}]).map(item=><details key={item.title}><summary>{item.title}</summary><p>{item.body||'Информация пока не добавлена'}</p></details>)}

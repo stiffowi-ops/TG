@@ -7,7 +7,7 @@
  .main-container[data-navigated] .landing-home > *,
  .main-container[data-navigated] > .tab-section,
  .main-container[data-navigated] .catalog-intro,
- .main-container[data-navigated] .catalog-page__controls > :not(.catalog-filter-overlay),
+ .main-container[data-navigated] .catalog-page__controls > *,
  .main-container[data-navigated] .catalog-view-content {
   animation:section-enter 190ms ease-out;
  }
@@ -19,5 +19,22 @@
   opacity:0;
   translate:0 8px;
   transition:none;
+ }
+}
+
+/* Animate the marker artwork so MapLibre keeps full control of its position. */
+.app-shell button:enabled:active:not(.geo-pin-container),
+.geo-pin-container:active .geo-pin {
+ filter:brightness(.90);
+}
+@media (prefers-reduced-motion: no-preference) {
+ .app-shell button:enabled:not(.geo-pin-container),
+ .geo-pin-container .geo-pin {
+  transition:scale 150ms ease-out, filter 150ms ease-out, background-color 150ms, box-shadow 150ms, transform 150ms;
+ }
+ .app-shell button:enabled:active:not(.geo-pin-container),
+ .geo-pin-container:active .geo-pin {
+  scale:.965;
+  transition-duration:55ms;
  }
 }
