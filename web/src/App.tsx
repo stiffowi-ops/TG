@@ -2,8 +2,10 @@ import {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react'
 import type {ReactNode} from 'react';
 import AdminExtras from './AdminExtras';
 import PhotoCarousel from './components/PhotoCarousel/PhotoCarousel';
+import LocationArt from './components/LocationArt/LocationArt';
 import CatalogPage from './components/CatalogPage/CatalogPage';
 import LocationCard from './components/LocationCard/LocationCard';
+import useCardReveal from './components/LocationCard/useCardReveal';
 import YandexLocationViewer from './components/YandexLocationViewer/YandexLocationViewer';
 import Header from './components/Header/Header';
 import LandingPage from './components/LandingPage/LandingPage';
@@ -45,6 +47,18 @@ async function miniApi<T>(path:string,options:RequestInit={}):Promise<T>{
  return data as T;
 }
 
+async function fetchCatalog(signal?:AbortSignal){
+ const response=await fetch('/api/locations',{signal});
+ if(!response.ok)throw new Error('Catalog unavailable');
+ const data:{locations:Location[];photosSyncing?:boolean}=await response.json();
+ // The live catalog can repeat the category in place of a district.
+ const locations=data.locations.map(location=>{
+  const area=location.area?.trim()||'';
+  return {...location,area:area.toLowerCase()===location.category.trim().toLowerCase()?'':area};
+ });
+ return {locations,photosSyncing:data.photosSyncing};
+}
+
 function stored<T>(key:string, initial:T):T {
  try{const v=window.localStorage.getItem(key);if(!v)return initial;const parsed:unknown=JSON.parse(v);if(Array.isArray(initial))return (Array.isArray(parsed)?parsed.filter(x=>typeof x==='string'):initial) as T;return parsed as T;}catch{return initial;}
 }
@@ -55,21 +69,6 @@ function useStoredState<T>(key:string,initial:T){
 }
 function tgHaptic(){try{window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('light');}catch{/* browser mode */}}
 function openMap(url:string){const app=window.Telegram?.WebApp as WebApp & {openLink?:(url:string,options?:{try_instant_view?:boolean})=>void};if(app?.openLink){app.openLink(url);}else{window.open(url,'_blank','noopener,noreferrer');}}
-function AreaArt({location,compact=false}:{location:Location;compact?:boolean}){
- const tone=(parseInt(location.id,10)%5)+1;
- const [broken,setBroken]=useState(false);
- useEffect(()=>setBroken(false),[location.imageUrl]);
- const hasPhoto=!!location.imageUrl&&!broken;
- return <div className={`area-art tone-${tone} ${compact?'compact':''}`} aria-label={hasPhoto?`Фото: ${location.title}`:'Демонстрационная иллюстрация локации'}>
-  {hasPhoto&&<img className="art-photo" src={location.imageUrl} alt={`Фотография локации ${location.title}`} loading="lazy" onError={()=>setBroken(true)}/> }
-  <div className="art-glow"/><div className="art-sun"/>
-  <div className="art-buildings"><i/><i/><i/><i/><i/><i/></div>
-  <div className="art-line"/><div className="art-road"/>
-  <span className="art-mark"><MapPin size={16} strokeWidth={2.6}/></span>
-  {!compact&&!hasPhoto&&<span className="image-disclaimer">Демо-иллюстрация · ожидается фото</span>}
- </div>;
-}
-function Pill({children,kind='neutral'}:{children:ReactNode;kind?:string}){return <span className={`pill ${kind}`}>{children}</span>}
 function Empty({icon,title,description,action}:{icon:ReactNode;title:string;description:string;action?:ReactNode}){
  return <div className="empty"><div className="empty-symbol">{icon}</div><h3>{title}</h3><p>{description}</p>{action}</div>;
 }
@@ -80,6 +79,8 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
 }
 function App(){
  const [tab,setTab]=useState<Tab>('home');
+ const [hasNavigated,setHasNavigated]=useState(false);
+ const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
  const [locations,setLocations]=useState<Location[]>(backupLocations);
  const [loading,setLoading]=useState(true);
@@ -141,9 +142,7 @@ function App(){
   async function loadCatalog(){
    let retry=false;
    try{
-    const response=await fetch('/api/locations',{signal:controller.signal});
-    if(!response.ok)throw new Error('Catalog unavailable');
-    const data:{locations:Location[];photosSyncing?:boolean}=await response.json();
+    const data=await fetchCatalog(controller.signal);
     if(controller.signal.aborted)return;
     if(data.locations?.length)setLocations(data.locations);
     retry=Boolean(data.photosSyncing);
@@ -169,7 +168,7 @@ function App(){
  useEffect(()=>{if(tab!=='admin'||!session?.admin)return;setAdminBusy(true);
   miniApi<{cases:DemoCase[]|null}>('/api/admin/cases').then(data=>setAdminCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
  },[tab,session?.admin]);
- const refreshCatalog=()=>fetch('/api/locations').then(async r=>r.json()).then((data:{locations:Location[]})=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
+ const refreshCatalog=()=>fetchCatalog().then(data=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
  useEffect(()=>{if(!detail||!session)return;miniApi('/api/locations/view',{method:'POST',body:JSON.stringify({id:detail.id})}).catch(()=>{});},[detail?.id,session?.user.id]);
  const adminAction=async(number:number,action:'take'|'ack'|'resolve',updateId=0)=>{
   try{await miniApi('/api/admin/action',{method:'POST',body:JSON.stringify({number,action,updateId})});
@@ -177,13 +176,13 @@ function App(){
   catch(err){setToast((err as Error).message)}
  };
  const locationById=useMemo(()=>new Map(locations.map(l=>[l.id,l])),[locations]);
- const areas=useMemo(()=>['Все районы',...Array.from(new Set(locations.map(l=>l.area))).sort((a,b)=>a.localeCompare(b,'ru'))],[locations]);
+ const areas=useMemo(()=>['Все районы',...Array.from(new Set(locations.map(l=>l.area).filter(Boolean))).sort((a,b)=>a.localeCompare(b,'ru'))],[locations]);
  const filtered=useMemo(()=>locations.filter(l=>(category==='Все'||l.category===category)&&(area==='Все районы'||l.area===area)&&normalize(l.title).includes(normalize(query))),[locations,query,category,area]);
  const favoritesSet=new Set(favorites);
  const favoriteLocations=locations.filter(l=>favoritesSet.has(l.id));
  const showYandexLocation=(location:Location)=>{setYandexLocation(location)};
  const activeCase=cases.find(c=>c.number===caseDetail)||null;
- const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
+ const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;if(t!==tab)setHasNavigated(true);setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
  const favoriteToggle=async(id:string)=>{try{
   const data=await miniApi<{favorites:string[]|null}>('/api/favorites/toggle',{method:'POST',body:JSON.stringify({id})});
   const next=Array.isArray(data.favorites)?data.favorites:[];
@@ -203,14 +202,14 @@ function App(){
  const readyForCompare=compareIds.length>=2&&compareIds.length<=3;
  return <div className="app-shell">
   {(tab!=='catalog'&&tab!=='map')&&<Header onHome={()=>onTab('home')}/>}
-  <main className={tab==='home'?'main-container home-viewport':'main-container'}>
+  <main data-navigated={hasNavigated||undefined} className={tab==='home'?'main-container home-viewport':'main-container'}>
    {tab==='home'&&<LandingPage
      onCatalog={()=>onTab('catalog')}
      onSearch={()=>onTab('catalog',true)}
      onFavorites={()=>onTab('favorites')}
    />}
    {(tab==='catalog'||tab==='map')&&<CatalogPage
-    locations={filtered} areas={areas} availableCategories={uniqueCategory}
+    locations={filtered} observeCard={observeCard} areas={areas} availableCategories={uniqueCategory}
     query={query} onQuery={setQuery} area={area} onArea={setArea}
     category={category} onCategory={setCategory}
     view={showMap?'map':'list'} onView={view=>onTab(view==='map'?'map':'catalog')}
@@ -221,13 +220,13 @@ function App(){
     loading={loading}
    />}
    {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
-    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
+    {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} observeCard={observeCard} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
    {tab==='requests'&&<section className="section-block tab-section"><div className="section-heading request-heading"><div><span className="overline">ОБРАЩЕНИЯ</span><h1>Мои заявки</h1><p>Следите за статусом обращения и просматривайте историю в одном месте.</p></div><button className="btn primary" onClick={()=>setCreating('')}><Plus size={17}/> Новая заявка</button></div>
     {!session&&<div className="demo-notice"><ShieldCheck size={20}/><span>Для отправки заявки откройте приложение из Telegram.</span></div>}
     <div className="status-journey"><div><span className="journey-icon received"><Send size={18}/></span><b>Получено</b><small>Заявка создана</small></div><span className="journey-line"/><div><span className="journey-icon working"><Clock3 size={18}/></span><b>В работе</b><small>Назначен специалист</small></div><span className="journey-line"/><div><span className="journey-icon resolved"><CheckCircle2 size={18}/></span><b>Решено</b><small>Заявка обработана</small></div></div>
     <div className="request-section-head"><h2>История обращений</h2><span>{cases.length} заявки</span></div>
-    <div className="requests-list">{[...cases].sort((a,b)=>b.number-a.number).map(c=><button className="request-card" key={c.number} onClick={()=>setCaseDetail(c.number)}><span className="request-card-icon"><MessageCircle size={22}/></span><span className="request-card-main"><span className="request-id">Заявка №{String(c.number).padStart(4,'0')}</span><span className="request-locations">{c.locationIds.map(id=>locationById.get(id)?.title||`Локация №${id}`).slice(0,2).join(' · ')}</span><small>{prettyDate(c.createdAt)} · Дополнения: {c.updates.length}/{MAX_UPDATES}</small></span><span className="request-card-right"><Status status={c.status}/><ChevronRight size={20}/></span></button>)}</div>
+    <div className="requests-list">{[...cases].sort((a,b)=>b.number-a.number).map(c=><button className="request-card" key={c.number} onClick={()=>setCaseDetail(c.number)}><span className="request-card-icon"><MessageCircle size={22}/></span><span className="request-card-main"><span className="request-id">Заявка №{String(c.number).padStart(4,'0')}</span><span className="request-locations">{c.locationIds.map(id=>locationById.get(id)?.title||'Название локации недоступно').slice(0,2).join(' · ')}</span><small>{prettyDate(c.createdAt)} · Дополнения: {c.updates.length}/{MAX_UPDATES}</small></span><span className="request-card-right"><Status status={c.status}/><ChevronRight size={20}/></span></button>)}</div>
    </section>}
   {tab==='admin'&&session?.admin&&<section className="section-block tab-section">
    <div className="section-heading"><div><span className="overline">ДОСТУП АДМИНИСТРАТОРА</span><h1>Панель управления</h1><p>Заявки, ответственные и дополнения. Только для подтверждённых администраторов.</p></div></div>
@@ -258,12 +257,12 @@ function App(){
   <footer className="site-footer"><span>Подбор локаций</span><span>Доступ к личным данным через Telegram</span></footer>
   <BottomNavigation tab={tab} onNavigate={onTab} savedCount={favorites.length} isAdmin={!!session?.admin} onHaptic={tgHaptic}/>
   {toast&&<div className="toast" role="status"><CheckCircle2 size={18}/>{toast}</div>}
-  {detail&&<Dialog hidden={Boolean(yandexLocation)} onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<AreaArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><div className="detail-topline"><Pill>{detail.category}</Pill><span>№{detail.id}</span></div><h2>{detail.title}</h2><p className="detail-area"><MapPin size={17}/>{detail.area}</p><div className="detail-facts"><div><span>Широта</span><strong>{detail.latitude?.toFixed(4)??'не указана'}</strong></div><div><span>Долгота</span><strong>{detail.longitude?.toFixed(4)??'не указана'}</strong></div></div><div className="location-description">
+  {detail&&<Dialog hidden={Boolean(yandexLocation)} onClose={()=>setDetail(null)} className="detail-dialog"><div className="detail-art"><PhotoCarousel photos={detail.imageUrls?.length?detail.imageUrls:detail.imageUrl?[detail.imageUrl]:[]} fallback={<LocationArt location={detail}/>} label={detail.title} onOpen={()=>{}}/></div><div className="detail-padding"><h2>{detail.title}</h2>{detail.area&&<p className="detail-area"><MapPin size={17}/>{detail.area}</p>}<div className="location-description">
  {([{title:'Ориентиры и транспорт',body:[detail.lineStatus,detail.landmarks].filter(Boolean).join(' · ')},{title:'Трафик и локация',body:detail.traffic},{title:'Кто платит',body:detail.payers},{title:'Окно возможностей',body:detail.opportunity},{title:'Почему именно здесь',body:detail.conclusion}]).map(item=><details key={item.title}><summary>{item.title}</summary><p>{item.body||'Информация пока не добавлена'}</p></details>)}
  </div><div className="detail-buttons"><button className="btn secondary" onClick={()=>favoriteToggle(detail.id)}><Heart size={18} fill={favoritesSet.has(detail.id)?'currentColor':'none'}/>{favoritesSet.has(detail.id)?'В избранном':'В избранное'}</button><button className="btn secondary" onClick={()=>showYandexLocation(detail)}><MapPin size={17}/> На Яндекс Карте <ExternalLink size={13}/></button></div><button className="btn primary full" onClick={()=>{setCreating(detail.id);setDetail(null)}}>Оставить заявку по локации <ArrowRight size={18}/></button></div></Dialog>}
   {yandexLocation&&<YandexLocationViewer location={yandexLocation} onClose={closeYandex}/>}
-  {compareOpen&&<Dialog onClose={()=>setCompareOpen(false)} className="compare-dialog"><div className="dialog-content"><span className="overline">ВАША ПОДБОРКА</span><h2>Сравнение локаций</h2><p className="section-subtitle">Сравнивайте основные данные выбранных вариантов.</p><div className="compare-table"><div className="compare-row compare-top"><span>Параметр</span>{compareIds.map(id=><strong key={id}>{locationById.get(id)?.title}</strong>)}</div>{([{name:'Категория',get:(l:Location)=>l.category},{name:'Район',get:(l:Location)=>l.area},{name:'Координаты',get:(l:Location)=>l.latitude===undefined||l.longitude===undefined?'Нет данных':`${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`}]).map(row=><div className="compare-row" key={row.name}><span>{row.name}</span>{compareIds.map(id=><span key={id}>{locationById.get(id)?row.get(locationById.get(id)!):'—'}</span>)}</div>)}</div><div className="compare-links">{compareIds.map(id=>{const l=locationById.get(id);return l?<button key={id} className="btn secondary" onClick={()=>openMap(mapLink(l))}>{l.title} <ExternalLink size={15}/></button>:null})}</div><p className="muted-note">Показаны только подтверждённые данные.</p></div></Dialog>}
-  {activeCase&&<Dialog onClose={()=>setCaseDetail(null)} className="case-dialog"><div className="dialog-content"><span className="overline">ВАШЕ ОБРАЩЕНИЕ</span><h2>Заявка №{String(activeCase.number).padStart(4,'0')}</h2><Status status={activeCase.status}/><div className="case-details"><div><span>Создана</span><strong>{prettyDate(activeCase.createdAt)}</strong></div><div><span>Локаций</span><strong>{activeCase.locationIds.length}</strong></div><div><span>Дополнения</span><strong>{activeCase.updates.length} из 2</strong></div></div><h3>Интересующие локации</h3><div className="case-location-list">{activeCase.locationIds.map(id=><div key={id}><MapPin size={16}/>{locationById.get(id)?.title||`Локация №${id}`}</div>)}</div><h3>История обращения</h3><CaseTimeline record={activeCase}/>{activeCase.status!=='resolved'&&<div className="case-supplement-actions">{activeCase.updates.length<MAX_UPDATES?<><button className="btn secondary" onClick={()=>{setSupplement(activeCase.number);setCaseDetail(null)}}><Plus size={17}/> Дополнить заявку</button><span>Доступно дополнений: {MAX_UPDATES-activeCase.updates.length} из {MAX_UPDATES}</span></>:<div className="quota-message"><CheckCircle2 size={18}/>Вы уже отправили два дополнения. Пожалуйста, дождитесь ответа специалиста.</div>}</div>}<div className="dialog-footer"><button className="btn dark full" onClick={()=>setCaseDetail(null)}>Вернуться к заявкам</button></div></div></Dialog>}
+  {compareOpen&&<Dialog onClose={()=>setCompareOpen(false)} className="compare-dialog"><div className="dialog-content"><span className="overline">ВАША ПОДБОРКА</span><h2>Сравнение локаций</h2><p className="section-subtitle">Сравнивайте основные данные выбранных вариантов.</p><div className="compare-table"><div className="compare-row compare-top"><span>Параметр</span>{compareIds.map(id=><strong key={id}>{locationById.get(id)?.title}</strong>)}</div>{([{name:'Категория',get:(l:Location)=>l.category},{name:'Район',get:(l:Location)=>l.area||'—'},{name:'Координаты',get:(l:Location)=>l.latitude===undefined||l.longitude===undefined?'Нет данных':`${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`}]).map(row=><div className="compare-row" key={row.name}><span>{row.name}</span>{compareIds.map(id=><span key={id}>{locationById.get(id)?row.get(locationById.get(id)!):'—'}</span>)}</div>)}</div><div className="compare-links">{compareIds.map(id=>{const l=locationById.get(id);return l?<button key={id} className="btn secondary" onClick={()=>openMap(mapLink(l))}>{l.title} <ExternalLink size={15}/></button>:null})}</div><p className="muted-note">Показаны только подтверждённые данные.</p></div></Dialog>}
+  {activeCase&&<Dialog onClose={()=>setCaseDetail(null)} className="case-dialog"><div className="dialog-content"><span className="overline">ВАШЕ ОБРАЩЕНИЕ</span><h2>Заявка №{String(activeCase.number).padStart(4,'0')}</h2><Status status={activeCase.status}/><div className="case-details"><div><span>Создана</span><strong>{prettyDate(activeCase.createdAt)}</strong></div><div><span>Локаций</span><strong>{activeCase.locationIds.length}</strong></div><div><span>Дополнения</span><strong>{activeCase.updates.length} из 2</strong></div></div><h3>Интересующие локации</h3><div className="case-location-list">{activeCase.locationIds.map(id=><div key={id}><MapPin size={16}/>{locationById.get(id)?.title||'Название локации недоступно'}</div>)}</div><h3>История обращения</h3><CaseTimeline record={activeCase}/>{activeCase.status!=='resolved'&&<div className="case-supplement-actions">{activeCase.updates.length<MAX_UPDATES?<><button className="btn secondary" onClick={()=>{setSupplement(activeCase.number);setCaseDetail(null)}}><Plus size={17}/> Дополнить заявку</button><span>Доступно дополнений: {MAX_UPDATES-activeCase.updates.length} из {MAX_UPDATES}</span></>:<div className="quota-message"><CheckCircle2 size={18}/>Вы уже отправили два дополнения. Пожалуйста, дождитесь ответа специалиста.</div>}</div>}<div className="dialog-footer"><button className="btn dark full" onClick={()=>setCaseDetail(null)}>Вернуться к заявкам</button></div></div></Dialog>}
   {creating!==null&&<CreateCase locations={locations} selected={creating} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}
   {supplement!==null&&<SupplementDialog onClose={()=>setSupplement(null)} record={cases.find(c=>c.number===supplement)!} locations={locations} onSubmit={submitSupplement}/>}
  </div>
@@ -280,6 +279,7 @@ function CreateCase({locations,selected,onClose,onSubmit}:{locations:Location[];
  const [stage,setStage]=useState(0);
  const [partner,setPartner]=useState<'existing'|'new'|''>('');
  const [name,setName]=useState('');const [phone,setPhone]=useState('');const [company,setCompany]=useState('');const [id,setId]=useState(selected||locations[0]?.id||'');
+ const selectedLocation=locations.find(l=>l.id===id);
  const steps=['Сотрудничество','Контакты','Локация','Проверка'];
  const validPhone=/^\+7\d{10}$/.test(phone.replace(/[\s()\-]/g,''));
  const canNext=stage===0?partner!=='' : stage===1?name.trim().length>=2&&validPhone&&(partner==='existing'||company.trim().length>=2):stage===2?!!id:true;
@@ -287,8 +287,8 @@ function CreateCase({locations,selected,onClose,onSubmit}:{locations:Location[];
  return <Dialog onClose={onClose} className="form-dialog"><div className="dialog-content"><span className="overline">НОВОЕ ОБРАЩЕНИЕ</span><h2>Новая заявка</h2><p className="section-subtitle">Укажите данные для связи со специалистом.</p><div className="steps-bar">{steps.map((step,i)=><span key={step} className={`step ${i<=stage?'active':''}`} title={step}/>)}</div><p className="step-caption">Шаг {stage+1} из 4 · {steps[stage]}</p>
  {stage===0&&<div className="form-stage"><h3>Вы уже сотрудничаете с нами?</h3><button className={`choose-option ${partner==='existing'?'checked':''}`} onClick={()=>setPartner('existing')}><Building2 size={21}/><span><b>Уже сотрудничаю</b><small>Укажите контактные данные</small></span>{partner==='existing'&&<Check size={19}/>}</button><button className={`choose-option ${partner==='new'?'checked':''}`} onClick={()=>setPartner('new')}><Sparkles size={21}/><span><b>Хочу сотрудничать</b><small>Расскажите о своей компании</small></span>{partner==='new'&&<Check size={19}/>}</button></div>}
  {stage===1&&<div className="form-stage"><h3>Как к Вам обращаться?</h3><label className="input-label">Ваше имя<input autoComplete="off" placeholder="Имя" value={name} onChange={e=>setName(e.target.value)}/></label><label className="input-label">Номер телефона<input autoComplete="off" type="tel" placeholder="+7 999 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)}/></label>{phone&&!validPhone&&<small className="field-error">Проверьте номер: +7 и десять цифр.</small>}{partner==='new'&&<label className="input-label">Название юридического лица<input autoComplete="off" placeholder="Название компании" value={company} onChange={e=>setCompany(e.target.value)}/></label>}<div className="inline-hint"><ShieldCheck size={17}/>Данные будут переданы специалисту для обработки заявки.</div></div>}
- {stage===2&&<div className="form-stage"><h3>Какая локация Вас интересует?</h3><label className="input-label">Выберите локацию<select value={id} onChange={e=>setId(e.target.value)}>{locations.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></label><div className="selected-location-preview">{locations.find(l=>l.id===id)&&<AreaArt location={locations.find(l=>l.id===id)!} compact/>}<div><strong>{locations.find(l=>l.id===id)?.title}</strong><small>{locations.find(l=>l.id===id)?.area}</small></div></div></div>}
- {stage===3&&<div className="form-stage"><h3>Проверьте данные заявки</h3><div className="review-item"><span>Сотрудничество</span><strong>{partner==='existing'?'Уже сотрудничаю':'Хочу сотрудничать'}</strong></div><div className="review-item"><span>Имя</span><strong>{name}</strong></div><div className="review-item"><span>Телефон</span><strong>{phone}</strong></div>{partner==='new'&&<div className="review-item"><span>Юридическое лицо</span><strong>{company}</strong></div>}<div className="review-item"><span>Локация</span><strong>{locations.find(l=>l.id===id)?.title}</strong></div><div className="demo-notice compact-notice"><CircleHelp size={17}/>Заявка будет зарегистрирована и отправлена специалистам.</div></div>}
+ {stage===2&&<div className="form-stage"><h3>Какая локация Вас интересует?</h3><label className="input-label">Выберите локацию<select value={id} onChange={e=>setId(e.target.value)}>{locations.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></label><div className="selected-location-preview">{selectedLocation&&<LocationArt location={selectedLocation} compact/>}<div><strong>{selectedLocation?.title}</strong>{selectedLocation?.area&&<small>{selectedLocation.area}</small>}</div></div></div>}
+ {stage===3&&<div className="form-stage"><h3>Проверьте данные заявки</h3><div className="review-item"><span>Сотрудничество</span><strong>{partner==='existing'?'Уже сотрудничаю':'Хочу сотрудничать'}</strong></div><div className="review-item"><span>Имя</span><strong>{name}</strong></div><div className="review-item"><span>Телефон</span><strong>{phone}</strong></div>{partner==='new'&&<div className="review-item"><span>Юридическое лицо</span><strong>{company}</strong></div>}<div className="review-item"><span>Локация</span><strong>{selectedLocation?.title}</strong></div><div className="demo-notice compact-notice"><CircleHelp size={17}/>Заявка будет зарегистрирована и отправлена специалистам.</div></div>}
  <div className="wizard-footer">{stage>0?<button className="btn secondary" onClick={()=>setStage(stage-1)}><ArrowLeft size={17}/> Назад</button>:<button className="btn secondary" onClick={onClose}>Отмена</button>}{stage<3?<button className="btn primary" disabled={!canNext} onClick={next}>Продолжить <ArrowRight size={17}/></button>:<button className="btn primary" onClick={()=>onSubmit({locationId:id,kind:partner as "new"|"existing",company,name,phone})}><Send size={17}/> Отправить заявку</button>}</div></div></Dialog>;
 }
 function SupplementDialog({record,locations,onClose,onSubmit}:{record:DemoCase;locations:Location[];onClose:()=>void;onSubmit:(number:number,ids:string[],comment:string)=>void}){

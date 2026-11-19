@@ -52,7 +52,7 @@ export default function YandexLocationViewer({location,onClose}:{
      allow="geolocation" loading="eager" onLoad={()=>setLoaded(true)}/>
    </div>:<div className="yandex-location-viewer__empty"><MapPin size={32}/><h3>Нет координат локации</h3><p>Для этой точки пока не указано точное местоположение.</p></div>}
    <footer className="yandex-location-viewer__footer">
-    <span><MapPin size={15}/>{location.area}</span>
+    {location.area&&<span><MapPin size={15}/>{location.area}</span>}
     <a href={mapLink(location)} target="_blank" rel="noreferrer noopener">Открыть в Яндексе <ExternalLink size={15}/></a>
    </footer>
   </section>

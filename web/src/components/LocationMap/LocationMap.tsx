@@ -145,7 +145,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     <div className="geo-map-preview__photo"><MapPhoto location={chosen} onOpen={()=>onDetails(chosen)}/></div>
     <div className="geo-map-preview__body">
      <button type="button" className="geo-map-preview__title geo-map-preview__title-button" onClick={()=>onDetails(chosen)}>{chosen.title}</button>
-     <div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>
+     {chosen.area&&<div className="geo-map-preview__area"><MapPin size={14}/>{chosen.area}</div>}
      <div className="geo-map-preview__actions">
       <button type="button" className="geo-map-preview__favorite" onClick={()=>onFavorite(chosen.id)} aria-label={favorites.has(chosen.id)?'Удалить из избранного':'В избранное'}>
        <Heart size={18} fill={favorites.has(chosen.id)?'currentColor':'none'}/>
