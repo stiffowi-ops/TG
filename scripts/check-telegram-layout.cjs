@@ -32,18 +32,27 @@ module.exports = async function checkTelegramLayout(context, target) {
       const home = page.locator('.home-viewport');
       async function checkActiveButton(){
         assert.equal(await nav.getByRole('button').count(),fullscreen?5:4);
-        const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
-          const box = button.getBoundingClientRect();
-          const icon = button.querySelector('svg').getBoundingClientRect();
-          const label = button.querySelector('span:not(.nav-count)').getBoundingClientRect();
-          const center = rect => rect.left + rect.width / 2;
-          return {background:getComputedStyle(button).backgroundColor,
-            iconOffset:center(icon)-center(box), labelOffset:center(label)-center(box),
-            paddingDifference:(icon.top-box.top)-(box.bottom-label.bottom)};
+        await page.waitForFunction(()=>{
+          const button=document.querySelector('.bottom-navigation [aria-current="page"]');
+          return button&&Number(getComputedStyle(button,'::before').opacity)>.99;
         });
-        assert.notEqual(metrics.background,'rgba(0, 0, 0, 0)');
-        for (const offset of [metrics.iconOffset,metrics.labelOffset,metrics.paddingDifference])
-          assert.ok(Math.abs(offset)<1,'Off-center active button: '+JSON.stringify(metrics));
+        const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
+          const box=button.getBoundingClientRect();
+          const icon=button.querySelector('svg').getBoundingClientRect();
+          const label=button.querySelector('span:not(.nav-count)').getBoundingClientRect();
+          const highlight=getComputedStyle(button,'::before');
+          const width=parseFloat(highlight.width);
+          const translation=new DOMMatrix(highlight.transform).m41;
+          const highlightCenter=parseFloat(highlight.left)+translation+width/2;
+          const center=rect=>rect.left+rect.width/2;
+          return {opacity:highlight.opacity,
+            iconOffset:center(icon)-center(box),
+            labelOffset:center(label)-center(box),
+            highlightOffset:highlightCenter-box.width/2};
+        });
+        assert.ok(Number(metrics.opacity)>.99,'Highlight not visible: '+JSON.stringify(metrics));
+        for(const offset of [metrics.iconOffset,metrics.labelOffset,metrics.highlightOffset])
+          assert.ok(Math.abs(offset)<1,'Off-center active highlight: '+JSON.stringify(metrics));
       }
       async function viewport(stableHeight, systemTop, toolbarTop, bottom, left = 0) {
         await page.evaluate(({stableHeight,systemTop,toolbarTop,bottom,left})=>{

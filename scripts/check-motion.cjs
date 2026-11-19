@@ -16,9 +16,9 @@ module.exports = async function checkMotion(context, target) {
     const scrollTo = card => card.evaluate(el=>el.scrollIntoView({block:'center',behavior:'instant'}));
     const nextPaint = () => page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
     await openCatalog();
-    assert.equal(await page.locator('.catalog-view-content').evaluate(el=>getComputedStyle(el).animationDuration),'0.19s');
+    assert.equal(await page.locator('.catalog-view-content').evaluate(el=>getComputedStyle(el).animationDuration),'0.3s');
     await page.waitForSelector('[data-location-id="16"][data-reveal-pending]',{state:'attached'});
-    assert.equal(await id(1).evaluate(el=>getComputedStyle(el).opacity),'1');
+    await page.waitForFunction(()=>getComputedStyle(document.querySelector('[data-location-id="1"]')).opacity==='1');
 
     // Capture actual opacity transitions, including any replay when scrolling back.
     await id(16).evaluate(card=>{
