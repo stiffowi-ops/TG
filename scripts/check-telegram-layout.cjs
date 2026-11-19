@@ -33,24 +33,25 @@ module.exports = async function checkTelegramLayout(context, target) {
       async function checkActiveButton(){
         assert.equal(await nav.getByRole('button').count(),fullscreen?5:4);
         await page.waitForFunction(()=>{
-          const icon=document.querySelector('.bottom-navigation [aria-current="page"] .bottom-navigation__icon');
-          return icon&&getComputedStyle(icon).backgroundColor!=='rgba(0, 0, 0, 0)';
+          const button=document.querySelector('.bottom-navigation [aria-current="page"]');
+          return button&&Number(getComputedStyle(button,'::before').opacity)>.99;
         });
         const metrics = await nav.locator('[aria-current="page"]').evaluate(button => {
-          const box = button.getBoundingClientRect();
-          const iconBox = button.querySelector('.bottom-navigation__icon').getBoundingClientRect();
-          const icon = button.querySelector('.bottom-navigation__icon svg').getBoundingClientRect();
-          const label = button.querySelector('.bottom-navigation__label').getBoundingClientRect();
-          const center = rect => rect.left + rect.width / 2;
-          return {background:getComputedStyle(button.querySelector('.bottom-navigation__icon')).backgroundColor,
-            iconOffset:center(icon)-center(iconBox),
-            highlightOffset:center(iconBox)-center(box),
+          const box=button.getBoundingClientRect();
+          const icon=button.querySelector('svg').getBoundingClientRect();
+          const label=button.querySelector('span:not(.nav-count)').getBoundingClientRect();
+          const highlight=getComputedStyle(button,'::before');
+          const width=parseFloat(highlight.width);
+          const translation=new DOMMatrix(highlight.transform).m41;
+          const highlightCenter=parseFloat(highlight.left)+translation+width/2;
+          const center=rect=>rect.left+rect.width/2;
+          return {opacity:highlight.opacity,
+            iconOffset:center(icon)-center(box),
             labelOffset:center(label)-center(box),
-            iconInsetX:(icon.left-iconBox.left)-(iconBox.right-icon.right),
-            iconInsetY:(icon.top-iconBox.top)-(iconBox.bottom-icon.bottom)};
+            highlightOffset:highlightCenter-box.width/2};
         });
-        assert.notEqual(metrics.background,'rgba(0, 0, 0, 0)');
-        for (const offset of [metrics.iconOffset,metrics.highlightOffset,metrics.labelOffset,metrics.iconInsetX,metrics.iconInsetY])
+        assert.equal(metrics.opacity,'1');
+        for(const offset of [metrics.iconOffset,metrics.labelOffset,metrics.highlightOffset])
           assert.ok(Math.abs(offset)<1,'Off-center active highlight: '+JSON.stringify(metrics));
       }
       async function viewport(stableHeight, systemTop, toolbarTop, bottom, left = 0) {
