@@ -88,17 +88,16 @@ body { background:var(--ui-background); }
  .home-viewport .landing-hero { flex-basis:var(--ui-hero-min-height); }
 }
 @container home (max-height:550px) {
- .landing-home { padding-bottom:0!important; }
  .landing-hero.hero-composition { display:flex; flex-direction:column; }
  .hero-composition__scene.landing-scene { position:relative; inset:auto; min-height:0; flex:1 1 0; contain:size; }
  .hero-composition__scene picture { position:absolute; inset:0; }
- .landing-copy.hero-composition__copy { padding:12px 18px; }
+ .landing-copy.hero-composition__copy { padding:16px 18px; }
  .hero-composition__copy h1 { font-size:clamp(24px,6.3cqw,34px); margin:8px 0; }
  .hero-composition__copy p { font-size:12px; line-height:1.4; margin-bottom:11px; }
  .primary-action.landing-cta { min-height:44px; }
  .shortcut-card.landing-shortcut { min-height:46px; padding:5px 12px; }
  .shortcut-card .shortcut-icon { height:34px; width:34px; flex-basis:34px; }
- .landing-shortcuts { gap:5px; margin-top:6px!important; }
+ .landing-shortcuts { gap:5px; }
 }
 @container home (max-width:550px) and (max-height:380px) {
  .landing-shortcuts { grid-template-columns:repeat(3,minmax(0,1fr)); }
