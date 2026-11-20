@@ -1,5 +1,5 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
-import {ArrowRight,ChevronLeft,ChevronRight,FileText,Heart,LocateFixed,MapPin,Minus,Plus,X} from 'lucide-react';
+import {ArrowRight,ChevronLeft,ChevronRight,FileText,Heart,LocateFixed,MapPin,Minus,Plus,Scan,X} from 'lucide-react';
 import {LngLatBounds,Map as MapLibreMap,Marker as MapLibreMarker} from 'maplibre-gl';
 import type {StyleSpecification} from 'maplibre-gl';
 import type {Location} from '../../types';
@@ -21,6 +21,16 @@ const distanceKm=(from:UserPoint,to:Location)=>{
 };
 const readableDistance=(km:number)=>km<1?Math.round(km*1000)+' м':km.toFixed(1).replace('.',',')+' км';
 const validPoint=(l:Location)=>l.latitude!==undefined&&l.longitude!==undefined&&Number.isFinite(l.latitude)&&Number.isFinite(l.longitude)&&Math.abs(l.latitude)<=90&&Math.abs(l.longitude)<=180;
+function fitLocationOverview(map:MapLibreMap,points:Location[]){
+ if(!points.length)return;
+ if(points.length===1){
+  map.jumpTo({center:[points[0].longitude!,points[0].latitude!],zoom:14});
+  return;
+ }
+ const bounds=new LngLatBounds();
+ for(const point of points)bounds.extend([point.longitude!,point.latitude!]);
+ map.fitBounds(bounds,{padding:45,maxZoom:12,duration:0});
+}
 const tileURL=import.meta.env.VITE_MAP_TILE_URL?.trim()||'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const mapStyle:StyleSpecification={version:8,sources:{osm:{type:'raster',tiles:[tileURL],tileSize:256,minzoom:0,maxzoom:19,attribution:'© OpenStreetMap contributors'}},layers:[{id:'osm-base',type:'raster',source:'osm'}]};
 function MapPhoto({location,onOpen}:{location:Location;onOpen:()=>void}){
@@ -37,6 +47,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
  const clusterMarkersRef=useRef<Map<string,Pin>>(new Map());
  const clusterUpdateRef=useRef<()=>void>(()=>{});
  const userMarkerRef=useRef<MapLibreMarker|null>(null);
+ const geoRequestRef=useRef(0);
  const pointsRef=useRef(points);
  pointsRef.current=points;
  const selectedRef=useRef(selectedId);
@@ -237,12 +248,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     .setLngLat([location.longitude!,location.latitude!]).addTo(map);
    markersRef.current.set(location.id,{marker,element});
   }
-  if(points.length===1)map.jumpTo({center:[points[0].longitude!,points[0].latitude!],zoom:14});
-  else{
-   const bounds=new LngLatBounds();
-   points.forEach(location=>bounds.extend([location.longitude!,location.latitude!]));
-   map.fitBounds(bounds,{padding:45,maxZoom:12,duration:0});
-  }
+  fitLocationOverview(map,points);
   clusterUpdateRef.current();
  },[points,hasPoints]);
 
@@ -277,18 +283,38 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
    zoom:Math.max(13,map.getZoom()),duration:450,essential:true});
  },[selectedId,latitude,longitude]);
 
+ const closeNearby=()=>{
+  geoRequestRef.current++;
+  setNearbyPoint(null);
+  setGeoError('');
+  userMarkerRef.current?.remove();
+  userMarkerRef.current=null;
+ };
+ const showAllPoints=()=>{
+  const map=mapRef.current;
+  if(!map)return;
+  closeNearby();
+  setExpandedCluster(null);
+  onSelect(null);
+  fitLocationOverview(map,points);
+ };
  const locate=()=>{
   const map=mapRef.current;
   if(!map){setGeoError('Карта недоступна на устройстве');return}
   if(!navigator.geolocation){setGeoError('Геолокация недоступна');return}
+  const request=++geoRequestRef.current;
+  const isCurrent=()=>geoRequestRef.current===request&&mapRef.current===map;
   setGeoError('Определяем местоположение…');
   navigator.geolocation.getCurrentPosition(position=>{
+   if(!isCurrent())return;
    const user={latitude:position.coords.latitude,longitude:position.coords.longitude};
    setGeoError('');
    setNearbyPoint(user);
    setExpandedCluster(null);
    map.flyTo({center:[user.longitude,user.latitude],zoom:Math.max(11,map.getZoom()),duration:500,essential:true});
-  },error=>setGeoError(error.code===1?'Доступ к геолокации запрещён. Разрешите его в браузере.':'Не удалось определить местоположение. Попробуйте ещё раз.'),{enableHighAccuracy:false,timeout:10000,maximumAge:60000});
+  },error=>{
+   if(isCurrent())setGeoError(error.code===1?'Доступ к геолокации запрещён. Разрешите его в браузере.':'Не удалось определить местоположение. Попробуйте ещё раз.');
+  },{enableHighAccuracy:false,timeout:10000,maximumAge:60000});
  };
  return <div className="geo-map-layout">
   {hasPoints?<div className={`geo-map${chosen?' geo-map--preview-open':''}`} role="region" aria-label="Интерактивная карта локаций">
@@ -300,6 +326,9 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
      {points.map(l=><button type="button" key={l.id} onClick={()=>onSelect(l.id)}>{l.title}</button>)}
     </div>
    </div>:<div className="geo-map-actions">
+    <button type="button" className="geo-map-actions__overview" aria-label="Показать все точки" title="Показать все точки" onClick={showAllPoints}>
+     <Scan size={18} aria-hidden="true"/>Все точки
+    </button>
     <button type="button" aria-label="Приблизить карту" onClick={()=>mapRef.current?.zoomIn()}><Plus size={22}/></button>
     <button type="button" aria-label="Отдалить карту" onClick={()=>mapRef.current?.zoomOut()}><Minus size={22}/></button>
     <button type="button" aria-label="Моё местоположение" onClick={locate}><LocateFixed size={21}/></button>
@@ -314,7 +343,7 @@ export default function LocationMap({locations,selectedId,onSelect,favorites,onF
     })}</div>
    </div>}
    {nearbyPoint&&!chosen&&<div className="geo-nearby" role="region" aria-label="Ближайшие локации">
-    <div className="geo-nearby__heading"><strong>Рядом со мной</strong><button type="button" onClick={()=>{setNearbyPoint(null);userMarkerRef.current?.remove();userMarkerRef.current=null}} aria-label="Закрыть ближайшие локации"><X size={17}/></button></div>
+    <div className="geo-nearby__heading"><strong>Рядом со мной</strong><button type="button" onClick={closeNearby} aria-label="Закрыть ближайшие локации"><X size={17}/></button></div>
     <div className="geo-nearby__list">{nearby.slice(0,6).map(({location,km})=><button type="button" key={location.id} onClick={()=>onSelect(location.id)}>
      <span>{location.title}</span><small>{readableDistance(km)}</small><ArrowRight size={15}/>
     </button>)}</div>
