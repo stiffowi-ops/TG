@@ -121,7 +121,7 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.setViewportSize({width:320,height});
       await page.getByRole('button',{name:'Настроить фильтры'}).tap();
       const sheet = page.getByRole('dialog',{name:'Фильтры локаций'});
-      await sheet.getByRole('button',{name:'Без привязки к метро',exact:true}).tap();
+      await sheet.getByRole('button',{name:'Другие',exact:true}).tap();
       for(const group of await categories.all()){
         const fits=await group.getByRole('button').evaluateAll(buttons=>buttons.every(button=>{
           const label=button.querySelector('span').getBoundingClientRect();
