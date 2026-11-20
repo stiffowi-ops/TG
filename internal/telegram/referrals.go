@@ -14,6 +14,7 @@ import (
  "regexp"
  "strconv"
  "strings"
+ "sort"
  "time"
 )
 
@@ -220,6 +221,17 @@ func (b *Bot) MiniDeferredReminder(ctx context.Context,adminID int64,rec referra
  if b==nil{return}
  _,err:=b.call(ctx,"sendMessage",map[string]any{"chat_id":adminID,"text":fmt.Sprintf("🕓 <b>Реферальная скидка отложена</b>\n\nЗаявка №%04d, приглашённый: %s.\nПригласивший: %s.\n\nСкидка не начислена. Вернитесь к заявке, чтобы назначить 10%% вручную.",rec.CaseNumber,html.EscapeString(rec.InviteeName),html.EscapeString(rec.InviterName)),"parse_mode":"HTML","reply_markup":markup([]Button{adminCaseButton(rec.CaseNumber)})})
  if err!=nil{log.Printf("Referral deferred reminder %d: %v",rec.CaseNumber,err)}
+}
+// Admin queue remains available after a case is automatically resolved.
+func (b *Bot) MiniAdminReferralQueue(adminID int64)([]referralRecord,error){
+ if !b.IsMiniAdmin(adminID)||b.leads==nil{return nil,errors.New("доступ запрещён")}
+ s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
+ out:=[]referralRecord{}
+ for _,rec:=range s.state.Referrals {
+  if rec.Status!="awarded"{out=append(out,rec)}
+ }
+ sort.Slice(out,func(i,j int)bool{return out[i].CreatedAt.After(out[j].CreatedAt)})
+ return out,nil
 }
 func (s *leadStore) referralNotices()[]referralRecord {
  s.mu.Lock();defer s.mu.Unlock()
