@@ -1,4 +1,4 @@
-import {Compass, Heart, Map as MapIcon, MessageCircle, ShieldCheck} from 'lucide-react';
+import {Compass, Heart, Map as MapIcon, UserRound, ShieldCheck} from 'lucide-react';
 import type {Tab} from '../../types';
 
 type BottomNavigationProps={
@@ -14,7 +14,7 @@ export default function BottomNavigation({tab,onNavigate,savedCount,isAdmin}:Bot
   {id:'home' as const,label:'Локации',icon:Compass},
   {id:'map' as const,label:'Карта',icon:MapIcon},
   {id:'favorites' as const,label:'Избранное',icon:Heart},
-  {id:'requests' as const,label:'Мои заявки',icon:MessageCircle},
+  {id:'requests' as const,label:'Профиль',icon:UserRound},
   ...(isAdmin?[{id:'admin' as const,label:'Управление',icon:ShieldCheck}]:[]),
  ];
  return <nav className="bottom-nav bottom-navigation" aria-label="Основная навигация">

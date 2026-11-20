@@ -12,3 +12,5 @@ export type DemoCase = {
 };
 export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string};
 export type Tab = 'home'|'catalog'|'map'|'favorites'|'requests'|'admin';
+
+export type ClientProfile={userId:number;name:string;phone:string;company:string;kind:'new'|'existing';discountPercent:number;updatedAt?:string};

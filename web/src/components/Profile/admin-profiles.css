@@ -1,0 +1,20 @@
+.admin-clients{margin:22px 0;padding:20px;background:#fffdfa;border:1px solid #efe6dc;border-radius:20px;color:#0e333a}
+.admin-clients__intro{display:flex;align-items:center;gap:13px}.admin-clients__intro h2{margin:0 0 5px;font-size:23px}.admin-clients__intro p{margin:0;color:#758185;font-size:13px}
+.admin-clients__icon{display:grid;place-items:center;flex:0 0 50px;width:50px;height:50px;border-radius:15px;background:#fff0e4;color:#e97824}
+.admin-clients__filters{display:flex;gap:7px;overflow-x:auto;margin:22px 0 12px}
+.admin-clients__filters button{white-space:nowrap;background:#f5f3f1;color:#5a6364;border:0;padding:10px 14px;border-radius:18px;font-size:12px;font-weight:700}
+.admin-clients__filters button.active{background:#ff6a08;color:#fff}
+.admin-clients__search{display:flex;align-items:center;gap:9px;background:white;border:1px solid #e9dfd6;border-radius:13px;padding:12px;color:#8a8b88}
+.admin-clients__search input{width:100%;border:0;background:transparent;outline:0;font-size:13px}
+.admin-clients__list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:12px;margin-top:16px}
+.admin-clients__card{background:#fff;border:1px solid #eee7e0;border-radius:16px;padding:17px;box-shadow:0 6px 20px #54412909}
+.admin-clients__identity{display:flex;align-items:start;justify-content:space-between;gap:8px}.admin-clients__identity>div{display:flex;flex-direction:column;gap:5px}.admin-clients__identity strong{font-size:15px}.admin-clients__identity small{font-size:12px;color:#cf701a}.admin-clients__identity>span{font-size:10px;color:#9c9c9c;overflow-wrap:anywhere;max-width:98px}
+.admin-clients__contact{font-size:12px;color:#6e787a;line-height:1.6;margin:15px 0;border-bottom:1px solid #f1ede9;padding-bottom:12px}
+.admin-clients__discount{display:flex;align-items:end;justify-content:space-between;gap:12px}
+.admin-clients__discount label{display:flex;align-items:center;flex-wrap:wrap;gap:6px;font-size:12px;font-weight:750}
+.admin-clients__discount label svg{color:#f77820}
+.admin-clients__discount input{display:block;width:88px;min-height:39px;padding:8px;border-radius:10px;border:1px solid #ded5c9;color:#0e333a;font-size:16px;font-weight:800}
+.admin-clients__discount button{display:flex;align-items:center;gap:5px;justify-content:center;background:#ff6a08;border:0;border-radius:10px;padding:11px 13px;color:white;font-size:12px;font-weight:750;min-height:40px}
+.admin-clients__discount button:disabled{background:#eeeae6;color:#918d8b}
+.admin-clients__error{color:#ae3124;font-size:13px}.admin-clients__empty{font-size:13px;padding:22px;color:#858585}
+@media(max-width:520px){.admin-clients{padding:12px}.admin-clients__intro h2{font-size:19px}.admin-clients__filters button{padding:9px 12px}}

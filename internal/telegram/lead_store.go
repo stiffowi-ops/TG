@@ -59,6 +59,7 @@ type leadState struct {
 	History     []leadApplication          `json:"history,omitempty"`
 	NextID      int64                      `json:"next_id"`
 	Supplements map[string]supplementDraft `json:"supplements,omitempty"`
+	Profiles     map[string]miniProfileRecord `json:"profiles,omitempty"`
 }
 
 type leadStore struct {
@@ -68,7 +69,7 @@ type leadStore struct {
 }
 
 func openLeadStore(path string) (*leadStore, error) {
-	s := &leadStore{path: path, state: leadState{Drafts: map[string]leadDraft{}, Submitted: map[string]leadApplication{}}}
+	s := &leadStore{path: path, state: leadState{Drafts: map[string]leadDraft{}, Submitted: map[string]leadApplication{}, Profiles: map[string]miniProfileRecord{}}}
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -84,6 +85,9 @@ func openLeadStore(path string) (*leadStore, error) {
 	}
 	if s.state.Submitted == nil {
 		s.state.Submitted = map[string]leadApplication{}
+	}
+	if s.state.Profiles == nil {
+		s.state.Profiles = map[string]miniProfileRecord{}
 	}
 	// Resume stored forms explicitly after a restart.
 	for k, d := range s.state.Drafts {
@@ -149,9 +153,13 @@ func (s *leadStore) cloneLocked() leadState {
 		History:     make([]leadApplication, 0, len(s.state.History)),
 		NextID:      s.state.NextID,
 		Supplements: make(map[string]supplementDraft, len(s.state.Supplements)),
+		Profiles: make(map[string]miniProfileRecord, len(s.state.Profiles)),
 	}
 	for key, draft := range s.state.Drafts {
 		next.Drafts[key] = cloneLeadDraft(draft)
+	}
+	for key, profile := range s.state.Profiles {
+		next.Profiles[key] = profile
 	}
 	for key, draft := range s.state.Supplements {
 		next.Supplements[key] = cloneSupplementDraft(draft)
