@@ -66,11 +66,9 @@ func (b *Bot) MiniSaveProfile(id int64,p MiniProfile)(MiniProfile,error) {
 func (b *Bot) MiniProfileFromCase(userID int64, l MiniCase) {
  if b==nil||b.leads==nil||userID<=0{return}
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
- existing,ok:=s.profileLocked(userID)
- // Profile explicitly saved by client takes precedence over older case data.
- if ok {
-  if _,stored:=s.state.Profiles[strconv.FormatInt(userID,10)];stored{return}
- }
+ existing,_:=s.profileLocked(userID)
+ // The most recently submitted mini-app case refreshes contact details,
+ // but never overwrites the admin-controlled discount.
  p:=MiniProfile{UserID:userID,Name:l.Name,Phone:l.Phone,Company:l.Company,Kind:l.Kind,DiscountPercent:existing.DiscountPercent,UpdatedAt:time.Now().UTC()}
  if validMiniProfile(p)!=nil{return}
  next:=s.cloneLocked();next.Profiles[strconv.FormatInt(userID,10)]=p
@@ -81,8 +79,8 @@ func (b *Bot) MiniAdminProfiles(adminID int64)([]MiniProfile,error){
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
  byID:=map[int64]MiniProfile{}
  // Legacy requests are included so clients do not disappear from the bank.
- for _,l:=range s.state.History {if l.UserID>0{byID[l.UserID]=caseProfile(l)}}
- for _,l:=range s.state.Submitted {if l.UserID>0{byID[l.UserID]=caseProfile(l)}}
+ for _,l:=range s.state.History {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
+ for _,l:=range s.state.Submitted {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
  for _,p:=range s.state.Profiles {if p.UserID>0{byID[p.UserID]=p}}
  out:=make([]MiniProfile,0,len(byID))
  for _,p:=range byID {out=append(out,p)}
