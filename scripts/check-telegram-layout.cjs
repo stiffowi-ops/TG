@@ -191,7 +191,8 @@ module.exports = async function checkTelegramLayout(context, target) {
       const referral=page.locator('.profile-referral');
       assert.ok(await referral.isVisible());
       assert.ok(await referral.getByText('Пригласить',{exact:true}).isVisible());
-      assert.ok(await referral.locator('img.profile-referral__art').evaluate(img=>img.complete && img.naturalWidth>0),'Referral vector art failed to load');
+      await referral.locator('img.profile-referral__art').evaluate(img=>img.decode());
+      assert.ok(await referral.locator('img.profile-referral__art').evaluate(img=>img.naturalWidth>0),'Referral vector art failed to load');
       await referral.tap();
       assert.ok(await page.getByText('У вас нет скидок',{exact:true}).isVisible());
       await page.getByText('Ваша реферальная ссылка').waitFor();
