@@ -10,7 +10,7 @@ export type DemoCase = {
  status:CaseStatus;takenAt?:string;resolvedAt?:string;updates:CaseUpdate[];
  userId?:number;username?:string;name?:string;phone?:string;company?:string;kind?:string;takenBy?:number;referrerId?:number;referrerName?:string;referralStatus?:string;
 };
-export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string;referralCode?:string};
+export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string;referralCode?:string;skipReferral?:boolean};
 export type Tab = 'home'|'catalog'|'map'|'favorites'|'requests'|'admin';
 
 export type ClientProfile={userId:number;name:string;phone:string;company:string;kind:'new'|'existing';discountPercent:number;updatedAt?:string};
