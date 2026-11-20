@@ -186,11 +186,15 @@ function App(){
   const onFocus=()=>refresh();
   const app=window.Telegram?.WebApp;
   refresh();
+  // A client can stay on the profile while an administrator changes the discount.
+  // Revalidate periodically while visible, without requiring a full app reload.
+  const interval=window.setInterval(()=>{if(document.visibilityState==='visible')refresh()},30000);
   window.addEventListener('focus',onFocus);
   document.addEventListener('visibilitychange',onVisible);
   app?.onEvent?.('activated',onFocus);
   return()=>{
    mounted=false;
+   window.clearInterval(interval);
    window.removeEventListener('focus',onFocus);
    document.removeEventListener('visibilitychange',onVisible);
    app?.offEvent?.('activated',onFocus);
