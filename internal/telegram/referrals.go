@@ -47,7 +47,106 @@ type MiniReferralValidation struct {
  Valid bool `json:"valid"`
 }
 var referralCodePattern=regexp.MustCompile(`^ref_[A-Za-z0-9_-]{16}$`)
-var botUsernamePattern=regexp.MustCompile(`^[A-Za-z0-9_]{5,32}$`)
+var botUsernamePattern=regexp.MustCompile(`^[A-Za-z0-9_]{5,32}package telegram
+
+import (
+ "context"
+ "crypto/rand"
+ "encoding/base64"
+ "encoding/json"
+ "errors"
+ "fmt"
+ "html"
+ "log"
+ "net/url"
+ "os"
+ "regexp"
+ "strconv"
+ "strings"
+ "sort"
+ "time"
+)
+
+const referralAwardPercent = 10
+
+type referralRecord struct {
+ InviteeID int64 `json:"inviteeId"`
+ InviterID int64 `json:"inviterId"`
+ CaseNumber int64 `json:"caseNumber"`
+ InviterName string `json:"inviterName"`
+ InviteeName string `json:"inviteeName"`
+ Code string `json:"code"`
+ Status string `json:"status"` // pending, deferred, awarded
+ Percent int `json:"percent,omitempty"`
+ DecidedBy int64 `json:"decidedBy,omitempty"`
+ CreatedAt time.Time `json:"createdAt"`
+ DecidedAt *time.Time `json:"decidedAt,omitempty"`
+ Notified bool `json:"notified,omitempty"`
+ Ready bool `json:"ready,omitempty"`
+}
+type MiniReferralInfo struct {
+ Code string `json:"code"`
+ Link string `json:"link"`
+ PendingCode string `json:"pendingCode,omitempty"`
+ Pending int `json:"pending"`
+ Awarded int `json:"awarded"`
+}
+type MiniReferralValidation struct {
+ Code string `json:"code"`
+ Valid bool `json:"valid"`
+}
+var referralCodePattern=regexp.MustCompile(`^ref_[A-Za-z0-9_-]{16}$`)
+)
+var miniAppShortNamePattern=regexp.MustCompile(`^[A-Za-z0-9_]{3,32}package telegram
+
+import (
+ "context"
+ "crypto/rand"
+ "encoding/base64"
+ "encoding/json"
+ "errors"
+ "fmt"
+ "html"
+ "log"
+ "net/url"
+ "os"
+ "regexp"
+ "strconv"
+ "strings"
+ "sort"
+ "time"
+)
+
+const referralAwardPercent = 10
+
+type referralRecord struct {
+ InviteeID int64 `json:"inviteeId"`
+ InviterID int64 `json:"inviterId"`
+ CaseNumber int64 `json:"caseNumber"`
+ InviterName string `json:"inviterName"`
+ InviteeName string `json:"inviteeName"`
+ Code string `json:"code"`
+ Status string `json:"status"` // pending, deferred, awarded
+ Percent int `json:"percent,omitempty"`
+ DecidedBy int64 `json:"decidedBy,omitempty"`
+ CreatedAt time.Time `json:"createdAt"`
+ DecidedAt *time.Time `json:"decidedAt,omitempty"`
+ Notified bool `json:"notified,omitempty"`
+ Ready bool `json:"ready,omitempty"`
+}
+type MiniReferralInfo struct {
+ Code string `json:"code"`
+ Link string `json:"link"`
+ PendingCode string `json:"pendingCode,omitempty"`
+ Pending int `json:"pending"`
+ Awarded int `json:"awarded"`
+}
+type MiniReferralValidation struct {
+ Code string `json:"code"`
+ Valid bool `json:"valid"`
+}
+var referralCodePattern=regexp.MustCompile(`^ref_[A-Za-z0-9_-]{16}$`)
+)
 
 func parseReferralCode(raw string) (string,error) {
  raw=strings.TrimSpace(raw)
@@ -114,7 +213,12 @@ func (b *Bot) MiniReferralInfo(ctx context.Context,id int64)(MiniReferralInfo,er
  if err!=nil{return MiniReferralInfo{},err}
  name,err:=b.referralUsername(ctx)
  if err!=nil{return MiniReferralInfo{},err}
- info:=MiniReferralInfo{Code:code,Link:"https://t.me/"+name+"?startapp="+code}
+ base:="https://t.me/"+name
+ if short:=strings.TrimSpace(os.Getenv("REFERRAL_MINIAPP_SHORT_NAME"));short!="" {
+  if !miniAppShortNamePattern.MatchString(short){return MiniReferralInfo{},errors.New("некорректное имя мини-приложения")}
+  base+="/"+short
+ }
+ info:=MiniReferralInfo{Code:code,Link:base+"?startapp="+code}
  b.leads.mu.Lock();defer b.leads.mu.Unlock()
  info.PendingCode=b.leads.state.PendingReferrals[strconv.FormatInt(id,10)]
  for _,rec:=range b.leads.state.Referrals{
@@ -262,7 +366,11 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
   }
   if len(button)==0 {
    name,err:=b.referralUsername(ctx)
-   if err==nil{button=urlButton("👤 Перейти в профиль","https://t.me/"+name+"?startapp=profile")}
+   if err==nil {
+    base:="https://t.me/"+name
+    if short:=strings.TrimSpace(os.Getenv("REFERRAL_MINIAPP_SHORT_NAME"));miniAppShortNamePattern.MatchString(short){base+="/"+short}
+    button=urlButton("👤 Перейти в профиль",base+"?startapp=profile")
+   }
   }
   var keyboard any
   if len(button)>0{keyboard=markup([]Button{button})}
