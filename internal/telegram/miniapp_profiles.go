@@ -48,7 +48,12 @@ func (b *Bot) MiniGetProfile(id int64) (MiniProfile,bool) {
  if b==nil||b.leads==nil||id<=0{return MiniProfile{},false}
  b.leads.mu.Lock();defer b.leads.mu.Unlock()
  p,ok:=b.leads.profileLocked(id)
- if !ok{return p,false}
+ if !ok {
+  // Inviting clients may earn discounts before completing their contact profile.
+  p=MiniProfile{UserID:id}
+  p=b.leads.effectiveProfileLocked(p)
+  if p.ReferralDiscountPercent==0{return MiniProfile{},false}
+ }
  return b.leads.effectiveProfileLocked(p),true
 }
 func (b *Bot) MiniSaveProfile(id int64,p MiniProfile)(MiniProfile,error) {
