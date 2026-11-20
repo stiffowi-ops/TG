@@ -14,7 +14,7 @@ import ProfilePage from './components/Profile/ProfilePage';
 import AdminClientProfiles from './components/Profile/AdminClientProfiles';
 import {
  ArrowLeft, ArrowRight, Building2, Check,
- CheckCircle2, ChevronRight, CircleHelp, Clock3,
+ CheckCircle2, CircleHelp, Clock3,
  ExternalLink, Heart, MapPin, Plus, Send, ShieldCheck, SlidersHorizontal, Sparkles, X
 } from 'lucide-react';
 import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput, ClientProfile} from './types';
