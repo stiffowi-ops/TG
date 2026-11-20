@@ -178,6 +178,10 @@ func (s *appService) handler(webDist string) http.Handler {
             result,err:=s.bot.MiniValidateReferral(u.ID,input.Code)
             if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
             jsonResponse(w,200,result)
+        case r.Method=="GET"&&r.URL.Path=="/api/admin/referrals":
+            rows,err:=s.bot.MiniAdminReferralQueue(u.ID)
+            if err!=nil{jsonResponse(w,403,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,map[string]any{"referrals":rows})
         case r.Method=="POST"&&r.URL.Path=="/api/admin/referral":
             if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
             var input struct{Number int64 `json:"number"`;Action string `json:"action"`}
