@@ -20,9 +20,15 @@ module.exports = async function checkTelegramLayout(context, target) {
         }};`
       }));
       let grantedDiscount=0;
+      const mockReferral='ref_ABCDEFGHIJKLMNOP';
       await page.route('**/api/me', route => route.fulfill({json:{
         user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:[],
+        referralCode:mockReferral,
         profile:{userId:1,name:'Тестовый клиент',phone:'+79990000000',kind:'existing',company:'',discountPercent:grantedDiscount}
+      }}));
+      await page.route('**/api/referral', route => route.fulfill({json:{
+        code:'ref_MNOPQRSTUVWXYZab',link:'https://t.me/TestLocationBot?startapp=ref_MNOPQRSTUVWXYZab',
+        pendingCode:mockReferral,pending:1,awarded:0
       }}));
       await page.route('**/api/locations/view', route => route.fulfill({json:{ok:true}}));
       const station = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
@@ -188,10 +194,15 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.ok(await referral.locator('img.profile-referral__art').evaluate(img=>img.complete && img.naturalWidth>0),'Referral vector art failed to load');
       await referral.tap();
       assert.ok(await page.getByText('У вас нет скидок',{exact:true}).isVisible());
+      await page.getByText('Ваша реферальная ссылка').waitFor();
+      assert.ok(await page.getByRole('button',{name:'Скопировать'}).isVisible());
+      assert.ok(await page.getByRole('button',{name:'Поделиться'}).isVisible());
       await page.getByRole('button',{name:'Назад'}).tap();
       assert.ok(await page.getByRole('button',{name:'Подать заявку'}).isVisible());
       await page.getByRole('button',{name:'Подать заявку'}).tap();
-      await page.getByRole('dialog').getByRole('button',{name:'Закрыть',exact:true}).tap();
+      const form=page.getByRole('dialog');
+      assert.equal(await form.getByPlaceholder('Вставьте ссылку или код').inputValue(),mockReferral);
+      await form.getByRole('button',{name:'Закрыть',exact:true}).tap();
       await nav.getByRole('button',{name:'Избранное'}).tap();
       await page.locator('.catalog-page-heading__back').tap();
       grantedDiscount=15; // Simulate an administrator granting a discount while the app remains open.
