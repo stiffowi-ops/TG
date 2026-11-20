@@ -11,8 +11,10 @@ const titles=['Получено','В работе','Решено'];
 function StatusTag({status}:{status:DemoCase['status']}){return <span className={'profile-status profile-status--'+status}>{titles[states.indexOf(status)]}</span>}
 export function ProgressTracker({status,compact=false}:{status:DemoCase['status'];compact?:boolean}){
  const idx=states.indexOf(status);
+ const [animated,setAnimated]=useState(false);
+ useEffect(()=>{setAnimated(false);const timer=window.setTimeout(()=>setAnimated(true),100);return()=>window.clearTimeout(timer)},[status]);
  return <div className={'profile-tracker '+(compact?'profile-tracker--compact':'')} aria-label={'Статус заявки: '+titles[idx]}>
-  <div className="profile-tracker__line"><span style={{width:(idx*50)+'%'}}/></div>
+  <div className="profile-tracker__line"><span style={{width:((animated?idx:0)*50)+'%'}}/></div>
   {states.map((key,i)=>{const Icon=i===0?Send:i===1?Clock3:CheckCircle2;return <div key={key} className={'profile-tracker__step profile-tracker__step--'+key+(i===idx?' current':'')+(i<=idx?' visited':'')}><span className="profile-tracker__icon"><Icon size={22}/></span><strong>{titles[i]}</strong></div>})}
  </div>;
 }
