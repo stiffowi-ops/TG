@@ -287,7 +287,7 @@ function CaseTimeline({record}:{record:DemoCase}){
  return <div className="timeline">{events.map((event,i)=><div className="timeline-event" key={`${event.title}-${i}`}><span className={`timeline-dot ${i===events.length-1?'last':''}`}>{event.icon}</span><div><strong>{event.title}</strong>{event.description&&<p>{event.description}</p>}<small>{prettyDate(event.at)}</small></div></div>)}</div>;
 }
 function CreateCase({locations,selected,profile,onClose,onSubmit}:{locations:Location[];selected:string;profile:ClientProfile|null;onClose:()=>void;onSubmit:(data:NewCaseInput)=>void}){
- const [stage,setStage]=useState(profile?2:0);
+ const [stage,setStage]=useState(profile?(profile.kind==='new'&&!profile.company?1:2):0);
  const [partner,setPartner]=useState<'existing'|'new'|''>(profile?.kind||'');
  const [name,setName]=useState(profile?.name||'');const [phone,setPhone]=useState(profile?.phone||'');const [company,setCompany]=useState(profile?.company||'');const [id,setId]=useState(selected||locations[0]?.id||'');
  const selectedLocation=locations.find(l=>l.id===id);
