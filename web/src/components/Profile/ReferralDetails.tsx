@@ -13,7 +13,8 @@ export default function ReferralDetails({percent,info,loading,error}:{percent:nu
  const share=()=>{
   if(!link)return;
   const target='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent('Приглашаю посмотреть локации в приложении «Локации»');
-  window.Telegram?.WebApp?.openTelegramLink?.(target) || window.open(target,'_blank','noopener,noreferrer');
+  if(window.Telegram?.WebApp?.openTelegramLink){window.Telegram.WebApp.openTelegramLink(target)}
+  else{window.open(target,'_blank','noopener,noreferrer')}
  };
  return <div className="profile-discount-screen">
   <div className="profile-discount-screen__balance"><Gift size={28}/><span>Скидка на следующую оплату</span><strong>{percent>0?percent+'%':'У вас нет скидок'}</strong></div>
