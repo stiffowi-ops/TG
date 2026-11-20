@@ -33,7 +33,7 @@ func TestMiniProfileCreationFromCaseAndExistingHistory(t *testing.T){
  b.MiniProfileFromCase(55,MiniCase{UserID:55,Name:"Пётр Иванов",Phone:"+79991112233",Kind:"new",Company:"ООО Компания"})
  p,ok:=b.MiniGetProfile(55);if !ok||p.Name!="Пётр Иванов"{t.Fatal("case should create profile")}
  b.MiniProfileFromCase(55,MiniCase{UserID:55,Name:"Неверное имя",Phone:"+79991112233",Kind:"new",Company:"ООО Компания"})
- p,_=b.MiniGetProfile(55);if p.Name!="Пётр Иванов"{t.Fatal("existing profile was overwritten")}
+ p,_=b.MiniGetProfile(55);if p.Name!="Неверное имя"{t.Fatal("new case did not refresh profile contact data")}
  list,err:=b.MiniAdminProfiles(90);if err!=nil||len(list)!=1{t.Fatalf("admin profile list: %v %+v",err,list)}
  if _,err:=b.MiniAdminProfiles(55);err==nil{t.Fatal("non-admin can list profiles")}
 }
