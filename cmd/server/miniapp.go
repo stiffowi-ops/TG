@@ -175,8 +175,29 @@ func (s *appService) handler(webDist string) http.Handler {
 				"admin":s.bot.IsMiniAdmin(u.ID),
 				"favorites":s.bot.MiniFavorites(u.ID),
 				"cases":s.bot.MiniMyCases(u.ID),
+				"profile":func() any { p,ok:=s.bot.MiniGetProfile(u.ID);if ok{return p};return nil }(),
 			})
-		case r.Method=="POST"&&r.URL.Path=="/api/favorites/toggle":
+		case r.Method=="GET"&&r.URL.Path=="/api/profile":
+            p,ok:=s.bot.MiniGetProfile(u.ID)
+            if !ok {jsonResponse(w,200,map[string]any{"profile":nil});return}
+            jsonResponse(w,200,map[string]any{"profile":p})
+        case r.Method=="POST"&&r.URL.Path=="/api/profile":
+            var input struct {Name string `json:"name"`;Phone string `json:"phone"`;Company string `json:"company"`;Kind string `json:"kind"`}
+            if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"неверные данные профиля"});return}
+            p,err:=s.bot.MiniSaveProfile(u.ID,telegram.MiniProfile{Name:input.Name,Phone:input.Phone,Company:input.Company,Kind:input.Kind})
+            if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,map[string]any{"profile":p})
+        case r.Method=="GET"&&r.URL.Path=="/api/admin/profiles":
+            p,err:=s.bot.MiniAdminProfiles(u.ID)
+            if err!=nil{jsonResponse(w,403,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,map[string]any{"profiles":p})
+        case r.Method=="POST"&&r.URL.Path=="/api/admin/profiles/discount":
+            var input struct {UserID int64 `json:"userId"`;DiscountPercent int `json:"discountPercent"`}
+            if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"неверный размер скидки"});return}
+            p,err:=s.bot.MiniAdminSetDiscount(u.ID,input.UserID,input.DiscountPercent)
+            if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,map[string]any{"profile":p})
+        case r.Method=="POST"&&r.URL.Path=="/api/favorites/toggle":
 			var input struct{ID string `json:"id"`}
 			if err:=readBody(r,&input);err!=nil {jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
 			ids,err:=s.bot.MiniToggleFavorite(u.ID,input.ID)
@@ -187,6 +208,7 @@ func (s *appService) handler(webDist string) http.Handler {
 			if err:=readBody(r,&input);err!=nil {jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
 			c,err:=s.bot.MiniCreateCase(u.ID,u.Username,input)
 			if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+			s.bot.MiniProfileFromCase(u.ID,c)
 			jsonResponse(w,201,map[string]any{"case":c})
 		case r.Method=="POST"&&r.URL.Path=="/api/cases/supplement":
 			var input struct {
