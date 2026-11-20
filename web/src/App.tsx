@@ -17,7 +17,7 @@ import {
  CheckCircle2, CircleHelp, Clock3,
  ExternalLink, Heart, MapPin, Plus, Send, ShieldCheck, SlidersHorizontal, Sparkles, X
 } from 'lucide-react';
-import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput, ClientProfile} from './types';
+import type {DemoCase, Location, CaseStatus, Tab, NewCaseInput, ClientProfile, MiniReferralInfo} from './types';
 import {backupLocations, categoryLabel, mapLink, MAX_COMPARE, MAX_UPDATES, normalize, prettyDate, statusLabel} from './demo';
 
 type WebApp = {
@@ -32,6 +32,7 @@ type WebApp = {
  disableVerticalSwipes?:()=>void;
  enableVerticalSwipes?:()=>void;
  isVersionAtLeast?:(version:string)=>boolean;
+ openTelegramLink?:(url:string)=>void;
  BackButton?:{isVisible:boolean;show():void;hide():void;onClick(callback:()=>void):void;offClick(callback:()=>void):void};
 };
 declare global {interface Window {Telegram?:{WebApp?:WebApp}}}
@@ -84,7 +85,7 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
  return <div className="dialog-overlay" style={hidden?{display:'none'}:undefined} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
 }
 function App(){
- const [tab,setTab]=useState<Tab>('home');
+ const [tab,setTab]=useState<Tab>(()=>new URLSearchParams(window.location.search).get('view')==='profile'?'requests':'home');
  const [hasNavigated,setHasNavigated]=useState(false);
  const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
@@ -99,6 +100,9 @@ function App(){
  const [favorites,setFavorites]=useStoredState<string[]>(heartKey,[]);
  const [cases,setCases]=useState<DemoCase[]>([]);
  const [profile,setProfile]=useState<ClientProfile|null>(null);
+ const [referralInfo,setReferralInfo]=useState<MiniReferralInfo|null>(null);
+ const [referralError,setReferralError]=useState('');
+ const [referralLoading,setReferralLoading]=useState(false);
   const [session,setSession]=useState<MiniSession|null>(null);
   const [adminCases,setAdminCases]=useState<DemoCase[]>([]);
   const [adminBusy,setAdminBusy]=useState(false);
@@ -203,7 +207,16 @@ function App(){
  useEffect(()=>{if(tab!=='admin'||!session?.admin)return;setAdminBusy(true);
   miniApi<{cases:DemoCase[]|null}>('/api/admin/cases').then(data=>setAdminCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
  },[tab,session?.admin]);
- const refreshCatalog=()=>fetchCatalog().then(data=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
+ useEffect(()=>{
+  if(tab!=='requests'||!session)return;
+  let active=true;
+  setReferralLoading(true);setReferralError('');
+  miniApi<MiniReferralInfo>('/api/referral').then(data=>{if(active)setReferralInfo(data)})
+   .catch(err=>{if(active)setReferralError((err as Error).message)})
+   .finally(()=>{if(active)setReferralLoading(false)});
+  return()=>{active=false};
+ },[tab,session?.user.id]);
+  const refreshCatalog=()=>fetchCatalog().then(data=>{if(data.locations?.length)setLocations(data.locations)}).catch(()=>setToast('Каталог не обновился'));
  useEffect(()=>{if(!detail||!session)return;miniApi('/api/locations/view',{method:'POST',body:JSON.stringify({id:detail.id})}).catch(()=>{});},[detail?.id,session?.user.id]);
  const adminAction=async(number:number,action:'take'|'ack'|'resolve',updateId=0)=>{
   try{await miniApi('/api/admin/action',{method:'POST',body:JSON.stringify({number,action,updateId})});
@@ -221,7 +234,15 @@ function App(){
   const data=await miniApi<{profile:ClientProfile}>('/api/profile',{method:'POST',body:JSON.stringify(input)});
   setProfile(data.profile);setToast('Профиль сохранён');
  };
- const loadAdminProfiles=useCallback(async()=>{const data=await miniApi<{profiles:ClientProfile[]}>('/api/admin/profiles');return data.profiles||[]},[]);
+ const adminReferralAction=async(number:number,action:'award'|'defer')=>{
+  try{
+   await miniApi('/api/admin/referral',{method:'POST',body:JSON.stringify({number,action})});
+   const data=await miniApi<{cases:DemoCase[]}>('/api/admin/cases');
+   setAdminCases(data.cases);
+   setToast(action==='award'?'Скидка 10% начислена пригласившему':'Реферальное начисление отложено');
+  }catch(err){setToast((err as Error).message)}
+ };
+  const loadAdminProfiles=useCallback(async()=>{const data=await miniApi<{profiles:ClientProfile[]}>('/api/admin/profiles');return data.profiles||[]},[]);
  const setAdminDiscount=useCallback(async(userId:number,discountPercent:number)=>{const data=await miniApi<{profile:ClientProfile}>('/api/admin/profiles/discount',{method:'POST',body:JSON.stringify({userId,discountPercent})});return data.profile},[]);
 
  const onTab=(t:Tab,openSearch=false)=>{if(t==='admin'&&!session?.admin)return;if(t!==tab)setHasNavigated(true);setTab(t);setFocusSearch(openSearch&&t==='catalog');setCompareIds([]);setCompareOpen(false);setShowMap(t==='map');document.querySelector<HTMLElement>('.main-container')?.scrollTo({top:0,behavior:'instant' as ScrollBehavior})};
@@ -266,7 +287,7 @@ function App(){
    {tab==='favorites'&&<section className="section-block tab-section"><div className="section-heading"><div><span className="overline">ВАША ПОДБОРКА</span><h1>Избранное <span className="heading-number">{favoriteLocations.length}</span></h1><p>Сохраняйте интересные варианты и сравнивайте до трёх локаций.</p></div></div>
     {favoriteLocations.length?<><div className="compare-banner"><div className="compare-banner-symbol"><SlidersHorizontal size={22}/></div><div><strong>Сравните варианты между собой</strong><span>Отметьте 2–3 локации. Выбрано: {compareIds.length} из 3.</span></div><button className="btn dark" disabled={!readyForCompare} onClick={()=>setCompareOpen(true)}>Сравнить <ArrowRight size={16}/></button></div><div className="card-grid">{favoriteLocations.map(l=><LocationCard key={l.id} location={l} observeCard={observeCard} saved={true} onDetails={setDetail} onFavorite={favoriteToggle} onMap={showYandexLocation} compareMode selected={compareIds.includes(l.id)} onSelect={compareToggle}/>)}</div></>:<Empty icon={<Heart size={30}/>} title="Здесь пока пусто" description="Откройте каталог и нажмите на сердечко у понравившейся локации. Все сохранённые варианты появятся здесь." action={<button className="btn primary" onClick={()=>onTab('catalog')}>Перейти в каталог <ArrowRight size={16}/></button>}/>}
    </section>}
-   {tab==='requests'&&<ProfilePage cases={cases} locations={locations} user={session?.user} profile={profile} onSave={saveProfile} onCreate={()=>setCreating('')} onSupplement={number=>setSupplement(number)}/>}
+   {tab==='requests'&&<ProfilePage cases={cases} locations={locations} user={session?.user} profile={profile} referral={referralInfo} referralLoading={referralLoading} referralError={referralError} onSave={saveProfile} onCreate={()=>setCreating('')} onSupplement={number=>setSupplement(number)}/>}
   {tab==='admin'&&session?.admin&&<section className="section-block tab-section">
    <div className="section-heading"><div><span className="overline">ДОСТУП АДМИНИСТРАТОРА</span><h1>Панель управления</h1><p>Заявки, ответственные и дополнения. Только для подтверждённых администраторов.</p></div></div>
    <div className="admin-stats">
@@ -302,7 +323,7 @@ function App(){
   {yandexLocation&&<YandexLocationViewer location={yandexLocation} onClose={closeYandex}/>}
   {compareOpen&&<Dialog onClose={()=>setCompareOpen(false)} className="compare-dialog"><div className="dialog-content"><span className="overline">ВАША ПОДБОРКА</span><h2>Сравнение локаций</h2><p className="section-subtitle">Сравнивайте основные данные выбранных вариантов.</p><div className="compare-table"><div className="compare-row compare-top"><span>Параметр</span>{compareIds.map(id=><strong key={id}>{locationById.get(id)?.title}</strong>)}</div>{([{name:'Категория',get:(l:Location)=>categoryLabel(l.category)},{name:'Район',get:(l:Location)=>l.area||'—'},{name:'Координаты',get:(l:Location)=>l.latitude===undefined||l.longitude===undefined?'Нет данных':`${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`}]).map(row=><div className="compare-row" key={row.name}><span>{row.name}</span>{compareIds.map(id=><span key={id}>{locationById.get(id)?row.get(locationById.get(id)!):'—'}</span>)}</div>)}</div><div className="compare-links">{compareIds.map(id=>{const l=locationById.get(id);return l?<button key={id} className="btn secondary" onClick={()=>openMap(mapLink(l))}>{l.title} <ExternalLink size={15}/></button>:null})}</div><p className="muted-note">Показаны только подтверждённые данные.</p></div></Dialog>}
   {activeCase&&<Dialog onClose={()=>setCaseDetail(null)} className="case-dialog"><div className="dialog-content"><span className="overline">ВАШЕ ОБРАЩЕНИЕ</span><h2>Заявка {locationById.get(activeCase.locationIds[0]||'')?.title||'Локация'}</h2><Status status={activeCase.status}/><div className="case-details"><div><span>Создана</span><strong>{prettyDate(activeCase.createdAt)}</strong></div><div><span>Локаций</span><strong>{activeCase.locationIds.length}</strong></div><div><span>Дополнения</span><strong>{activeCase.updates.length} из 2</strong></div></div><h3>Интересующие локации</h3><div className="case-location-list">{activeCase.locationIds.map(id=><div key={id}><MapPin size={16}/>{locationById.get(id)?.title||'Название локации недоступно'}</div>)}</div><h3>История обращения</h3><CaseTimeline record={activeCase}/>{activeCase.status!=='resolved'&&<div className="case-supplement-actions">{activeCase.updates.length<MAX_UPDATES?<><button className="btn secondary" onClick={()=>{setSupplement(activeCase.number);setCaseDetail(null)}}><Plus size={17}/> Дополнить заявку</button><span>Доступно дополнений: {MAX_UPDATES-activeCase.updates.length} из {MAX_UPDATES}</span></>:<div className="quota-message"><CheckCircle2 size={18}/>Вы уже отправили два дополнения. Пожалуйста, дождитесь ответа специалиста.</div>}</div>}<div className="dialog-footer"><button className="btn dark full" onClick={()=>setCaseDetail(null)}>Вернуться к заявкам</button></div></div></Dialog>}
-  {creating!==null&&<CreateCase locations={locations} selected={creating} profile={profile} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}
+  {creating!==null&&<CreateCase locations={locations} selected={creating} profile={profile} referralCode={referralInfo?.pendingCode||""} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}
   {supplement!==null&&<SupplementDialog onClose={()=>setSupplement(null)} record={cases.find(c=>c.number===supplement)!} locations={locations} onSubmit={submitSupplement}/>}
  </div>
 }
@@ -314,24 +335,30 @@ function CaseTimeline({record}:{record:DemoCase}){
  events.sort((a,b)=>a.at.localeCompare(b.at));
  return <div className="timeline">{events.map((event,i)=><div className="timeline-event" key={`${event.title}-${i}`}><span className={`timeline-dot ${i===events.length-1?'last':''}`}>{event.icon}</span><div><strong>{event.title}</strong>{event.description&&<p>{event.description}</p>}<small>{prettyDate(event.at)}</small></div></div>)}</div>;
 }
-function CreateCase({locations,selected,profile,onClose,onSubmit}:{locations:Location[];selected:string;profile:ClientProfile|null;onClose:()=>void;onSubmit:(data:NewCaseInput)=>void}){
- const [stage,setStage]=useState(profile?(profile.kind==='new'&&!profile.company?1:2):0);
+function CreateCase({locations,selected,profile,referralCode,onClose,onSubmit}:{locations:Location[];selected:string;profile:ClientProfile|null;referralCode:string;onClose:()=>void;onSubmit:(data:NewCaseInput)=>void}){
+ const [stage,setStage]=useState(profile?.name&&profile?.phone&&profile?.kind?(profile.kind==='new'&&!profile.company?1:2):0);
+ const [hasReferral,setHasReferral]=useState(Boolean(referralCode));
+ const [refInput,setRefInput]=useState(referralCode);
  const [partner,setPartner]=useState<'existing'|'new'|''>(profile?.kind||'');
  const [name,setName]=useState(profile?.name||'');const [phone,setPhone]=useState(profile?.phone||'');const [company,setCompany]=useState(profile?.company||'');const [id,setId]=useState(selected||locations[0]?.id||'');
  const selectedLocation=locations.find(l=>l.id===id);
  const steps=['Сотрудничество','Контакты','Локация','Проверка'];
- const shortFlow=Boolean(profile&&stage>=2);
+ const shortFlow=Boolean(profile?.name&&profile?.phone&&profile?.kind&&stage>=2);
  const visibleSteps=shortFlow?['Локация','Проверка']:steps;
  const displayedStep=shortFlow?stage-2:stage;
  const validPhone=/^\+7\d{10}$/.test(phone.replace(/[\s()\-]/g,''));
- const canNext=stage===0?partner!=='' : stage===1?name.trim().length>=2&&validPhone&&(partner==='existing'||company.trim().length>=2):stage===2?!!id:true;
+ const canNext=stage===0?partner!=='' : stage===1?name.trim().length>=2&&validPhone&&(partner==='existing'||company.trim().length>=2):stage===2?!!id&&(!hasReferral||refInput.trim().length>0):true;
  const next=()=>{if(canNext)setStage(Math.min(3,stage+1))};
  return <Dialog onClose={onClose} className="form-dialog"><div className="dialog-content"><span className="overline">НОВОЕ ОБРАЩЕНИЕ</span><h2>Новая заявка</h2><p className="section-subtitle">Укажите данные для связи со специалистом.</p><div className="steps-bar">{visibleSteps.map((step,i)=><span key={step} className={`step ${i<=displayedStep?'active':''}`} title={step}/>)}</div><p className="step-caption">Шаг {displayedStep+1} из {visibleSteps.length} · {steps[stage]}</p>
  {stage===0&&<div className="form-stage"><h3>Вы уже сотрудничаете с нами?</h3><button className={`choose-option ${partner==='existing'?'checked':''}`} onClick={()=>setPartner('existing')}><Building2 size={21}/><span><b>Уже партнёр</b><small>Укажите контактные данные</small></span>{partner==='existing'&&<Check size={19}/>}</button><button className={`choose-option ${partner==='new'?'checked':''}`} onClick={()=>setPartner('new')}><Sparkles size={21}/><span><b>Хочу стать партнёром</b><small>Расскажите о своей компании</small></span>{partner==='new'&&<Check size={19}/>}</button></div>}
  {stage===1&&<div className="form-stage"><h3>Как к Вам обращаться?</h3><label className="input-label">Ваше имя<input autoComplete="off" placeholder="Имя" value={name} onChange={e=>setName(e.target.value)}/></label><label className="input-label">Номер телефона<input autoComplete="off" type="tel" placeholder="+7 999 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)}/></label>{phone&&!validPhone&&<small className="field-error">Проверьте номер: +7 и десять цифр.</small>}{partner==='new'&&<label className="input-label">Название юридического лица<input autoComplete="off" placeholder="Название компании" value={company} onChange={e=>setCompany(e.target.value)}/></label>}<div className="inline-hint"><ShieldCheck size={17}/>Данные будут переданы специалисту для обработки заявки.</div></div>}
- {stage===2&&<div className="form-stage">{profile&&<div className="inline-hint"><CheckCircle2 size={17}/>Данные из профиля: {name}, {phone}, {partner==='existing'?'уже':'будущий'} партнёр. <button type="button" onClick={()=>setStage(1)}>Изменить</button></div>}<h3>Какая локация Вас интересует?</h3><label className="input-label">Выберите локацию<select value={id} onChange={e=>setId(e.target.value)}>{locations.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></label><div className="selected-location-preview">{selectedLocation&&<LocationArt location={selectedLocation} compact/>}<div><strong>{selectedLocation?.title}</strong>{selectedLocation?.area&&<small>{selectedLocation.area}</small>}</div></div></div>}
- {stage===3&&<div className="form-stage"><h3>Проверьте данные заявки</h3><div className="review-item"><span>Сотрудничество</span><strong>{partner==='existing'?'Уже партнёр':'Хочу стать партнёром'}</strong></div><div className="review-item"><span>Имя</span><strong>{name}</strong></div><div className="review-item"><span>Телефон</span><strong>{phone}</strong></div>{partner==='new'&&<div className="review-item"><span>Юридическое лицо</span><strong>{company}</strong></div>}<div className="review-item"><span>Локация</span><strong>{selectedLocation?.title}</strong></div><div className="demo-notice compact-notice"><CircleHelp size={17}/>Заявка будет зарегистрирована и отправлена специалистам.</div></div>}
- <div className="wizard-footer">{stage>0&&!(profile&&stage===2)?<button className="btn secondary" onClick={()=>setStage(profile&&stage===1?2:stage-1)}><ArrowLeft size={17}/> Назад</button>:<button className="btn secondary" onClick={onClose}>Отмена</button>}{stage<3?<button className="btn primary" disabled={!canNext} onClick={next}>Продолжить <ArrowRight size={17}/></button>:<button className="btn primary" onClick={()=>onSubmit({locationId:id,kind:partner as "new"|"existing",company,name,phone})}><Send size={17}/> Отправить заявку</button>}</div></div></Dialog>;
+ {stage===2&&<div className="form-stage">{profile&&<div className="inline-hint"><CheckCircle2 size={17}/>Данные из профиля: {name}, {phone}, {partner==='existing'?'уже':'будущий'} партнёр. <button type="button" onClick={()=>setStage(1)}>Изменить</button></div>}<h3>Какая локация Вас интересует?</h3><label className="input-label">Выберите локацию<select value={id} onChange={e=>setId(e.target.value)}>{locations.map(l=><option key={l.id} value={l.id}>{l.title}</option>)}</select></label><div className="selected-location-preview">{selectedLocation&&<LocationArt location={selectedLocation} compact/>}<div><strong>{selectedLocation?.title}</strong>{selectedLocation?.area&&<small>{selectedLocation.area}</small>}</div>
+ <div className="referral-form"><strong>У вас есть реферальная ссылка?</strong><div className="referral-form__choice"><button type="button" className={!hasReferral?'selected':''} onClick={()=>setHasReferral(false)}>Нет</button><button type="button" className={hasReferral?'selected':''} onClick={()=>setHasReferral(true)}>Да</button></div>
+ {hasReferral&&<label className="input-label">Реферальная ссылка или код<input value={refInput} onChange={e=>setRefInput(e.target.value)} placeholder="Вставьте ссылку или код" maxLength={512}/></label>}
+ {hasReferral&&referralCode&&<small>Приглашение по ссылке распознано автоматически</small>}
+ </div></div>}
+ {stage===3&&<div className="form-stage"><h3>Проверьте данные заявки</h3><div className="review-item"><span>Сотрудничество</span><strong>{partner==='existing'?'Уже партнёр':'Хочу стать партнёром'}</strong></div><div className="review-item"><span>Имя</span><strong>{name}</strong></div><div className="review-item"><span>Телефон</span><strong>{phone}</strong></div>{partner==='new'&&<div className="review-item"><span>Юридическое лицо</span><strong>{company}</strong></div>}<div className="review-item"><span>Локация</span><strong>{selectedLocation?.title}</strong></div>{hasReferral&&<div className="review-item"><span>Реферальное приглашение</span><strong>Указано</strong></div>}<div className="demo-notice compact-notice"><CircleHelp size={17}/>Заявка будет зарегистрирована и отправлена специалистам.</div></div>}
+ <div className="wizard-footer">{stage>0&&!(profile&&stage===2)?<button className="btn secondary" onClick={()=>setStage(profile&&stage===1?2:stage-1)}><ArrowLeft size={17}/> Назад</button>:<button className="btn secondary" onClick={onClose}>Отмена</button>}{stage<3?<button className="btn primary" disabled={!canNext} onClick={next}>Продолжить <ArrowRight size={17}/></button>:<button className="btn primary" onClick={()=>onSubmit({locationId:id,kind:partner as "new"|"existing",company,name,phone,referralCode:hasReferral?refInput.trim():undefined})}><Send size={17}/> Отправить заявку</button>}</div></div></Dialog>;
 }
 function SupplementDialog({record,locations,onClose,onSubmit}:{record:DemoCase;locations:Location[];onClose:()=>void;onSubmit:(number:number,ids:string[],comment:string)=>void}){
  const [ids,setIds]=useState<string[]>([]);const [comment,setComment]=useState('');
