@@ -8,9 +8,11 @@ export type CaseUpdate = {id:number;locationIds:string[];comment:string;createdA
 export type DemoCase = {
  number:number;locationIds:string[];createdAt:string;
  status:CaseStatus;takenAt?:string;resolvedAt?:string;updates:CaseUpdate[];
- userId?:number;username?:string;name?:string;phone?:string;company?:string;kind?:string;takenBy?:number;
+ userId?:number;username?:string;name?:string;phone?:string;company?:string;kind?:string;takenBy?:number;referrerId?:number;referrerName?:string;referralStatus?:string;
 };
-export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string};
+export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string;referralCode?:string};
 export type Tab = 'home'|'catalog'|'map'|'favorites'|'requests'|'admin';
 
 export type ClientProfile={userId:number;name:string;phone:string;company:string;kind:'new'|'existing';discountPercent:number;updatedAt?:string};
+
+export type MiniReferralInfo={code:string;link:string;pendingCode?:string;pending:number;awarded:number};
