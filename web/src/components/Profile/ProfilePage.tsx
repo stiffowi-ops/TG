@@ -1,5 +1,5 @@
 import {useEffect,useState} from 'react';
-import type {DemoCase,Location,ClientProfile} from '../../types';
+import type {DemoCase,Location,ClientProfile,MiniReferralInfo} from '../../types';
 import {prettyDate,MAX_UPDATES} from '../../demo';
 import ProfileGlyph from './ProfileGlyph';
 import ProfileSummaryCard from './ProfileSummaryCard';
@@ -7,10 +7,11 @@ import ProfileShortcutTile from './ProfileShortcutTile';
 import ProfileReferralBanner from './ProfileReferralBanner';
 import ActiveRequestPreview from './ActiveRequestPreview';
 import ProgressTracker from './ProgressTracker';
+import ReferralDetails from './ReferralDetails';
 import './profile.css';
 
 type DraftProfile=Pick<ClientProfile,'name'|'phone'|'company'|'kind'>;
-type Props={cases:DemoCase[];locations:Location[];user?:{firstName:string}|null;profile:ClientProfile|null;onSave:(p:DraftProfile)=>Promise<void>;onCreate:()=>void;onSupplement:(n:number)=>void};
+type Props={cases:DemoCase[];locations:Location[];user?:{firstName:string}|null;profile:ClientProfile|null;referral:MiniReferralInfo|null;referralLoading:boolean;referralError:string;onSave:(p:DraftProfile)=>Promise<void>;onCreate:()=>void;onSupplement:(n:number)=>void};
 type View='home'|'data'|'requests'|'discount'|'case';
 const statusTitle:Record<DemoCase['status'],string>={received:'Получено',working:'В работе',resolved:'Решено'};
 function StatusTag({status}:{status:DemoCase['status']}) {
@@ -41,13 +42,6 @@ function ProfileDataForm({profile,onSave}:{profile:ClientProfile|null;onSave:Pro
  </form>;
 }
 export function ProfileEditor({profile,onSave}:{profile:ClientProfile|null;onSave:Props['onSave']}){return <ProfileDataForm profile={profile} onSave={onSave}/>;}
-export function DiscountPanel({percent}:{percent:number}) {
- return <div className="profile-discount-screen">
-  <div className="profile-discount-screen__balance"><ProfileGlyph name="discount" size={30}/><span>Скидка на следующую оплату</span><strong>{percent>0?percent+'%':'У вас нет скидок'}</strong></div>
-  <p>Приглашайте новых клиентов и получайте скидку на следующую оплату.</p>
-  <div className="profile-discount-screen__coming"><ProfileGlyph name="link" size={22}/> Реферальная ссылка скоро появится</div>
- </div>;
-}
 function RequestItem({record,title,onClick}:{record:DemoCase;title:string;onClick:()=>void}) {
  return <button type="button" className="profile-request-item" onClick={onClick}>
   <span className="profile-symbol profile-symbol--application"><ProfileGlyph name="application" size={22}/></span>
@@ -58,7 +52,7 @@ function RequestItem({record,title,onClick}:{record:DemoCase;title:string;onClic
 }
 export {default as ProfileProgressTracker} from './ProgressTracker';
 
-export default function ProfilePage({cases,locations,user,profile,onSave,onCreate,onSupplement}:Props){
+export default function ProfilePage({cases,locations,user,profile,referral,referralLoading,referralError,onSave,onCreate,onSupplement}:Props){
  const [view,setView]=useState<View>('home');
  const [caseNumber,setCaseNumber]=useState<number|null>(null);
  const names=new Map(locations.map(l=>[l.id,l.title]));
@@ -82,7 +76,7 @@ export default function ProfilePage({cases,locations,user,profile,onSave,onCreat
  return <section className="profile-page profile-page--subview">
   <button className="profile-back" onClick={back}><ProfileGlyph name="back" size={19}/> Назад</button>
   {view==='data'&&<><h1>Мои данные</h1><ProfileDataForm profile={profile} onSave={onSave}/></>}
-  {view==='discount'&&<><h1>Бонусы</h1><DiscountPanel percent={profile?.discountPercent||0}/></>}
+  {view==='discount'&&<><h1>Бонусы</h1><ReferralDetails percent={profile?.discountPercent||0} info={referral} loading={referralLoading} error={referralError}/></>}
   {view==='requests'&&<><h1>Мои заявки</h1>{sorted.length?sorted.map(c=><RequestItem key={c.number} record={c} title={caseName(c)} onClick={()=>openCase(c.number)}/>):<div className="profile-empty">Пока нет заявок. После отправки они появятся здесь.</div>}<button className="profile-cta" onClick={onCreate}><ProfileGlyph name="plus" size={22}/> Подать заявку</button></>}
   {view==='case'&&current&&<><h1>{caseName(current)}</h1><p className="profile-muted">{prettyDate(current.createdAt)}</p><div className="profile-detail-tracker"><ProgressTracker status={current.status}/></div><h2>История заявки</h2><div className="profile-history">
     <div><span className="profile-history__dot"/><strong>Заявка получена</strong><small>{prettyDate(current.createdAt)}</small></div>
