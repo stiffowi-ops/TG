@@ -33,6 +33,7 @@ type referralRecord struct {
  CreatedAt time.Time `json:"createdAt"`
  DecidedAt *time.Time `json:"decidedAt,omitempty"`
  Notified bool `json:"notified,omitempty"`
+ Ready bool `json:"ready,omitempty"`
 }
 type MiniReferralInfo struct {
  Code string `json:"code"`
@@ -228,7 +229,8 @@ func (b *Bot) MiniAdminReferralQueue(adminID int64)([]referralRecord,error){
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
  out:=[]referralRecord{}
  for _,rec:=range s.state.Referrals {
-  if rec.Status!="awarded"{out=append(out,rec)}
+  if rec.Status=="awarded"{continue}
+  if lead,ok:=s.leadByNumberLocked(rec.CaseNumber);ok&&!lead.Hidden{rec.Ready=lead.TakenInWork;out=append(out,rec)}
  }
  sort.Slice(out,func(i,j int)bool{return out[i].CreatedAt.After(out[j].CreatedAt)})
  return out,nil
