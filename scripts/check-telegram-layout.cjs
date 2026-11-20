@@ -19,8 +19,10 @@ module.exports = async function checkTelegramLayout(context, target) {
           enableVerticalSwipes(){this.isVerticalSwipesEnabled=true}
         }};`
       }));
+      let grantedDiscount=0;
       await page.route('**/api/me', route => route.fulfill({json:{
-        user:{id:1}, admin:fullscreen, favorites:[], cases:[]
+        user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:[],
+        profile:{userId:1,name:'Тестовый клиент',phone:'+79990000000',kind:'existing',company:'',discountPercent:grantedDiscount}
       }}));
       await page.route('**/api/locations/view', route => route.fulfill({json:{ok:true}}));
       const station = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
@@ -180,14 +182,25 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('heading',{name:'Мой профиль'}).waitFor();
       assert.ok(await page.getByRole('button',{name:/Данные для заявок/}).isVisible());
-      assert.ok(await page.getByRole('button',{name:/Бонусы/}).isVisible());
+      const referral=page.locator('.profile-referral');
+      assert.ok(await referral.isVisible());
+      assert.ok(await referral.getByText('Пригласить',{exact:true}).isVisible());
+      assert.ok(await referral.locator('img.profile-referral__art').evaluate(img=>img.complete && img.naturalWidth>0),'Referral vector art failed to load');
+      await referral.tap();
+      assert.ok(await page.getByText('У вас нет скидок',{exact:true}).isVisible());
+      await page.getByRole('button',{name:'Назад'}).tap();
       assert.ok(await page.getByRole('button',{name:'Подать заявку'}).isVisible());
       await page.getByRole('button',{name:'Подать заявку'}).tap();
       await page.getByRole('dialog').getByRole('button',{name:'Закрыть',exact:true}).tap();
       await nav.getByRole('button',{name:'Избранное'}).tap();
       await page.locator('.catalog-page-heading__back').tap();
+      grantedDiscount=15; // Simulate an administrator granting a discount while the app remains open.
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('heading',{name:'Мой профиль'}).waitFor();
+      await page.getByText('Скидка 15%',{exact:true}).waitFor();
+      await page.locator('.profile-referral').tap();
+      assert.ok(await page.getByText('15%',{exact:true}).isVisible(),'Client must see the discount assigned by admin');
+      await page.getByRole('button',{name:'Назад'}).tap();
       await nav.getByRole('button',{name:'Локации'}).tap();
       await home.waitFor();
 

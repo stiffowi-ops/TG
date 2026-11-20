@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 252" fill="none" aria-hidden="true">
+ <defs>
+  <linearGradient id="orange" x1="140" y1="28" x2="259" y2="174" gradientUnits="userSpaceOnUse"><stop stop-color="#FFB24C"/><stop offset=".42" stop-color="#FF790A"/><stop offset="1" stop-color="#ED5A00"/></linearGradient>
+  <linearGradient id="shell" x1="174" y1="62" x2="267" y2="147" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF8EE"/><stop offset=".46" stop-color="#FFEDD6"/><stop offset="1" stop-color="#F7B16F"/></linearGradient>
+  <linearGradient id="paper" x1="15" y1="63" x2="187" y2="213" gradientUnits="userSpaceOnUse"><stop stop-color="#FFF"/><stop offset="1" stop-color="#FFE8D0"/></linearGradient>
+  <linearGradient id="stamp" x1="225" y1="160" x2="288" y2="244" gradientUnits="userSpaceOnUse"><stop stop-color="#FF9D22"/><stop offset="1" stop-color="#F66A02"/></linearGradient>
+ </defs>
+ <ellipse cx="164" cy="226" rx="124" ry="16" fill="#E59649" opacity=".14"/>
+ <!-- Referral card -->
+ <g transform="rotate(-12 95 131)">
+  <rect x="20" y="57" width="165" height="159" rx="23" fill="url(#paper)" stroke="#F4D4B6" stroke-width="2.5"/>
+  <rect x="33" y="73" width="139" height="130" rx="16" fill="#FFFDFC" opacity=".66"/>
+  <g stroke="#F68018" stroke-width="6" stroke-linecap="round">
+   <circle cx="104" cy="109" r="18"/>
+   <path d="M73 163c0-19 14-33 31-33 17 0 31 14 31 33"/>
+   <circle cx="61" cy="121" r="10"/><path d="M41 153c0-11 7-18 18-18"/>
+   <circle cx="146" cy="121" r="10"/><path d="M151 135c9 1 15 8 15 18"/>
+  </g>
+  <path d="M44 181h77" stroke="#FFCD9C" stroke-width="6" stroke-linecap="round"/>
+ </g>
+ <!-- Megaphone angled handle -->
+ <path d="m182 165 31 54q7 10 18 5l13-9q7-5 4-14l-25-68-41 32Z" fill="#F7760C" stroke="#ED6C09" stroke-width="3" stroke-linejoin="round"/>
+ <path d="m197 175 25 42" stroke="#FFAB50" stroke-width="8" stroke-linecap="round"/>
+ <!-- Megaphone back -->
+ <path d="m156 133 39-26 34 31-38 27q-11 7-18 0l-22-20q-7-6 5-12Z" fill="url(#orange)" stroke="#EB6100" stroke-width="3"/>
+ <path d="m193 111 44-76 47 9-25 121-45-21-21-33Z" fill="url(#shell)" stroke="#F7B779" stroke-width="3" stroke-linejoin="round"/>
+ <path d="m198 112 46-71" stroke="#FFFDFC" stroke-width="5" opacity=".9" stroke-linecap="round"/>
+ <!-- Megaphone bell -->
+ <ellipse cx="271" cy="94" rx="38" ry="70" transform="rotate(-14 271 94)" fill="url(#orange)" stroke="#EF6600" stroke-width="4"/>
+ <ellipse cx="272" cy="95" rx="22" ry="54" transform="rotate(-14 272 95)" fill="#F16A00" stroke="#FFB45F" stroke-width="2"/>
+ <ellipse cx="272" cy="97" rx="10" ry="28" transform="rotate(-14 272 97)" fill="#FFD08A" opacity=".85"/>
+ <!-- Sound rays -->
+ <path d="m280 9 5-8M305 36l13-10M309 66l11-1" stroke="#FF7909" stroke-width="7" stroke-linecap="round"/>
+ <!-- Discount sticker -->
+ <path d="m237 167 12-5 11-13 12 7 17-1 3 16 11 13-6 14 2 18-16 3-11 13-15-7-17 2-3-17-12-12 7-14-2-17Z" fill="url(#stamp)" stroke="#ED6700" stroke-width="3" stroke-linejoin="round"/>
+ <g stroke="#FFFDF8" stroke-width="7" stroke-linecap="round">
+  <circle cx="252" cy="181" r="6"/><circle cx="280" cy="211" r="6"/>
+  <path d="m282 174-33 44"/>
+ </g>
+</svg>
