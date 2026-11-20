@@ -24,7 +24,7 @@ import {backupLocations, categoryLabel, mapLink, MAX_COMPARE, MAX_UPDATES, norma
 type WebApp = {
  ready():void; expand():void; close?():void; setHeaderColor?(color:string):void;
  HapticFeedback?:{impactOccurred(style:'light'|'medium'|'heavy'):void};
- initData?:string;
+ initData?:string;startParam?:string;
  isFullscreen?:boolean;
  platform?:string;
  onEvent?:(event:string,callback:()=>void)=>void;
@@ -86,7 +86,7 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
  return <div className="dialog-overlay" style={hidden?{display:'none'}:undefined} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
 }
 function App(){
- const [tab,setTab]=useState<Tab>(()=>new URLSearchParams(window.location.search).get('view')==='profile'?'requests':'home');
+ const [tab,setTab]=useState<Tab>(()=>{const query=new URLSearchParams(window.location.search);return query.get('view')==='profile'||query.get('tgWebAppStartParam')==='profile'||window.Telegram?.WebApp?.startParam==='profile'?'requests':'home'});
  const [hasNavigated,setHasNavigated]=useState(false);
  const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
