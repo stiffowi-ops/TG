@@ -139,3 +139,27 @@
  .profile-referral--invitation .profile-referral__copy>span:not(.profile-referral__cta){font-size:10px}
  .profile-referral--invitation .profile-referral__art{width:55%;right:1%}
 }
+
+
+/* Referral link and management screens use real text and separate vector icons. */
+.profile-referral-share {padding:18px;border:1px solid #F0E5DB;border-radius:18px;background:#FFFDFB;display:flex;flex-direction:column;gap:14px;box-shadow:0 6px 18px #40240E0C;}
+.profile-referral-share__heading {display:flex;gap:9px;align-items:center;color:#0E333A;font-size:15px;}
+.profile-referral-share__heading svg {color:#F77820;}
+.profile-referral-share__link {min-width:0;display:flex;gap:9px;align-items:center;padding:12px;border:1px solid #E9D6C4;border-radius:12px;background:#FFF5EA;color:#365159;font-size:13px;}
+.profile-referral-share__link span {overflow-wrap:anywhere;min-width:0;}
+.profile-referral-share__actions {display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.profile-referral-share__actions button {display:flex;gap:7px;align-items:center;justify-content:center;min-height:44px;padding:8px;border:0;border-radius:12px;font-size:12px;font-weight:750;color:white;background:linear-gradient(110deg,#F97A18,#FF6400);}
+.profile-referral-share__actions button:first-child {background:#FFF0E2;color:#D96A16;}
+.profile-referral-share__counts {display:flex;flex-direction:column;gap:5px;color:#6C7C7C;font-size:12px;}
+.referral-form {display:flex;flex-direction:column;gap:11px;margin-top:14px;padding:13px;background:#FFF9F2;border:1px solid #F0E5D6;border-radius:13px;}
+.referral-form>strong{font-size:13px;color:#0E333A;}
+.referral-form__choice{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.referral-form__choice button {padding:9px;border-radius:10px;border:1px solid #E8D7C5;background:white;color:#506467;font-size:13px;font-weight:700;}
+.referral-form__choice button.selected {background:#FFEEE1;border-color:#FA7A1A;color:#C75C08;}
+.referral-form>small{color:#468A52;font-size:12px;}
+.referral-admin-review{width:100%;padding:13px;border-radius:13px;border:1px solid #F2DEC8;background:#FFF7EF;color:#0E333A;}
+.referral-admin-review>strong{font-size:13px;}
+.referral-admin-review>p{font-size:12px;margin:7px 0;color:#5D7174;}
+.referral-admin-review>small{font-size:11px;color:#C17120;}
+.referral-admin-review__buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;}
+.referral-admin-review__buttons button{flex:1;min-height:39px;font-size:12px!important;padding:9px!important;}
