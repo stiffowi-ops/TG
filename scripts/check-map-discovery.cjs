@@ -85,7 +85,7 @@ module.exports=async function checkMapDiscovery(context,target){
   assert.equal(await nearby.count(),0);
 
   // Returning from a selected pin must restore the camera for the filtered subset.
-  const metro=page.getByRole('button',{name:'Метро',exact:true});
+  const metro=page.getByRole('button',{name:'У метро',exact:true});
   const search=page.getByRole('searchbox');
   await metro.click();
   await search.fill('точка');

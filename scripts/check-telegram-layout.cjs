@@ -113,9 +113,27 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.ok((await back.boundingBox()).y >= (fullscreen?72:0));
       const catalogBackBox = await back.boundingBox();
       const catalogHeaderBox = await page.locator('.catalog-page .site-header__inner').boundingBox();
-      await page.getByRole('button',{name:'Настроить фильтры'}).tap();
-      await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
       const cards = page.locator('.catalog-location-grid article');
+      const categories = page.getByRole('group',{name:'Категории локаций'});
+      await cards.filter({hasText:town.title}).waitFor();
+      await categories.getByRole('button',{name:'У метро',exact:true}).tap();
+      assert.deepEqual(await cards.locator('.location-card__title').allTextContents(),[station.title]);
+      await page.setViewportSize({width:320,height});
+      await page.getByRole('button',{name:'Настроить фильтры'}).tap();
+      const sheet = page.getByRole('dialog',{name:'Фильтры локаций'});
+      await sheet.getByRole('button',{name:'Без привязки к метро',exact:true}).tap();
+      for(const group of await categories.all()){
+        const fits=await group.getByRole('button').evaluateAll(buttons=>buttons.every(button=>{
+          const label=button.querySelector('span').getBoundingClientRect();
+          const bounds=button.getBoundingClientRect();
+          return bounds.left>=0 && bounds.right<=innerWidth && label.left>=bounds.left && label.right<=bounds.right;
+        }));
+        assert.ok(fits,'Category label extends outside its button on a 320px screen');
+      }
+      await page.getByRole('button',{name:'Закрыть фильтры'}).tap();
+      assert.deepEqual(await cards.locator('.location-card__title').allTextContents(),[town.title]);
+      await categories.getByRole('button',{name:'Все',exact:true}).tap();
+      await page.setViewportSize({width:390,height});
       await cards.filter({hasText:town.title}).waitFor();
       const cardLines = async card => (await card.innerText()).split(/\n+/).map(line=>line.trim()).filter(Boolean);
       assert.deepEqual(await cardLines(cards.first()),[station.title,station.area,'На карте']);

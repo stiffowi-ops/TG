@@ -8,6 +8,11 @@ export const backupLocations:Location[] = [
  {id:'033',title:'Метро Сколково',category:'Метро',area:'Запад Москвы',latitude:55.6994740533,longitude:37.3501576403},
  {id:'036',title:'Ивантеевка',category:'Другие локации',area:'Подмосковье',latitude:55.9754911228,longitude:37.9095597672},
 ];
+const categoryLabels=new Map([
+ ['Метро','У метро'],
+ ['Другие локации','Без привязки к метро'],
+]);
+export function categoryLabel(category:string){return categoryLabels.get(category)??category;}
 export const statusLabel = {received:'📨 Получено',working:'🛠 В работе',resolved:'✅ Решено'} as const;
 const relative=(days:number,hours=0)=>new Date(Date.now()+(days*24+hours)*3600000).toISOString();
 export function seededCases():DemoCase[]{return [
