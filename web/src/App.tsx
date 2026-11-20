@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage/LandingPage';
 import BottomNavigation from './components/BottomNavigation/BottomNavigation';
 import ProfilePage from './components/Profile/ProfilePage';
 import AdminClientProfiles from './components/Profile/AdminClientProfiles';
+import AdminReferralQueue, {type ReferralRecord} from './components/Profile/AdminReferralQueue';
 import {
  ArrowLeft, ArrowRight, Building2, Check,
  CheckCircle2, CircleHelp, Clock3,
@@ -234,7 +235,11 @@ function App(){
   const data=await miniApi<{profile:ClientProfile}>('/api/profile',{method:'POST',body:JSON.stringify(input)});
   setProfile(data.profile);setToast('Профиль сохранён');
  };
- const adminReferralAction=async(number:number,action:'award'|'defer')=>{
+ const loadAdminReferrals=useCallback(async()=>{
+   const data=await miniApi<{referrals:ReferralRecord[]}>('/api/admin/referrals');
+   return data.referrals||[];
+ },[]);
+  const adminReferralAction=async(number:number,action:'award'|'defer')=>{
   try{
    await miniApi('/api/admin/referral',{method:'POST',body:JSON.stringify({number,action})});
    const data=await miniApi<{cases:DemoCase[]}>('/api/admin/cases');
@@ -242,6 +247,12 @@ function App(){
    setToast(action==='award'?'Скидка 10% начислена пригласившему':'Реферальное начисление отложено');
   }catch(err){setToast((err as Error).message)}
  };
+  const referralDecision=useCallback(async(number:number,action:'award'|'defer')=>{
+  await miniApi('/api/admin/referral',{method:'POST',body:JSON.stringify({number,action})});
+  const data=await miniApi<{cases:DemoCase[]}>('/api/admin/cases');
+  setAdminCases(data.cases);
+  setToast(action==='award'?'Скидка 10% начислена пригласившему':'Реферальное начисление отложено');
+ },[]);
   const loadAdminProfiles=useCallback(async()=>{const data=await miniApi<{profiles:ClientProfile[]}>('/api/admin/profiles');return data.profiles||[]},[]);
  const setAdminDiscount=useCallback(async(userId:number,discountPercent:number)=>{const data=await miniApi<{profile:ClientProfile}>('/api/admin/profiles/discount',{method:'POST',body:JSON.stringify({userId,discountPercent})});return data.profile},[]);
 
@@ -295,7 +306,7 @@ function App(){
     <div><small>В работе</small><strong>{adminCases.filter(c=>c.status==='working').length}</strong></div>
     <div><small>Обработаны</small><strong>{adminCases.filter(c=>c.status==='resolved').length}</strong></div>
    </div>
-   <AdminClientProfiles load={loadAdminProfiles} save={setAdminDiscount}/><AdminExtras locations={locations} refresh={refreshCatalog}/><h2>Банк заявок</h2>{adminBusy&&<p>Загружаем обращения…</p>}
+   <AdminClientProfiles load={loadAdminProfiles} save={setAdminDiscount}/><AdminReferralQueue load={loadAdminReferrals} decide={referralDecision}/><AdminExtras locations={locations} refresh={refreshCatalog}/><h2>Банк заявок</h2>{adminBusy&&<p>Загружаем обращения…</p>}
    <div className="admin-request-list">{adminCases.map(c=><article className="admin-request" key={c.number}>
     <div className="admin-request-head"><strong>Заявка №{String(c.number).padStart(4,'0')}</strong><Status status={c.status}/></div>
     <p><b>{c.name||'Клиент'}</b>{c.company?' · '+c.company:''}</p>
