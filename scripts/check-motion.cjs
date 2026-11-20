@@ -36,7 +36,7 @@ module.exports = async function checkMotion(context, target) {
     assert.equal(await page.evaluate(()=>window.reveals),1);
 
     // Navigate again before the first entry animation would finish.
-    for(const name of ['Избранное','Мои заявки','Локации']){
+    for(const name of ['Избранное','Профиль','Локации']){
       await nav.getByRole('button',{name,exact:true}).evaluate(el=>el.click());
     }
     await openCatalog();
