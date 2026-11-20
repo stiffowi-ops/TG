@@ -205,6 +205,7 @@ func (s *appService) handler(webDist string) http.Handler {
 				"favorites":s.bot.MiniFavorites(u.ID),
 				"cases":s.bot.MiniMyCases(u.ID),
 				"profile":func() any { p,ok:=s.bot.MiniGetProfile(u.ID);if ok{return p};return nil }(),
+				"referralCode":s.bot.MiniPendingReferral(u.ID),
 			})
 		case r.Method=="GET"&&r.URL.Path=="/api/profile":
             p,ok:=s.bot.MiniGetProfile(u.ID)
