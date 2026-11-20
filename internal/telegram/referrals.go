@@ -260,3 +260,18 @@ func (b *Bot) runReferralNotices(ctx context.Context) {
   }
  }
 }
+
+func (b *Bot) handleReferralAdminCallback(ctx context.Context, cb *callbackQuery)error {
+ if b==nil||cb==nil||cb.From.ID<=0||!b.IsMiniAdmin(cb.From.ID)||cb.Message==nil||cb.Message.Chat.Type!="private"||cb.Message.Chat.ID!=cb.From.ID{return nil}
+ parts:=strings.Split(cb.Data,":")
+ if len(parts)!=3||parts[0]!="ref"{return nil}
+ number,err:=strconv.ParseInt(parts[2],10,64);if err!=nil||number<=0{return nil}
+ action:=parts[1]
+ rec,changed,err:=b.MiniAdminReferralAction(cb.From.ID,number,action)
+ if err!=nil{return b.Send(ctx,cb.From.ID,html.EscapeString(err.Error()),markup([]Button{adminCaseButton(number)}))}
+ if changed {
+  if action=="award"{b.MiniReferralAwarded(rec)}
+  if action=="defer"{b.MiniDeferredReminder(ctx,cb.From.ID,rec)}
+ }
+ return b.showAdminCase(ctx,cb.From.ID,number,0)
+}
