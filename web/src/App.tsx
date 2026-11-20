@@ -39,7 +39,7 @@ type WebApp = {
 declare global {interface Window {Telegram?:{WebApp?:WebApp}}}
 
 const heartKey = 'locations-prototype:favorites:v1';
-type MiniSession={admin:boolean;user:{id:number;username:string;firstName:string};favorites:string[]|null;cases:DemoCase[]|null;profile:ClientProfile|null};
+type MiniSession={admin:boolean;user:{id:number;username:string;firstName:string};favorites:string[]|null;cases:DemoCase[]|null;profile:ClientProfile|null;referralCode?:string};
 async function miniApi<T>(path:string,options:RequestInit={}):Promise<T>{
  const initData=window.Telegram?.WebApp?.initData;
  if(!initData)throw Error('Откройте приложение через Telegram.');
@@ -102,6 +102,7 @@ function App(){
  const [cases,setCases]=useState<DemoCase[]>([]);
  const [profile,setProfile]=useState<ClientProfile|null>(null);
  const [referralInfo,setReferralInfo]=useState<MiniReferralInfo|null>(null);
+ const [pendingReferralCode,setPendingReferralCode]=useState("");
  const [referralError,setReferralError]=useState('');
  const [referralLoading,setReferralLoading]=useState(false);
   const [session,setSession]=useState<MiniSession|null>(null);
@@ -172,7 +173,7 @@ function App(){
  },[]);
  useEffect(()=>{if(!toast)return;const t=setTimeout(()=>setToast(''),3000);return()=>clearTimeout(t)},[toast]);
  useEffect(()=>{if(!window.Telegram?.WebApp?.initData)return;let active=true;
-  miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setProfile(data.profile||null);setCases(Array.isArray(data.cases)?data.cases:[]);setFavorites(Array.isArray(data.favorites)?data.favorites:[])}}).catch(err=>{if(active)setToast(err.message)});
+  miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setProfile(data.profile||null);setPendingReferralCode(data.referralCode||"");setCases(Array.isArray(data.cases)?data.cases:[]);setFavorites(Array.isArray(data.favorites)?data.favorites:[])}}).catch(err=>{if(active)setToast(err.message)});
   return()=>{active=false};},[]);
  // Keep server-owned discounts and cases current when a user enters or resumes the profile.
  useEffect(()=>{
@@ -185,6 +186,7 @@ function App(){
     if(!mounted||request!==latestRequest)return;
     setCases(Array.isArray(data.cases)?data.cases:[]);
     setProfile(data.profile||null);
+    setPendingReferralCode(data.referralCode||"");
    }).catch(err=>{if(mounted&&request===latestRequest)setToast(err.message)});
   };
   const onVisible=()=>{if(document.visibilityState==='visible')refresh()};
@@ -212,7 +214,7 @@ function App(){
   if(tab!=='requests'||!session)return;
   let active=true;
   setReferralLoading(true);setReferralError('');
-  miniApi<MiniReferralInfo>('/api/referral').then(data=>{if(active)setReferralInfo(data)})
+  miniApi<MiniReferralInfo>('/api/referral').then(data=>{if(active){setReferralInfo(data);setPendingReferralCode(data.pendingCode||"")}})
    .catch(err=>{if(active)setReferralError((err as Error).message)})
    .finally(()=>{if(active)setReferralLoading(false)});
   return()=>{active=false};
@@ -266,6 +268,7 @@ function App(){
  const submitCase=async(data:NewCaseInput)=>{try{
  const result=await miniApi<{case:DemoCase}>('/api/cases',{method:'POST',body:JSON.stringify(data)});
  setCases(prev=>[result.case,...prev.filter(c=>c.number!==result.case.number)]);
+ setPendingReferralCode("");
  miniApi<{profile:ClientProfile|null}>('/api/profile').then(p=>setProfile(p.profile)).catch(()=>{});
  setCreating(null);setCaseDetail(result.case.number);setToast('Заявка отправлена специалистам');
  }catch(err){setToast((err as Error).message)}};
@@ -334,7 +337,7 @@ function App(){
   {yandexLocation&&<YandexLocationViewer location={yandexLocation} onClose={closeYandex}/>}
   {compareOpen&&<Dialog onClose={()=>setCompareOpen(false)} className="compare-dialog"><div className="dialog-content"><span className="overline">ВАША ПОДБОРКА</span><h2>Сравнение локаций</h2><p className="section-subtitle">Сравнивайте основные данные выбранных вариантов.</p><div className="compare-table"><div className="compare-row compare-top"><span>Параметр</span>{compareIds.map(id=><strong key={id}>{locationById.get(id)?.title}</strong>)}</div>{([{name:'Категория',get:(l:Location)=>categoryLabel(l.category)},{name:'Район',get:(l:Location)=>l.area||'—'},{name:'Координаты',get:(l:Location)=>l.latitude===undefined||l.longitude===undefined?'Нет данных':`${l.latitude.toFixed(3)}, ${l.longitude.toFixed(3)}`}]).map(row=><div className="compare-row" key={row.name}><span>{row.name}</span>{compareIds.map(id=><span key={id}>{locationById.get(id)?row.get(locationById.get(id)!):'—'}</span>)}</div>)}</div><div className="compare-links">{compareIds.map(id=>{const l=locationById.get(id);return l?<button key={id} className="btn secondary" onClick={()=>openMap(mapLink(l))}>{l.title} <ExternalLink size={15}/></button>:null})}</div><p className="muted-note">Показаны только подтверждённые данные.</p></div></Dialog>}
   {activeCase&&<Dialog onClose={()=>setCaseDetail(null)} className="case-dialog"><div className="dialog-content"><span className="overline">ВАШЕ ОБРАЩЕНИЕ</span><h2>Заявка {locationById.get(activeCase.locationIds[0]||'')?.title||'Локация'}</h2><Status status={activeCase.status}/><div className="case-details"><div><span>Создана</span><strong>{prettyDate(activeCase.createdAt)}</strong></div><div><span>Локаций</span><strong>{activeCase.locationIds.length}</strong></div><div><span>Дополнения</span><strong>{activeCase.updates.length} из 2</strong></div></div><h3>Интересующие локации</h3><div className="case-location-list">{activeCase.locationIds.map(id=><div key={id}><MapPin size={16}/>{locationById.get(id)?.title||'Название локации недоступно'}</div>)}</div><h3>История обращения</h3><CaseTimeline record={activeCase}/>{activeCase.status!=='resolved'&&<div className="case-supplement-actions">{activeCase.updates.length<MAX_UPDATES?<><button className="btn secondary" onClick={()=>{setSupplement(activeCase.number);setCaseDetail(null)}}><Plus size={17}/> Дополнить заявку</button><span>Доступно дополнений: {MAX_UPDATES-activeCase.updates.length} из {MAX_UPDATES}</span></>:<div className="quota-message"><CheckCircle2 size={18}/>Вы уже отправили два дополнения. Пожалуйста, дождитесь ответа специалиста.</div>}</div>}<div className="dialog-footer"><button className="btn dark full" onClick={()=>setCaseDetail(null)}>Вернуться к заявкам</button></div></div></Dialog>}
-  {creating!==null&&<CreateCase locations={locations} selected={creating} profile={profile} referralCode={referralInfo?.pendingCode||""} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}
+  {creating!==null&&<CreateCase locations={locations} selected={creating} profile={profile} referralCode={pendingReferralCode||referralInfo?.pendingCode||""} onClose={()=>setCreating(null)} onSubmit={submitCase}/>}
   {supplement!==null&&<SupplementDialog onClose={()=>setSupplement(null)} record={cases.find(c=>c.number===supplement)!} locations={locations} onSubmit={submitSupplement}/>}
  </div>
 }
