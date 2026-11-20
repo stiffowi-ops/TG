@@ -30,6 +30,21 @@ module.exports=async function checkMapDiscovery(context,target){
   const cluster=page.getByRole('button',{name:'Группа из 2 локаций'}).first();
   await cluster.waitFor({timeout:20000});
   assert.equal(await page.locator('.geo-pin-container').count(),places.length);
+  // Regression: a positioned MapLibre marker is absolute, never a normal-flow
+  // button. Relative-positioned markers produced the vertical K-pin column.
+  const geometry=await page.evaluate(()=>{
+   const pins=[...document.querySelectorAll('.geo-pin-container')];
+   const third=pins.find(p=>p.title==='Третья точка');
+   const fourth=pins.find(p=>p.title==='Четвёртая точка');
+   const center=(node)=>{const rect=node.getBoundingClientRect();return {x:rect.left+rect.width/2,y:rect.top+rect.height/2}};
+   return {
+    positions:pins.map(pin=>getComputedStyle(pin).position),
+    third:center(third),fourth:center(fourth)
+   };
+  });
+  assert.ok(geometry.positions.every(p=>p==='absolute'),'Pins must be absolutely positioned for MapLibre: '+JSON.stringify(geometry));
+  assert.ok(Math.abs(geometry.third.x-geometry.fourth.x)>2,
+   'Markers with different longitudes must not form a fixed vertical column: '+JSON.stringify(geometry));
   await cluster.evaluate(el=>el.click());
   await page.waitForTimeout(550);
   assert.equal(await page.locator('.geo-pin-container').count(),places.length);
