@@ -521,6 +521,13 @@ func adminLeadText(lead leadApplication) string {
 		b.WriteString("<b>Telegram:</b> @" + html.EscapeString(lead.Username) + "\n")
 	}
 	b.WriteString("<b>Источник:</b> " + html.EscapeString(lead.Source) + "\n")
+	if lead.ReferrerID>0 {
+		status:=map[string]string{"pending":"Ожидает решения","deferred":"Назначу позже","awarded":"Скидка 10% начислена"}[lead.ReferralStatus]
+		b.WriteString("\n🎁 <b>Реферальное приглашение</b>\n")
+		b.WriteString("<b>Пригласил:</b> "+html.EscapeString(lead.ReferrerName)+"\n")
+		b.WriteString(fmt.Sprintf("<b>Telegram ID пригласившего:</b> <code>%d</code>\n",lead.ReferrerID))
+		b.WriteString("<b>Вознаграждение:</b> "+status+"\n")
+	}
 	b.WriteString("<b>Дата:</b> " + caseTime(lead.CreatedAt))
 	b.WriteString("\n<b>Статус:</b> " + leadStatus(lead))
 	if lead.TakenBy > 0 {
@@ -562,7 +569,10 @@ func adminLeadMarkup(lead leadApplication) map[string]any {
 	} else {
 		rows = append(rows, []Button{callbackButton("📥 Взять в работу", fmt.Sprintf("lead:take:%d", lead.Number))})
 	}
-	return markup(rows...)
+	if lead.ReferrerID>0&&lead.TakenInWork&&lead.ReferralStatus!="awarded" {
+  rows=append(rows,[]Button{callbackButton("🎁 Начислить скидку 10%",fmt.Sprintf("ref:award:%d",lead.Number)),callbackButton("🕓 Назначу позже",fmt.Sprintf("ref:defer:%d",lead.Number))})
+ }
+ return markup(rows...)
 }
 
 func (b *Bot) notifyLeadAdmins(ctx context.Context, lead leadApplication) {
