@@ -149,6 +149,14 @@ func (b *Bot) MiniPendingReferral(id int64) string {
  b.leads.mu.Lock();defer b.leads.mu.Unlock()
  return b.leads.state.PendingReferrals[strconv.FormatInt(id,10)]
 }
+func (b *Bot) MiniClearPendingReferral(id int64)error {
+ if b==nil||b.leads==nil||id<=0{return errors.New("доступ запрещён")}
+ s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
+ key:=strconv.FormatInt(id,10)
+ if s.state.PendingReferrals[key]==""{return nil}
+ next:=s.cloneLocked();delete(next.PendingReferrals,key)
+ return s.saveLocked(next)
+}
 func (b *Bot) MiniPrepareReferral(id int64,raw string)error {
  if strings.TrimSpace(raw)==""{return nil}
  v,err:=b.MiniValidateReferral(id,raw);if err!=nil{return err}
