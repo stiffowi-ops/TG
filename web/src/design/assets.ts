@@ -9,4 +9,5 @@ export const designAssets = {
   waves: '/assets/backgrounds/waves.svg',
   shortcutBuilding: '/assets/illustrations/shortcut-building.svg',
   shortcutFavorite: '/assets/illustrations/shortcut-favorite.svg',
+  profileReferralGift: '/assets/illustrations/profile-referral-gift.svg',
 } as const;
