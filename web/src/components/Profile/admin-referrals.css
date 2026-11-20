@@ -1,0 +1,13 @@
+.admin-referrals{margin:18px 0;padding:18px;border:1px solid #F1E4D4;border-radius:19px;background:#FFFDF9;color:#0D3034}
+.admin-referrals__head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.admin-referrals__head h2{display:flex;align-items:center;gap:8px;font-size:20px;margin:0 0 7px}
+.admin-referrals__head h2 svg{color:#F77820}.admin-referrals__head p{font-size:12px;color:#718080;margin:0}
+.admin-referrals__head>button{flex:0 0 39px;width:39px;height:39px;border:1px solid #F1E4D4;border-radius:12px;background:white;color:#52676C}
+.admin-referrals__list{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:11px;margin-top:14px}
+.admin-referrals__item{display:flex;flex-direction:column;gap:7px;border:1px solid #F0E7DB;border-radius:14px;padding:13px;background:white}
+.admin-referrals__item>strong{font-size:15px}.admin-referrals__item>small{font-size:12px;line-height:1.4;color:#69777B}
+.admin-referrals__status{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:750;color:#C56A12}
+.admin-referrals__actions{display:flex;gap:8px;margin:8px 0}.admin-referrals__actions button{min-height:40px;flex:1;border:0;border-radius:10px;padding:8px;background:#FF7010;color:white;font-weight:750;font-size:12px}
+.admin-referrals__actions button+button{background:#FFF0E3;color:#C66A12}
+.admin-referrals__actions button:disabled{opacity:.5}
+.admin-referrals__empty{font-size:12px;color:#708080;margin:13px 0}.admin-referrals__error{font-size:12px;color:#B91C1C}

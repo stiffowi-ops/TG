@@ -49,6 +49,10 @@ type leadApplication struct {
 	ResolvedBy     int64           `json:"resolved_by,omitempty"`
 	Resolution     string          `json:"resolution,omitempty"`
 	ServiceVersion int             `json:"service_version,omitempty"`
+	ReferralCode string `json:"referral_code,omitempty"`
+	ReferrerID int64 `json:"referrer_id,omitempty"`
+	ReferrerName string `json:"referrer_name,omitempty"`
+	ReferralStatus string `json:"referral_status,omitempty"`
 	NoticeReceipts map[string]bool `json:"notice_receipts,omitempty"`
 	NoticeMessages map[string]int  `json:"notice_messages,omitempty"`
 }
@@ -60,6 +64,9 @@ type leadState struct {
 	NextID      int64                      `json:"next_id"`
 	Supplements map[string]supplementDraft `json:"supplements,omitempty"`
 	Profiles     map[string]miniProfileRecord `json:"profiles,omitempty"`
+	ReferralCodes map[string]string `json:"referral_codes,omitempty"`
+	PendingReferrals map[string]string `json:"pending_referrals,omitempty"`
+	Referrals map[string]referralRecord `json:"referrals,omitempty"`
 }
 
 type leadStore struct {
@@ -69,7 +76,7 @@ type leadStore struct {
 }
 
 func openLeadStore(path string) (*leadStore, error) {
-	s := &leadStore{path: path, state: leadState{Drafts: map[string]leadDraft{}, Submitted: map[string]leadApplication{}, Profiles: map[string]miniProfileRecord{}}}
+	s := &leadStore{path: path, state: leadState{Drafts: map[string]leadDraft{}, Submitted: map[string]leadApplication{}, Profiles: map[string]miniProfileRecord{}, ReferralCodes:map[string]string{}, PendingReferrals:map[string]string{}, Referrals:map[string]referralRecord{}}}
 	raw, err := os.ReadFile(path)
 	if errors.Is(err, os.ErrNotExist) {
 		return s, nil
@@ -89,6 +96,9 @@ func openLeadStore(path string) (*leadStore, error) {
 	if s.state.Profiles == nil {
 		s.state.Profiles = map[string]miniProfileRecord{}
 	}
+	if s.state.ReferralCodes == nil {s.state.ReferralCodes=map[string]string{}}
+	if s.state.PendingReferrals == nil {s.state.PendingReferrals=map[string]string{}}
+	if s.state.Referrals == nil {s.state.Referrals=map[string]referralRecord{}}
 	// Resume stored forms explicitly after a restart.
 	for k, d := range s.state.Drafts {
 		d.Paused = true
@@ -154,6 +164,9 @@ func (s *leadStore) cloneLocked() leadState {
 		NextID:      s.state.NextID,
 		Supplements: make(map[string]supplementDraft, len(s.state.Supplements)),
 		Profiles: make(map[string]miniProfileRecord, len(s.state.Profiles)),
+		ReferralCodes:make(map[string]string,len(s.state.ReferralCodes)),
+		PendingReferrals:make(map[string]string,len(s.state.PendingReferrals)),
+		Referrals:make(map[string]referralRecord,len(s.state.Referrals)),
 	}
 	for key, draft := range s.state.Drafts {
 		next.Drafts[key] = cloneLeadDraft(draft)
@@ -161,6 +174,9 @@ func (s *leadStore) cloneLocked() leadState {
 	for key, profile := range s.state.Profiles {
 		next.Profiles[key] = profile
 	}
+	for k,v:=range s.state.ReferralCodes {next.ReferralCodes[k]=v}
+	for k,v:=range s.state.PendingReferrals {next.PendingReferrals[k]=v}
+	for k,v:=range s.state.Referrals {next.Referrals[k]=v}
 	for key, draft := range s.state.Supplements {
 		next.Supplements[key] = cloneSupplementDraft(draft)
 	}
@@ -264,6 +280,19 @@ func (s *leadStore) submit(userID int64, username, locationName string) (leadApp
 		CreatedAt: time.Now().UTC(), Delivered: map[string]bool{}, ServiceVersion: 1,
 		Locations: []leadLocation{{ID: d.LocationID, Name: locationName}},
 	}
+	// Record the first verified invitation atomically with the submitted case.
+	if code:=next.PendingReferrals[key];code!="" {
+		owner:=s.referralOwnerLocked(code)
+		_,used:=next.Referrals[key]
+		previous:=false
+		for _,old:=range next.History {if old.UserID==userID {previous=true;break}}
+		if owner>0&&owner!=userID&&!used&&!previous {
+			inviterName:=s.referralDisplayNameLocked(owner)
+			lead.ReferralCode=code;lead.ReferrerID=owner;lead.ReferrerName=inviterName;lead.ReferralStatus="pending"
+			next.Referrals[key]=referralRecord{InviteeID:userID,InviterID:owner,CaseNumber:lead.Number,InviterName:inviterName,InviteeName:lead.Name,Code:code,Status:"pending",CreatedAt:lead.CreatedAt}
+		}
+	}
+	delete(next.PendingReferrals,key)
 	next.Submitted[key] = lead
 	delete(next.Drafts, key)
 	delete(next.Supplements, key)

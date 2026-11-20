@@ -39,6 +39,9 @@ type Bot struct {
 	lastScreens               map[int64]int
 	searchPrompts             map[int64]int
 	botID                     int64
+	botIdentityMu sync.RWMutex
+	botUsername string
+	referralWake chan struct{}
 	metrics                   *analytics.Store
 	adminMu                   sync.Mutex
 	backupMu                  sync.Mutex
@@ -164,6 +167,7 @@ func New(token, constructorID, dataDir string, store *catalog.Store, sy *syncer.
 		compareSelections: make(map[int64][]string),
 		deliveryWake:      make(chan struct{}, 1),
 		keyboardCleanup:   make(chan int64, 64),
+		referralWake: make(chan struct{},1),
 	}, nil
 }
 func (b *Bot) call(ctx context.Context, method string, payload any) (json.RawMessage, error) {
@@ -822,6 +826,10 @@ func (b *Bot) handle(ctx context.Context, u update) error {
 		if u.Callback.Message != nil && u.Callback.Message.Chat.Type == "private" && u.Callback.Message.Chat.ID == u.Callback.From.ID && !strings.HasPrefix(u.Callback.Data, "adm:") {
 			b.observeVisitor(u.Callback.From, b.visitorCallbackAction(u.Callback.Data), false)
 		}
+		if strings.HasPrefix(u.Callback.Data, "ref:") {
+			b.answerCallback(ctx,u.Callback.ID)
+			return b.handleReferralAdminCallback(ctx,u.Callback)
+		}
 		if strings.HasPrefix(u.Callback.Data, "lead:take:") || strings.HasPrefix(u.Callback.Data, "lead:done:") {
 			b.answerCallback(ctx, u.Callback.ID)
 			return b.handleLeadAdminCallback(ctx, u.Callback)
@@ -1199,10 +1207,12 @@ func (b *Bot) Run(ctx context.Context) error {
 	var identity user
 	if err := json.Unmarshal(me, &identity); err == nil {
 		b.botID = identity.ID
+		b.botIdentityMu.Lock(); b.botUsername=identity.Username; b.botIdentityMu.Unlock()
 	}
 	nextExpiry := b.expireDueCases()
 	go b.runCaseExpiry(ctx, nextExpiry)
 	go b.runLeadDelivery(ctx)
+	go b.runReferralNotices(ctx)
 	go b.runKeyboardCleanup(ctx)
 	go b.configureTelegramMenu(ctx)
 	go b.autoBackupLoop(ctx)

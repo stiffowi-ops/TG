@@ -27,6 +27,9 @@ type MiniCase struct {
 	TakenAt *time.Time `json:"takenAt,omitempty"`
 	ResolvedAt *time.Time `json:"resolvedAt,omitempty"`
 	Updates []MiniUpdate `json:"updates"`
+ ReferrerID int64 `json:"referrerId,omitempty"`
+ ReferrerName string `json:"referrerName,omitempty"`
+ ReferralStatus string `json:"referralStatus,omitempty"`
 }
 
 type MiniUpdate struct {
@@ -45,6 +48,7 @@ func miniCase(l leadApplication) MiniCase {
 		Name:l.Name, Phone:l.Phone, Company:l.Company, Kind:l.Kind,
 		CreatedAt:l.CreatedAt, Status:status, TakenBy:l.TakenBy,
 		TakenAt:l.TakenAt, ResolvedAt:l.ResolvedAt,
+ ReferrerID:l.ReferrerID,ReferrerName:l.ReferrerName,ReferralStatus:l.ReferralStatus,
 		LocationIDs:[]string{}, Updates:[]MiniUpdate{},
 	}
 	for _,loc:=range l.locations() { out.LocationIDs=append(out.LocationIDs,loc.ID) }
@@ -102,6 +106,8 @@ type MiniNewCase struct {
 	Company string `json:"company"`
 	Name string `json:"name"`
 	Phone string `json:"phone"`
+ ReferralCode string `json:"referralCode,omitempty"`
+ SkipReferral bool `json:"skipReferral,omitempty"`
 }
 
 func (b *Bot) MiniCreateCase(userID int64, username string, input MiniNewCase) (MiniCase,error) {
@@ -116,6 +122,7 @@ func (b *Bot) MiniCreateCase(userID int64, username string, input MiniNewCase) (
 	if input.Kind=="new" && (utf8.RuneCountInString(input.Company)<2 || utf8.RuneCountInString(input.Company)>200) {return MiniCase{},errors.New("укажите юридическое лицо")}
 	phone,ok:=normalizeLeadPhone(input.Phone);if !ok {return MiniCase{},errors.New("номер должен содержать +7 и десять цифр")}
 	if current,ok:=b.leads.submitted(userID);ok&&!current.isResolved() {return miniCase(current),errors.New("у Вас уже есть активное обращение")}
+ if input.SkipReferral {if err:=b.MiniClearPendingReferral(userID);err!=nil{return MiniCase{},err}} else if err:=b.MiniPrepareReferral(userID,input.ReferralCode);err!=nil{return MiniCase{},err}
 	d:=leadDraft{Source:"menu",Stage:"review",Kind:input.Kind,Company:input.Company,Name:input.Name,Phone:phone,LocationID:loc.ID}
 	if err:=b.leads.putDraft(userID,d);err!=nil{return MiniCase{},err}
 	l,already,err:=b.leads.submit(userID,username,publicText(loc.Title))

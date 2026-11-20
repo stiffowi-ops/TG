@@ -168,14 +168,44 @@ func (s *appService) handler(webDist string) http.Handler {
    if _,exists:=s.store.Find(input.ID);!exists{jsonResponse(w,404,map[string]string{"error":"location not found"});return}
    s.bot.MiniObserve(u.ID,u.Username,u.FirstName,input.ID)
    jsonResponse(w,200,map[string]bool{"ok":true})
-  case r.Method=="GET"&&r.URL.Path=="/api/me":
-   s.bot.MiniObserve(u.ID,u.Username,u.FirstName,"")
+  case r.Method=="GET"&&r.URL.Path=="/api/referral":
+            info,err:=s.bot.MiniReferralInfo(r.Context(),u.ID)
+            if err!=nil{jsonResponse(w,503,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,info)
+        case r.Method=="POST"&&r.URL.Path=="/api/referral/validate":
+            var input struct{Code string `json:"code"`}
+            if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"неверная ссылка"});return}
+            result,err:=s.bot.MiniValidateReferral(u.ID,input.Code)
+            if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,result)
+        case r.Method=="GET"&&r.URL.Path=="/api/admin/referrals":
+            rows,err:=s.bot.MiniAdminReferralQueue(u.ID)
+            if err!=nil{jsonResponse(w,403,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,map[string]any{"referrals":rows})
+        case r.Method=="POST"&&r.URL.Path=="/api/admin/referral":
+            if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"access denied"});return}
+            var input struct{Number int64 `json:"number"`;Action string `json:"action"`}
+            if err:=readBody(r,&input);err!=nil{jsonResponse(w,400,map[string]string{"error":"неверный запрос"});return}
+            rec,changed,err:=s.bot.MiniAdminReferralAction(u.ID,input.Number,input.Action)
+            if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
+            if changed {
+                if input.Action=="award"{s.bot.MiniReferralAwarded(rec)}
+                if input.Action=="defer"{s.bot.MiniDeferredReminder(r.Context(),u.ID,rec)}
+            }
+            jsonResponse(w,200,map[string]any{"referralStatus":rec.Status})
+        case r.Method=="GET"&&r.URL.Path=="/api/me":
+   // The value is read only after Telegram initData signature validation.
+            if values,err:=url.ParseQuery(r.Header.Get("X-Telegram-Init-Data"));err==nil {
+                _,_=s.bot.MiniCaptureReferral(u.ID,values.Get("start_param"))
+            }
+            s.bot.MiniObserve(u.ID,u.Username,u.FirstName,"")
 			jsonResponse(w,200,map[string]any{
 				"user":map[string]any{"id":u.ID,"username":u.Username,"firstName":u.FirstName},
 				"admin":s.bot.IsMiniAdmin(u.ID),
 				"favorites":s.bot.MiniFavorites(u.ID),
 				"cases":s.bot.MiniMyCases(u.ID),
 				"profile":func() any { p,ok:=s.bot.MiniGetProfile(u.ID);if ok{return p};return nil }(),
+				"referralCode":s.bot.MiniPendingReferral(u.ID),
 			})
 		case r.Method=="GET"&&r.URL.Path=="/api/profile":
             p,ok:=s.bot.MiniGetProfile(u.ID)

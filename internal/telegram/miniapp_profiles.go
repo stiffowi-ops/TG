@@ -16,6 +16,8 @@ type miniProfileRecord struct {
  Company string `json:"company,omitempty"`
  Kind string `json:"kind"`
  DiscountPercent int `json:"discountPercent"`
+ ManualDiscountPercent int `json:"manualDiscountPercent,omitempty"`
+ ReferralDiscountPercent int `json:"referralDiscountPercent,omitempty"`
  UpdatedAt time.Time `json:"updatedAt"`
 }
 
@@ -45,7 +47,14 @@ func (s *leadStore) profileLocked(id int64) (MiniProfile,bool) {
 func (b *Bot) MiniGetProfile(id int64) (MiniProfile,bool) {
  if b==nil||b.leads==nil||id<=0{return MiniProfile{},false}
  b.leads.mu.Lock();defer b.leads.mu.Unlock()
- return b.leads.profileLocked(id)
+ p,ok:=b.leads.profileLocked(id)
+ if !ok {
+  // Inviting clients may earn discounts before completing their contact profile.
+  p=MiniProfile{UserID:id}
+  p=b.leads.effectiveProfileLocked(p)
+  if p.ReferralDiscountPercent==0{return MiniProfile{},false}
+ }
+ return b.leads.effectiveProfileLocked(p),true
 }
 func (b *Bot) MiniSaveProfile(id int64,p MiniProfile)(MiniProfile,error) {
  if b==nil||b.leads==nil||id<=0{return MiniProfile{},errors.New("доступ запрещён")}
@@ -60,7 +69,7 @@ func (b *Bot) MiniSaveProfile(id int64,p MiniProfile)(MiniProfile,error) {
  next:=s.cloneLocked()
  next.Profiles[strconv.FormatInt(id,10)]=p
  if err:=s.saveLocked(next);err!=nil{return MiniProfile{},err}
- return p,nil
+ return s.effectiveProfileLocked(p),nil
 }
 func (b *Bot) MiniProfileFromCase(userID int64, l MiniCase) {
  if b==nil||b.leads==nil||userID<=0{return}
@@ -81,6 +90,7 @@ func (b *Bot) MiniAdminProfiles(adminID int64)([]MiniProfile,error){
  for _,l:=range s.state.History {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
  for _,l:=range s.state.Submitted {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
  for _,p:=range s.state.Profiles {if p.UserID>0{byID[p.UserID]=p}}
+ for id,p:=range byID {byID[id]=s.effectiveProfileLocked(p)}
  out:=make([]MiniProfile,0,len(byID))
  for _,p:=range byID {out=append(out,p)}
  sort.Slice(out,func(i,j int)bool{return out[i].UserID<out[j].UserID})
@@ -95,5 +105,5 @@ func (b *Bot) MiniAdminSetDiscount(adminID,userID int64,discount int)(MiniProfil
  p.UserID=userID;p.DiscountPercent=discount;p.UpdatedAt=time.Now().UTC()
  next:=s.cloneLocked();next.Profiles[strconv.FormatInt(userID,10)]=p
  if err:=s.saveLocked(next);err!=nil{return MiniProfile{},err}
- return p,nil
+ return s.effectiveProfileLocked(p),nil
 }
