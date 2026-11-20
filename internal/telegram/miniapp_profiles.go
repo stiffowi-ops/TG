@@ -28,7 +28,6 @@ func validMiniProfile(p MiniProfile) error {
  if _,ok:=normalizeLeadPhone(p.Phone);!ok {return errors.New("проверьте номер: +7 и десять цифр")}
  if p.Kind!="existing"&&p.Kind!="new"{return errors.New("выберите действующего или потенциального партнёра")}
  if utf8.RuneCountInString(p.Company)>200{return errors.New("название организации слишком длинное")}
- if p.Kind=="new"&&utf8.RuneCountInString(strings.TrimSpace(p.Company))<2 {return errors.New("укажите организацию")}
  return nil
 }
 func caseProfile(l leadApplication) MiniProfile {
