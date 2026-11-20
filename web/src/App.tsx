@@ -169,8 +169,32 @@ function App(){
  useEffect(()=>{if(!window.Telegram?.WebApp?.initData)return;let active=true;
   miniApi<MiniSession>('/api/me').then(data=>{if(active){setSession(data);setProfile(data.profile||null);setCases(Array.isArray(data.cases)?data.cases:[]);setFavorites(Array.isArray(data.favorites)?data.favorites:[])}}).catch(err=>{if(active)setToast(err.message)});
   return()=>{active=false};},[]);
- useEffect(()=>{if(tab!=='requests'||!session)return;
- miniApi<MiniSession>('/api/me').then(data=>setCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message));
+ // Keep server-owned discounts and cases current when a user enters or resumes the profile.
+ useEffect(()=>{
+  if(tab!=='requests'||!session)return;
+  let mounted=true;
+  let latestRequest=0;
+  const refresh=()=>{
+   const request=++latestRequest;
+   miniApi<MiniSession>('/api/me').then(data=>{
+    if(!mounted||request!==latestRequest)return;
+    setCases(Array.isArray(data.cases)?data.cases:[]);
+    setProfile(data.profile||null);
+   }).catch(err=>{if(mounted&&request===latestRequest)setToast(err.message)});
+  };
+  const onVisible=()=>{if(document.visibilityState==='visible')refresh()};
+  const onFocus=()=>refresh();
+  const app=window.Telegram?.WebApp;
+  refresh();
+  window.addEventListener('focus',onFocus);
+  document.addEventListener('visibilitychange',onVisible);
+  app?.onEvent?.('activated',onFocus);
+  return()=>{
+   mounted=false;
+   window.removeEventListener('focus',onFocus);
+   document.removeEventListener('visibilitychange',onVisible);
+   app?.offEvent?.('activated',onFocus);
+  };
  },[tab,session?.user.id]);
  useEffect(()=>{if(tab!=='admin'||!session?.admin)return;setAdminBusy(true);
   miniApi<{cases:DemoCase[]|null}>('/api/admin/cases').then(data=>setAdminCases(Array.isArray(data.cases)?data.cases:[])).catch(err=>setToast(err.message)).finally(()=>setAdminBusy(false));
