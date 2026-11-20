@@ -5,8 +5,8 @@ module.exports=async function checkMapDiscovery(context,target){
  const page=await context.newPage();
  try{
   const places=[
-   {id:'A',title:'Первая точка',area:'Москва',category:'Метро',latitude:55.7000,longitude:37.6500},
-   {id:'B',title:'Ближайшая точка',area:'Москва',category:'Метро',latitude:55.70001,longitude:37.65001},
+   {id:'A',title:'Первая точка',area:'Москва',category:'Другие локации',latitude:55.7000,longitude:37.6500},
+   {id:'B',title:'Ближайшая точка',area:'Москва',category:'Другие локации',latitude:55.70001,longitude:37.65001},
    {id:'C',title:'Третья точка',area:'Москва',category:'Метро',latitude:55.805,longitude:37.755},
    {id:'D',title:'Четвёртая точка',area:'Москва',category:'Метро',latitude:55.812,longitude:37.779}
   ];
@@ -83,6 +83,35 @@ module.exports=async function checkMapDiscovery(context,target){
   await preview.getByRole('button',{name:'Закрыть карточку'}).click();
   await nearby.getByRole('button',{name:'Закрыть ближайшие локации'}).click();
   assert.equal(await nearby.count(),0);
+
+  // Returning from a selected pin must restore the camera for the filtered subset.
+  const metro=page.getByRole('button',{name:'Метро',exact:true});
+  const search=page.getByRole('searchbox');
+  await metro.click();
+  await search.fill('точка');
+  const pins=page.locator('.geo-pin-container');
+  const overview=page.getByRole('button',{name:'Показать все точки'});
+  await page.waitForFunction(()=>document.querySelectorAll('.geo-pin-container').length===2);
+  const initial=await pins.evaluateAll(nodes=>nodes.map(node=>node.style.transform));
+  await page.getByRole('button',{name:'Выбрать локацию Третья точка'}).click();
+  await preview.waitFor();
+  await page.waitForFunction(before=>[...document.querySelectorAll('.geo-pin-container')]
+   .some((pin,index)=>pin.style.transform!==before[index]),initial);
+  await overview.tap();
+  await preview.waitFor({state:'detached'});
+  await page.waitForFunction(before=>[...document.querySelectorAll('.geo-pin-container')]
+   .every((pin,index)=>pin.style.transform===before[index]),initial);
+  assert.equal(await pins.count(),2);
+  assert.equal(await metro.getAttribute('aria-pressed'),'true');
+  assert.equal(await search.inputValue(),'точка');
+
+  await search.fill('Третья');
+  await page.getByRole('button',{name:'Выбрать локацию Третья точка'}).click();
+  await overview.tap();
+  await preview.waitFor({state:'detached'});
+  assert.equal(await pins.count(),1);
+  await search.fill('несуществующая локация');
+  await overview.waitFor({state:'detached'});
   console.log('Verified clustered pins, carousel selection, nearest distances, and geolocation permission.');
  }finally{
   await page.close();
