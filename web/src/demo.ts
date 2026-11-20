@@ -10,7 +10,7 @@ export const backupLocations:Location[] = [
 ];
 const categoryLabels=new Map([
  ['Метро','У метро'],
- ['Другие локации','Без привязки к метро'],
+ ['Другие локации','Другие'],
 ]);
 export function categoryLabel(category:string){return categoryLabels.get(category)??category;}
 export const statusLabel = {received:'📨 Получено',working:'🛠 В работе',resolved:'✅ Решено'} as const;
