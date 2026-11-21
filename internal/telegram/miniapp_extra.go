@@ -47,7 +47,7 @@ func (b *Bot) MiniAdminAnalytics(adminID int64, metric string,days int) ([]MiniM
 	ids:=make([]string,0,len(locs))
 	names:=map[string]string{}
 	for _,l:=range locs {ids=append(ids,l.ID);names[l.ID]=publicText(l.Title)}
-	counts:=b.metrics.Rankings(time.Now(),days,metric,ids,b.adminCurrentFavorites(),b.adminLeadDates())
+	counts:=b.metrics.AllRankings(time.Now(),days,metric,ids,b.adminCurrentFavorites(),b.adminLeadDates())
 	out:=make([]MiniMetric,0,len(counts))
 	for _,c:=range counts {
 		out=append(out,MiniMetric{ID:c.LocationID,Name:names[c.LocationID],Views:c.Views,Unique:c.UniqueViews,Additions:c.Additions,Saved:c.CurrentFavorites,Leads:c.Leads})

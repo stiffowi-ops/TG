@@ -140,6 +140,14 @@ func (s *Store) Snapshot() []Event {
 	return append([]Event(nil), s.events...)
 }
 func (s *Store) Rankings(now time.Time, days int, kind string, allIDs []string, current map[string]int, leads map[string][]time.Time) []Count {
+	rows := s.AllRankings(now, days, kind, allIDs, current, leads)
+	if len(rows) > 10 {
+		return rows[:10]
+	}
+	return rows
+}
+
+func (s *Store) AllRankings(now time.Time, days int, kind string, allIDs []string, current map[string]int, leads map[string][]time.Time) []Count {
 	scores := map[string]*Count{}
 	for _, id := range allIDs {
 		scores[id] = &Count{LocationID: id, CurrentFavorites: current[id]}
@@ -211,9 +219,6 @@ func (s *Store) Rankings(now time.Time, days int, kind string, allIDs []string, 
 		}
 		return strings.Compare(output[i].LocationID, output[j].LocationID) < 0
 	})
-	if len(output) > 10 {
-		return output[:10]
-	}
 	return output
 }
 func (s *Store) Reload() error {

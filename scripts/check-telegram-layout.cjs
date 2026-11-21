@@ -14,6 +14,7 @@ module.exports = async function checkTelegramLayout(context, target) {
         body:`window.Telegram = {WebApp:{
           platform:'android', initData:'layout-test', isFullscreen:${fullscreen}, isExpanded:true,
           isVersionAtLeast:()=>true, ready(){}, expand(){}, setHeaderColor(){},
+          openTelegramLink(url){window.sharedReferral=url},
           isVerticalSwipesEnabled:true,
           disableVerticalSwipes(){this.isVerticalSwipesEnabled=false},
           enableVerticalSwipes(){this.isVerticalSwipesEnabled=true}
@@ -24,12 +25,17 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.route('**/api/me', route => route.fulfill({json:{
         user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:[],
         referralCode:mockReferral,
+        discountWallet:{percent:grantedDiscount,offer:grantedDiscount?'m1':'',history:[]},
         profile:{userId:1,name:'Тестовый клиент',phone:'+79990000000',kind:'existing',company:'',discountPercent:grantedDiscount}
       }}));
       await page.route('**/api/referral', route => route.fulfill({json:{
         code:'ref_MNOPQRSTUVWXYZab',link:'https://t.me/TestLocationBot?startapp=ref_MNOPQRSTUVWXYZab',
         pendingCode:mockReferral,pending:1,awarded:0
       }}));
+      await page.route('**/api/referral/validate', route => {
+        const valid=route.request().postDataJSON().code===mockReferral;
+        return route.fulfill({status:valid?200:400,json:valid?{valid:true,code:mockReferral}:{error:'Реферальная ссылка не найдена'}});
+      });
       await page.route('**/api/locations/view', route => route.fulfill({json:{ok:true}}));
       const station = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
         latitude:55.69218672, longitude:37.66859046};
@@ -190,19 +196,38 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.ok(await page.getByRole('button',{name:/Данные для заявок/}).isVisible());
       const referral=page.locator('.profile-referral');
       assert.ok(await referral.isVisible());
-      assert.ok(await referral.getByText('Пригласить',{exact:true}).isVisible());
-      await referral.locator('img.profile-referral__art').evaluate(img=>img.decode());
-      assert.ok(await referral.locator('img.profile-referral__art').evaluate(img=>img.naturalWidth>0),'Referral vector art failed to load');
-      await referral.tap();
+      assert.match(await referral.getAttribute('aria-label'), /Пригласить новых клиентов/);
+      await referral.locator('img').evaluateAll(images=>Promise.all(images.map(img=>img.decode())));
+      const bannerBox=await referral.boundingBox();
+      assert.ok(Math.abs(bannerBox.height-bannerBox.width*560/1934)<1,'Referral banner lost its reference proportions');
+      if(fullscreen){
+        for(const width of [320,390,600]){
+          await page.setViewportSize({width,height});
+          const box=await referral.boundingBox();
+          assert.ok(Math.abs(box.height-box.width*560/1934)<1);
+          await referral.screenshot({path:`screenshots/referral-banner-${width}.png`});
+        }
+        await page.setViewportSize({width:390,height});
+      }
+      await referral.locator('.profile-referral__cta').tap();
       assert.ok(await page.getByText('У вас нет скидок',{exact:true}).isVisible());
       await page.getByText('Ваша реферальная ссылка').waitFor();
       assert.ok(await page.getByRole('button',{name:'Скопировать'}).isVisible());
-      assert.ok(await page.getByRole('button',{name:'Поделиться'}).isVisible());
+      await page.getByRole('button',{name:'Поделиться'}).tap();
+      assert.equal(new URL(await page.evaluate(()=>window.sharedReferral)).searchParams.get('url'),
+        await page.getByLabel('Персональная реферальная ссылка').inputValue());
       await page.getByRole('button',{name:'Назад'}).tap();
       assert.ok(await page.getByRole('button',{name:'Подать заявку'}).isVisible());
       await page.getByRole('button',{name:'Подать заявку'}).tap();
       const form=page.getByRole('dialog');
       assert.equal(await form.getByPlaceholder('Вставьте ссылку или код').inputValue(),mockReferral);
+      const refField=form.getByPlaceholder('Вставьте ссылку или код');
+      await refField.fill('ref_invalid');
+      await form.getByRole('button',{name:'Продолжить'}).tap();
+      await form.getByRole('alert').waitFor();
+      await refField.fill(mockReferral);
+      await form.getByRole('button',{name:'Продолжить'}).tap();
+      await form.getByText('Проверьте данные заявки').waitFor();
       await form.getByRole('button',{name:'Закрыть',exact:true}).tap();
       await nav.getByRole('button',{name:'Избранное'}).tap();
       await page.locator('.catalog-page-heading__back').tap();
@@ -210,7 +235,7 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('heading',{name:'Мой профиль'}).waitFor();
       await page.getByText('Скидка 15%',{exact:true}).waitFor();
-      await page.locator('.profile-referral').tap();
+      await referral.locator('.profile-referral__arrow').tap();
       assert.ok(await page.getByText('15%',{exact:true}).isVisible(),'Client must see the discount assigned by admin');
       await page.getByRole('button',{name:'Назад'}).tap();
       await nav.getByRole('button',{name:'Локации'}).tap();

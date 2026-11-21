@@ -1,0 +1,17 @@
+.admin-page{display:flex;flex-direction:column;gap:11px}.admin-page h1{margin-bottom:4px}
+.admin-page .admin-inbox-link{background:linear-gradient(110deg,#fff5e8,#ffead5);border-color:#f4d7bb}
+.admin-page .profile-shortcut{min-height:106px}.admin-page .profile-current{min-height:62px}
+.discount-inbox{display:grid;gap:10px}.admin-client-head{display:flex;align-items:center;gap:10px;min-width:0}.admin-page .discount-panel>small{font-size:11px;color:#66797b}
+.admin-page .admin-clients,.admin-page .admin-referrals,.admin-page .admin-extras{padding:0;margin:0;background:transparent;border:0;box-shadow:none}
+.admin-page .admin-clients__filters{margin:10px 0;gap:5px}.admin-page .admin-clients__filters button{padding:8px 10px;font-size:12px}
+.admin-page .admin-clients__list,.admin-page .admin-referrals__list{grid-template-columns:1fr;align-items:start}
+.admin-client-toggle{width:100%;text-align:left;background:transparent;border:0;color:inherit;padding:0}
+.admin-client-toggle+span{display:inline-block;margin-top:10px}
+.admin-client-body{display:grid;gap:9px;margin-top:10px;border-top:1px solid #eee5dc;padding-top:12px}
+.admin-client-body .admin-clients__contact{margin:0;padding:0;border:0}.admin-client-body small{color:#64777b}
+.admin-page .admin-referrals__head{justify-content:space-between}.admin-page .admin-referrals__head h2{margin:0;font-size:16px}
+.admin-metric-controls{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,.8fr);gap:9px}.admin-metric-controls label{font-weight:650;font-size:12px;color:#617578}
+.admin-metric-controls select{display:block;width:100%;min-height:40px;margin-top:5px;border:1px solid #e6d9cd;border-radius:10px;background:white;padding:5px;color:#173a40}
+.admin-analytics{display:grid;gap:10px}.admin-metric-total{border-radius:18px;padding:16px;background:linear-gradient(110deg,#fff2e1,#ffe7cb);border:1px solid #f1ddc8;display:grid;gap:6px}
+.admin-metric-total>span{display:flex;align-items:center;gap:8px;font-size:13px}.admin-metric-total strong{font-size:32px;line-height:1.1}.admin-metric-total small{font-size:12px;color:#607679}
+.admin-ranking-item{display:grid;grid-template-columns:22px 1fr auto;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #efe9e1;font-size:13px}.admin-ranking-item:last-child{border:0}.admin-ranking-item>small{color:#a75a27}.admin-ranking-track{height:3px;margin-top:5px;background:#f2ede6;border-radius:2px;overflow:hidden}.admin-ranking-track i{display:block;height:100%;background:#f6ab72}

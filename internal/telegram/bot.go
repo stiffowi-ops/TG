@@ -826,6 +826,9 @@ func (b *Bot) handle(ctx context.Context, u update) error {
 		if u.Callback.Message != nil && u.Callback.Message.Chat.Type == "private" && u.Callback.Message.Chat.ID == u.Callback.From.ID && !strings.HasPrefix(u.Callback.Data, "adm:") {
 			b.observeVisitor(u.Callback.From, b.visitorCallbackAction(u.Callback.Data), false)
 		}
+		if strings.HasPrefix(u.Callback.Data, "discount:") {
+ return b.handleDiscountCallback(ctx,u.Callback)
+ }
 		if strings.HasPrefix(u.Callback.Data, "ref:") {
 			b.answerCallback(ctx,u.Callback.ID)
 			return b.handleReferralAdminCallback(ctx,u.Callback)

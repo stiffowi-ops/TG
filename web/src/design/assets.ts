@@ -10,5 +10,7 @@ export const designAssets = {
   shortcutBuilding: '/assets/illustrations/shortcut-building.svg',
   shortcutFavorite: '/assets/illustrations/shortcut-favorite.svg',
   profileReferralGift: '/assets/illustrations/profile-referral-gift.svg',
-  profileReferralMegaphone: '/assets/illustrations/profile-referral-megaphone.svg',
+  profileReferral: {
+    megaphone: '/assets/illustrations/referral-megaphone-card.webp',
+  },
 } as const;

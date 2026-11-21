@@ -4,6 +4,8 @@ import {BarChart3,Users,MapPin,Save,Plus,Download,RefreshCw,ShieldCheck} from 'l
 import type {Location} from './types';
 
 type Metric={id:string;name:string;views:number;unique:number;additions:number;saved:number;leads:number};
+const metricsLabels={views:'Просмотры',unique:'Уникальные посетители',added:'Добавления в избранное',saved:'Сейчас в избранном',leads:'Заявки'};
+type MetricKey=keyof typeof metricsLabels;
 type Visitor={userId:number;name:string;username:string;firstAt:string;lastAt:string;visits:number;hasLead:boolean;favorites:string[]};
 type Section={id:string;title:string;body:string;enabled:boolean};
 type Revision={title:string;category:string;description:string;rating:string;lat?:number;lon?:number;line_status:string;landmarks:string;map_url:string;sections:Section[]};
@@ -26,11 +28,11 @@ async function adminFetch<T>(path:string,options:RequestInit={}):Promise<T>{
  if(res.headers.get('Content-Type')?.includes('application/zip'))return (await res.blob()) as T;
  return await res.json() as T;
 }
-export default function AdminExtras({locations,refresh}:{locations:Location[];refresh:()=>void}){
- const [section,setSection]=useState<AdminSection>('analytics');
+export default function AdminExtras({mode,locations,refresh}:{mode:'analytics'|'services';locations:Location[];refresh:()=>void}){
+ const [section,setSection]=useState<AdminSection>(mode==='analytics'?'analytics':'visitors');
  const [metrics,setMetrics]=useState<Metric[]>([]);
  const [visitors,setVisitors]=useState<Visitor[]>([]);
- const [metric,setMetric]=useState('views');
+ const [metric,setMetric]=useState<MetricKey>('views');
  const [days,setDays]=useState(30);
  const [selectedId,setSelectedId]=useState('');
  const [revision,setRevision]=useState<Revision|null>(null);
@@ -57,11 +59,11 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
  };
  useEffect(()=>{let live=true;
   if(section!=='analytics'&&section!=='visitors')return;
-  setBusy(true);
+  setBusy(true);setMessage('');
   const promise=section==='analytics'?adminFetch<{metrics:Metric[]}>('/api/admin/analytics?metric='+metric+'&days='+days)
    :adminFetch<{visitors:Visitor[]}>('/api/admin/visitors');
   promise.then(data=>{if(!live)return;if('metrics' in data)setMetrics(data.metrics);else setVisitors(data.visitors)})
-   .catch(e=>{if(live)setMessage(e.message)}).finally(()=>{if(live)setBusy(false)});
+   .catch(e=>{if(live){setMessage(e.message);setMetrics([])}}).finally(()=>{if(live)setBusy(false)});
   return()=>{live=false}
  },[section,metric,days]);
  useEffect(()=>{if(section==='photos')void readPhotoReport()},[section]);
@@ -107,23 +109,23 @@ export default function AdminExtras({locations,refresh}:{locations:Location[];re
   {id:'backup',label:'Бэкапы',icon:<ShieldCheck size={18}/>},
   {id:'photos',label:'Фото',icon:<RefreshCw size={18}/>},
  ];
+ const amount=(row:Metric)=>row[metric==='added'?'additions':metric];
+ const total=metrics.reduce((sum,row)=>sum+amount(row),0);
+ const maximum=metrics.length?amount(metrics[0]):0;
  return <section className="admin-extras">
-  <div className="admin-extras-tabs">{menu.map(item=><button key={item.id} type="button" className={section===item.id?'active':''} onClick={()=>{setSection(item.id);setMessage('')}}>{item.icon}{item.label}</button>)}</div>
+  {mode==='services'&&<div className="admin-extras-tabs">{menu.filter(item=>item.id!=='analytics').map(item=><button key={item.id} type="button" className={section===item.id?'active':''} onClick={()=>{setSection(item.id);setMessage('')}}>{item.icon}{item.label}</button>)}</div>}
   {message&&<p role="status" className="admin-message">{message}</p>}
   {busy&&<p className="admin-wait"><RefreshCw size={16}/> Загружаем…</p>}
-  {section==='analytics'&&<div>
-   <h2>Аналитика локаций</h2>
-   <div className="admin-inline-fields"><label>Показатель<select value={metric} onChange={e=>setMetric(e.target.value)}>
-    <option value="views">Просмотры</option><option value="unique">Уникальные</option><option value="added">Добавления в избранное</option>
-    <option value="saved">Сейчас в избранном</option><option value="leads">Заявки</option>
-   </select></label><label>Период<select value={days} onChange={e=>setDays(Number(e.target.value))}>
-    <option value={7}>7 дней</option><option value={30}>30 дней</option><option value={0}>Всё время</option>
+  {section==='analytics'&&<div className="admin-analytics">
+   <div className="discount-panel admin-metric-controls"><label>Показатель<select value={metric} onChange={e=>setMetric(e.target.value as MetricKey)}>
+    {Object.entries(metricsLabels).map(([key,title])=><option value={key} key={key}>{title}</option>)}
+   </select></label><label>Период<select disabled={metric==='saved'} value={metric==='saved'?'now':days} onChange={e=>setDays(Number(e.target.value))}>
+    {metric==='saved'?<option value="now">На сегодня</option>:<><option value={7}>7 дней</option><option value={30}>30 дней</option><option value={0}>Всё время</option></>}
    </select></label></div>
-   <div className="admin-ranking">{metrics.map((m,i)=><div key={m.id} className="admin-ranking-row">
-    <span className="admin-rank">{i+1}</span><span className="admin-rank-name">{m.name}<small>№{m.id}</small></span>
-    <strong>{metric==='views'?m.views:metric==='unique'?m.unique:metric==='added'?m.additions:metric==='saved'?m.saved:m.leads}</strong>
-   </div>)}</div>
-   <p className="admin-explain">Учитываются открытия карточек, сохранения и заявки. Это не подсчёт физических посещений локаций.</p>
+   {!busy&&!message&&<>
+    <div className="admin-metric-total"><span><BarChart3 size={20}/>{metricsLabels[metric]}</span><strong>{total}</strong><small>{metric==='unique'?'Сумма уникальных посетителей по карточкам':metric==='saved'?'Во всех локациях на сегодня':days?'За последние '+days+' дней':'За всё время'}</small></div>
+    <section className="discount-panel"><h2>Рейтинг локаций</h2>{metrics.length?metrics.map((m,i)=><div key={m.id} className="admin-ranking-item"><small>{i+1}</small><div><b>{m.name}</b><div className="admin-ranking-track"><i style={{width:(maximum?100*amount(m)/maximum:0)+'%'}}/></div></div><strong>{amount(m)}</strong></div>):<small>Данных пока нет.</small>}</section>
+   </>}
   </div>}
   {section==='visitors'&&<div>
    <h2>Посетители</h2><p className="section-subtitle">Активность пользователей без заявки и с заявкой.</p>

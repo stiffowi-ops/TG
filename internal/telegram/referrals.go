@@ -33,6 +33,7 @@ type referralRecord struct {
  CreatedAt time.Time `json:"createdAt"`
  DecidedAt *time.Time `json:"decidedAt,omitempty"`
  Notified bool `json:"notified,omitempty"`
+ UsedByRequest int64 `json:"usedByRequest,omitempty"`
  Ready bool `json:"ready,omitempty"`
 }
 type MiniReferralInfo struct {
@@ -130,52 +131,47 @@ func (b *Bot) MiniReferralInfo(ctx context.Context,id int64)(MiniReferralInfo,er
  return info,nil
 }
 func (b *Bot) MiniValidateReferral(id int64,raw string)(MiniReferralValidation,error) {
- code,err:=parseReferralCode(raw);if err!=nil{return MiniReferralValidation{},err}
  if b==nil||b.leads==nil||id<=0{return MiniReferralValidation{},errors.New("доступ запрещён")}
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
- owner:=s.referralOwnerLocked(code)
- if owner==0 {return MiniReferralValidation{},errors.New("реферальная ссылка не найдена")}
- if owner==id{return MiniReferralValidation{},errors.New("свою ссылку использовать нельзя")}
- if s.alreadyAppliedLocked(id){return MiniReferralValidation{},errors.New("приглашение для вашего аккаунта уже использовано")}
- key:=strconv.FormatInt(id,10)
- if previous:=s.state.PendingReferrals[key];previous!=""&&previous!=code{return MiniReferralValidation{},errors.New("для вас уже закреплено другое приглашение")}
+ code,err:=s.validateReferralLocked(id,raw)
+ if err!=nil{return MiniReferralValidation{},err}
  return MiniReferralValidation{Code:code,Valid:true},nil
 }
-// Accept only the start_param from a cryptographically verified Telegram initData.
+
+func (s *leadStore) validateReferralLocked(id int64,raw string)(string,error) {
+ code,err:=parseReferralCode(raw)
+ if err!=nil{return "",err}
+ owner:=s.referralOwnerLocked(code)
+ if owner==0{return "",errors.New("реферальная ссылка не найдена")}
+ if owner==id{return "",errors.New("свою ссылку использовать нельзя")}
+ if s.alreadyAppliedLocked(id){return "",errors.New("по приглашению можно подать только первую заявку")}
+ if previous:=s.state.PendingReferrals[strconv.FormatInt(id,10)];previous!=""&&previous!=code{return "",errors.New("для вас уже закреплено другое приглашение")}
+ return code,nil
+}
+
+// Capture the first valid, signed invitation under the same lock used by submit.
 func (b *Bot) MiniCaptureReferral(id int64,startParam string)(string,error) {
  if !strings.HasPrefix(startParam,"ref_"){return "",nil}
- v,err:=b.MiniValidateReferral(id,startParam);if err!=nil{return "",err}
+ if b==nil||b.leads==nil||id<=0{return "",errors.New("доступ запрещён")}
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
+ code,err:=s.validateReferralLocked(id,startParam)
+ if err!=nil{return "",err}
  key:=strconv.FormatInt(id,10)
- if stored:=s.state.PendingReferrals[key];stored!=""{return stored,nil}
- next:=s.cloneLocked();next.PendingReferrals[key]=v.Code
+ if s.state.PendingReferrals[key]==code{return code,nil}
+ next:=s.cloneLocked();next.PendingReferrals[key]=code
  if err:=s.saveLocked(next);err!=nil{return "",err}
- return v.Code,nil
+ return code,nil
 }
 func (b *Bot) MiniPendingReferral(id int64) string {
  if b==nil||b.leads==nil||id<=0{return ""}
  b.leads.mu.Lock();defer b.leads.mu.Unlock()
  return b.leads.state.PendingReferrals[strconv.FormatInt(id,10)]
 }
-func (b *Bot) MiniClearPendingReferral(id int64)error {
- if b==nil||b.leads==nil||id<=0{return errors.New("доступ запрещён")}
- s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
- key:=strconv.FormatInt(id,10)
- if s.state.PendingReferrals[key]==""{return nil}
- next:=s.cloneLocked();delete(next.PendingReferrals,key)
- return s.saveLocked(next)
-}
-func (b *Bot) MiniPrepareReferral(id int64,raw string)error {
- if strings.TrimSpace(raw)==""{return nil}
- v,err:=b.MiniValidateReferral(id,raw);if err!=nil{return err}
- _,err=b.MiniCaptureReferral(id,v.Code)
- return err
-}
 func (s *leadStore) effectiveProfileLocked(p MiniProfile)MiniProfile {
  manual:=p.DiscountPercent
  referral:=0
  for _,rec:=range s.state.Referrals{
-  if rec.InviterID==p.UserID&&rec.Status=="awarded"&&rec.Percent>referral {referral=rec.Percent}
+  if rec.InviterID==p.UserID&&rec.Status=="awarded"&&rec.UsedByRequest==0&&rec.Percent>referral {referral=rec.Percent}
  }
  p.ManualDiscountPercent=manual
  p.ReferralDiscountPercent=referral
@@ -256,11 +252,7 @@ func (s *leadStore) markReferralNotified(inviteeID,caseNumber int64)error {
  next:=s.cloneLocked();rec.Notified=true;next.Referrals[key]=rec
  return s.saveLocked(next)
 }
-func (b *Bot) sendReferralNotices(ctx context.Context) {
- if b==nil||b.leads==nil{return}
- for _,rec:=range b.leads.referralNotices(){
-  if ctx.Err()!=nil{return}
-  text:=fmt.Sprintf("🎉 <b>Вам начислена скидка 10%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.")
+func (b *Bot) profileButton(ctx context.Context) Button {
   button:=Button{}
   if appURL:=strings.TrimSpace(os.Getenv("MINIAPP_URL"));strings.HasPrefix(appURL,"https://"){
    parsed,err:=url.Parse(appURL)
@@ -274,8 +266,16 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
     button=urlButton("👤 Перейти в профиль",base+"?startapp=profile")
    }
   }
-  var keyboard any
-  if len(button)>0{keyboard=markup([]Button{button})}
+ return button
+}
+func (b *Bot) sendReferralNotices(ctx context.Context) {
+ if b==nil||b.leads==nil{return}
+ for _,rec:=range b.leads.referralNotices(){
+  if ctx.Err()!=nil{return}
+  text:=fmt.Sprintf("🎉 <b>Вам начислена скидка 10%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.")
+  button:=b.profileButton(ctx)
+  if len(button)==0{continue}
+  keyboard:=markup([]Button{button})
   _,err:=b.call(ctx,"sendMessage",map[string]any{"chat_id":rec.InviterID,"text":text,"parse_mode":"HTML","reply_markup":keyboard})
   if err!=nil{log.Printf("Referral notice to %d (case %d): %v",rec.InviterID,rec.CaseNumber,err);continue}
   if err:=b.leads.markReferralNotified(rec.InviteeID,rec.CaseNumber);err!=nil{log.Printf("Save referral notice receipt: %v",err)}
@@ -283,12 +283,13 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
 }
 func (b *Bot) runReferralNotices(ctx context.Context) {
  ticker:=time.NewTicker(2*time.Minute);defer ticker.Stop()
- b.sendReferralNotices(ctx)
+ deliver:=func(){b.sendReferralNotices(ctx);b.sendDiscountNotices(ctx)}
+ deliver()
  for {
   select{
   case <-ctx.Done():return
-  case <-ticker.C:b.sendReferralNotices(ctx)
-  case <-b.referralWake:b.sendReferralNotices(ctx)
+  case <-ticker.C:deliver()
+  case <-b.referralWake:deliver()
   }
  }
 }
