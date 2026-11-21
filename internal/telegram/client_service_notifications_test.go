@@ -1,6 +1,7 @@
 package telegram
 
 import (
+ "context"
  "strings"
  "testing"
  "time"
@@ -42,7 +43,7 @@ func TestClientTakeContactLanguageAndSupplementDetails(t *testing.T) {
 func TestDiscountButtonOpensDiscountScreen(t *testing.T) {
  t.Setenv("MINIAPP_URL","https://example.test/app?lang=ru")
  b:=&Bot{}
- btn:=b.discountButton(t.Context(),"🎁 Использовать скидку")
+ btn:=b.discountButton(context.Background(),"🎁 Использовать скидку")
  app,ok:=btn["web_app"].(map[string]string)
  if !ok||app["url"]!="https://example.test/app?lang=ru&view=discount"{t.Fatalf("wrong link: %+v",btn)}
 }
