@@ -273,7 +273,7 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
  for _,rec:=range b.leads.referralNotices(){
   if ctx.Err()!=nil{return}
   if rec.Percent<=0 {continue}
-  text:=fmt.Sprintf("🎉 <b>Вам начислено вознаграждение %d%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна для следующей оплаты.",rec.Percent)
+  text:=fmt.Sprintf("🎉 <b>Вам начислена скидка %d%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.",rec.Percent)
   button:=b.profileButton(ctx)
   if len(button)==0{continue}
   button["text"]="🎁 Использовать скидку"
