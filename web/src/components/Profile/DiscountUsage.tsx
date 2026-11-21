@@ -1,5 +1,5 @@
 import {useState} from 'react';
-import {BadgePercent, CheckCircle2, Gift, ChevronDown, ChevronRight} from 'lucide-react';
+import {BadgePercent, CheckCircle2, Gift, Clock3, ChevronDown, ChevronRight} from 'lucide-react';
 import type {DiscountWallet} from '../../types';
 import ProgressTracker from './ProgressTracker';
 import {prettyDate} from '../../demo';
@@ -15,22 +15,25 @@ export default function DiscountUsage({wallet,onRequest,compact=false,onDetails}
  const pending=latest?.status==='pending';
  const used=latest?.status==='used'&&!wallet?.percent;
  const percent=pending||used?latest.percent:wallet?.percent??0;
+ const phase=used?'used':pending?'pending':percent?'available':'empty';
  async function request(){
   if(!wallet?.offer||busy)return;
   setBusy(true);setError('');
   try{await onRequest(wallet.offer)}catch(e){setError((e as Error).message)}finally{setBusy(false)}
  }
  if(compact){
-  const status=used?'Скидка использована':pending?'На согласовании':percent?'На следующую оплату':'Приглашайте клиентов по ссылке';
-  return <section className="profile-rewards" aria-label="Мои скидки и приглашения">
+  const status=used?'Применение скидки '+percent+'% подтверждено':pending?'Ожидает подтверждения':percent?'Скидка доступна':'Приглашайте клиентов по ссылке';
+  const title=used?'Скидка использована':pending?'Скидка '+percent+'%':percent?'Ваша скидка: '+percent+'%':'У вас нет скидок';
+  return <section className={'profile-rewards profile-rewards--'+phase} aria-label="Мои скидки и приглашения">
    <button type="button" className="profile-rewards__summary" aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>
-    <span className="profile-rewards__icon"><Gift size={20}/></span>
-    <span className="profile-rewards__copy"><strong>{percent?'Ваша скидка: '+percent+'%':'У вас нет скидок'}</strong><small>{status}</small></span>
+    <span className="profile-rewards__icon" key={phase}>{used?<CheckCircle2 size={20}/>:pending?<Clock3 size={20}/>:<Gift size={20}/>}</span>
+    <span className="profile-rewards__copy" key={'text-'+phase} aria-live="polite"><strong>{title}</strong><small>{status}</small></span>
     <ChevronDown size={20} className={'profile-rewards__arrow'+(expanded?' is-expanded':'')} aria-hidden="true"/>
    </button>
-   {wallet?.offer&&<button className="profile-cta profile-rewards__redeem" type="button" disabled={busy} onClick={request}><BadgePercent size={18}/>{busy?'Отправляем…':'Воспользоваться скидкой'}</button>}
+   {wallet?.offer&&!pending&&<button className="profile-cta profile-rewards__redeem" type="button" disabled={busy} onClick={request}><BadgePercent size={18}/>{busy?'Отправляем…':'Воспользоваться скидкой'}</button>}
    {expanded&&<div className="profile-rewards__details">
-    {latest&&<div className="profile-rewards__tracker"><ProgressTracker status={pending?'working':'resolved'} labels={['Отправлено','Согласование','Использовано']} subject="скидки"/></div>}
+    {pending&&<small className="profile-rewards__info">Запрос на использование скидки отправлен. Мы сообщим о результате.</small>}
+    {latest&&<div className="profile-rewards__tracker"><ProgressTracker status={pending?'working':'resolved'} labels={['Отправлено','Подтверждение','Использовано']} subject="скидки"/></div>}
     {onDetails&&<button type="button" className="profile-rewards__history" onClick={onDetails}>Моя ссылка и история приглашений <ChevronRight size={18}/></button>}
    </div>}
    {error&&<small role="alert" className="profile-rewards__error">{error}</small>}
@@ -38,14 +41,14 @@ export default function DiscountUsage({wallet,onRequest,compact=false,onDetails}
  }
  return <>
   <section className={'discount-balance'+(used?' discount-balance--used':'')} aria-live="polite">
-   <div>{used?<CheckCircle2 size={24}/>:<Gift size={24}/>}<span>{used?'Скидка использована':'Скидка на следующую оплату'}</span></div>
+   <div>{used?<CheckCircle2 size={24}/>:pending?<Clock3 size={24}/>:<Gift size={24}/>}<span>{used?'Скидка использована':pending?'Ожидает подтверждения':'Скидка доступна'}</span></div>
    <strong className={percent?'':'discount-balance__empty'}>{percent?percent+'%':'У вас нет скидок'}</strong>
-   {pending?<span className="discount-tag">На согласовании</span>:wallet?.offer?
+   {pending?<span className="discount-tag">Запрос на использование скидки отправлен</span>:wallet?.offer?
     <button className="profile-cta" type="button" disabled={busy} onClick={request}><BadgePercent size={18}/>{busy?'Отправляем…':'Воспользоваться скидкой'}</button>:
-    <small>{used?'Администратор подтвердил использование скидки.':'Приглашайте клиентов по своей ссылке.'}</small>}
+    <small>{used?'Применение скидки подтверждено.':'Приглашайте клиентов по своей ссылке.'}</small>}
    {error&&<small role="alert">{error}</small>}
   </section>
-  {latest&&<div className="profile-detail-tracker"><ProgressTracker status={pending?'working':'resolved'} labels={['Отправлено','Согласование','Использовано']} subject="скидки"/></div>}
+  {latest&&<div className="profile-detail-tracker"><ProgressTracker status={pending?'working':'resolved'} labels={['Отправлено','Подтверждение','Использовано']} subject="скидки"/></div>}
  </>;
 }
 export function DiscountHistory({wallet}:{wallet:DiscountWallet|null}){
