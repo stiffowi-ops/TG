@@ -48,10 +48,9 @@ func TestReferralOptOutAndManualDiscountPrecedence(t *testing.T) {
  b:=&Bot{leads:s,adminIDs:map[int64]bool{90:true}}
  code,err:=s.newReferralCode(10);if err!=nil{t.Fatal(err)}
  if _,err:=b.MiniCaptureReferral(20,code);err!=nil{t.Fatal(err)}
- if err:=b.MiniClearPendingReferral(20);err!=nil{t.Fatal(err)}
+ draft:=leadDraft{Source:"menu",Stage:"review",Kind:"existing",Name:"Тест",Phone:"+79065288935",LocationID:"001"}
+ submitted,_,err:=s.submitMiniCase(20,"test","Метро",draft,"",true);if err!=nil{t.Fatal(err)}
  if got:=b.MiniPendingReferral(20);got!=""{t.Fatal("opt out not persisted")}
- if err:=s.putDraft(20,leadDraft{Source:"menu",Stage:"review",Kind:"existing",Name:"Тест",Phone:"+79065288935",LocationID:"001"});err!=nil{t.Fatal(err)}
- submitted,_,err:=s.submit(20,"test","Метро");if err!=nil{t.Fatal(err)}
  if submitted.ReferrerID!=0{t.Fatal("opted-out referral attributed")}
  _,err=b.MiniSaveProfile(10,MiniProfile{Name:"Пригласивший",Phone:"+79065288935",Kind:"existing"})
  if err!=nil{t.Fatal(err)}

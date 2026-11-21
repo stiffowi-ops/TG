@@ -1,0 +1,13 @@
+.discount-balance,.discount-panel{display:grid;gap:11px;padding:17px;border:1px solid #efe3d5;border-radius:18px;background:var(--ui-surface-raised,#fffdfb);color:var(--ui-ink,#0e333a);box-shadow:0 5px 15px #49301a09}
+.discount-balance{background:linear-gradient(112deg,#fff5e8,#ffe5c8)}
+.discount-balance--used{background:linear-gradient(112deg,#f1fbef,#e1f3df)}
+.discount-balance>div,.discount-history-row{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:700}
+.discount-balance>div svg{color:#e87520}.discount-balance--used>div svg{color:#448559}
+.discount-balance>strong{font-size:36px;line-height:1;letter-spacing:-1.5px}
+.discount-balance .profile-cta{margin:0}.discount-balance small,.discount-history-row span{color:var(--ui-secondary,#63777a);font-size:12px}
+.discount-tag{justify-self:start;width:fit-content;padding:5px 9px;border-radius:20px;font-size:11px;font-weight:750;background:#fff0d9;color:#874204}
+.discount-tag--used{background:#e5f5e7;color:#276a42}
+.discount-tag--new{background:#e6f1fe;color:#275f92}
+.discount-panel h2{font-size:16px;margin:0}.discount-history-row{justify-content:space-between;border-top:1px solid #eee6df;padding-top:8px}
+
+.discount-balance>strong.discount-balance__empty{font-size:22px;letter-spacing:-.6px}

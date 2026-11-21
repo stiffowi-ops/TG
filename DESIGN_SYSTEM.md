@@ -49,7 +49,7 @@
 - `ActiveRequestPreview.tsx` — компактная актуальная заявка с реальным статусом.
 - `ProgressTracker.tsx` — самостоятельный анимированный трекер, открывается в деталях заявки.
 - `ProfileGlyph.tsx` — независимый реестр векторных значков (Lucide). Замена иконки внутри карточки выполняется изменением одной записи в `icons`.
-- `web/public/assets/illustrations/profile-referral-gift.svg` — отдельная масштабируемая иллюстрация подарка. Путь: `designAssets.profileReferralGift` в `web/src/design/assets.ts`.
+- `web/public/assets/illustrations/profile-referral-gift.svg` — иллюстрация подарка. Путь: `designAssets.profileReferralGift` в `web/src/design/assets.ts`.
 - `profile.css` — адаптивная сетка/карточки/анимации, без абсолютной ширины экрана.
 
-Вместо рисунков мелкого разрешения используется SVG с сохранением резкости на Retina 2×/3×. При замене иллюстрации можно использовать другой SVG с аналогичной композицией, не меняя текст и логику баннера.
+Для баннера приглашения используется отдельная иллюстрация `web/public/assets/illustrations/referral-megaphone-card.webp`. Заголовок, подпись, кнопка и стрелки редактируются в `ProfileReferralBanner.tsx`.

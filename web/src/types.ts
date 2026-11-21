@@ -13,6 +13,9 @@ export type DemoCase = {
 export type NewCaseInput = {locationId:string;kind:'new'|'existing';company:string;name:string;phone:string;referralCode?:string;skipReferral?:boolean};
 export type Tab = 'home'|'catalog'|'map'|'favorites'|'requests'|'admin';
 
-export type ClientProfile={userId:number;name:string;phone:string;company:string;kind:'new'|'existing';discountPercent:number;updatedAt?:string};
+export type ClientProfile={userId:number;name:string;phone:string;company:string;kind:'new'|'existing';discountPercent:number;manualDiscountPercent?:number;referralDiscountPercent?:number;updatedAt?:string};
 
 export type MiniReferralInfo={code:string;link:string;pendingCode?:string;pending:number;awarded:number};
+
+export type DiscountUse = {id:number;userId:number;name:string;percent:number;status:'pending'|'used';createdAt:string;approvedAt?:string};
+export type DiscountWallet = {percent:number;offer?:string;history:DiscountUse[]};

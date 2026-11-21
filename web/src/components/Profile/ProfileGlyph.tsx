@@ -1,7 +1,8 @@
-import {ArrowLeft, BadgePercent, CheckCircle2, ChevronRight, ClipboardList, Clock3, Gift, Heart, Layers3, Link2, MapPin, Plus, Send, Settings2, UserRound} from 'lucide-react';
+import {BarChart3, Users, SlidersHorizontal, ArrowLeft, BadgePercent, CheckCircle2, ChevronRight, ClipboardList, Clock3, Gift, Heart, Layers3, Link2, MapPin, Plus, Send, Settings2, UserRound} from 'lucide-react';
 
 // Every icon is a standalone vector component. Replace one mapping without editing cards.
 const icons = {
+  clients: Users, analytics: BarChart3, services: SlidersHorizontal,
   user: UserRound,
   requests: Layers3,
   application: ClipboardList,

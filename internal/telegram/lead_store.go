@@ -1,6 +1,7 @@
 package telegram
 
 import (
+ "maps"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -67,6 +68,7 @@ type leadState struct {
 	ReferralCodes map[string]string `json:"referral_codes,omitempty"`
 	PendingReferrals map[string]string `json:"pending_referrals,omitempty"`
 	Referrals map[string]referralRecord `json:"referrals,omitempty"`
+ DiscountUses map[int64]discountUseRecord `json:"discount_uses,omitempty"`
 }
 
 type leadStore struct {
@@ -177,6 +179,8 @@ func (s *leadStore) cloneLocked() leadState {
 	for k,v:=range s.state.ReferralCodes {next.ReferralCodes[k]=v}
 	for k,v:=range s.state.PendingReferrals {next.PendingReferrals[k]=v}
 	for k,v:=range s.state.Referrals {next.Referrals[k]=v}
+ next.DiscountUses=make(map[int64]discountUseRecord,len(s.state.DiscountUses))
+ for key,rec:=range s.state.DiscountUses {rec.AdminMessages=maps.Clone(rec.AdminMessages);next.DiscountUses[key]=rec}
 	for key, draft := range s.state.Supplements {
 		next.Supplements[key] = cloneSupplementDraft(draft)
 	}
@@ -255,13 +259,34 @@ func (s *leadStore) submit(userID int64, username, locationName string) (leadApp
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	d := s.state.Drafts[strconv.FormatInt(userID, 10)]
+	return s.submitLocked(userID, username, locationName, d, "", false)
+}
+
+// submitMiniCase commits exactly the contact data and referral choice from one request.
+func (s *leadStore) submitMiniCase(userID int64, username, locationName string, d leadDraft, referralCode string, skipReferral bool) (leadApplication, bool, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.submitLocked(userID, username, locationName, d, referralCode, skipReferral)
+}
+
+func (s *leadStore) submitLocked(userID int64, username, locationName string, d leadDraft, referralCode string, skipReferral bool) (leadApplication, bool, error) {
 	key := strconv.FormatInt(userID, 10)
 	if previous, exists := s.state.Submitted[key]; exists && !previous.isResolved() {
 		return cloneLead(previous), true, nil
 	}
-	d, ok := s.state.Drafts[key]
-	if !ok || d.Kind == "" || d.Name == "" || d.Phone == "" || d.LocationID == "" || (d.Kind == "new" && d.Company == "") {
+	if d.Kind == "" || d.Name == "" || d.Phone == "" || d.LocationID == "" || (d.Kind == "new" && d.Company == "") {
 		return leadApplication{}, false, errors.New("incomplete application")
+	}
+	code := s.state.PendingReferrals[key]
+	if skipReferral {
+		code = ""
+	} else if referralCode != "" {
+		validated, err := s.validateReferralLocked(userID, referralCode)
+		if err != nil {
+			return leadApplication{}, false, err
+		}
+		code = validated
 	}
 	next := s.cloneLocked()
 	if previous, exists := next.Submitted[key]; exists {
@@ -281,15 +306,17 @@ func (s *leadStore) submit(userID int64, username, locationName string) (leadApp
 		Locations: []leadLocation{{ID: d.LocationID, Name: locationName}},
 	}
 	// Record the first verified invitation atomically with the submitted case.
-	if code:=next.PendingReferrals[key];code!="" {
-		owner:=s.referralOwnerLocked(code)
-		_,used:=next.Referrals[key]
-		previous:=false
-		for _,old:=range next.History {if old.UserID==userID {previous=true;break}}
-		if owner>0&&owner!=userID&&!used&&!previous {
-			inviterName:=s.referralDisplayNameLocked(owner)
-			lead.ReferralCode=code;lead.ReferrerID=owner;lead.ReferrerName=inviterName;lead.ReferralStatus="pending"
-			next.Referrals[key]=referralRecord{InviteeID:userID,InviterID:owner,CaseNumber:lead.Number,InviterName:inviterName,InviteeName:lead.Name,Code:code,Status:"pending",CreatedAt:lead.CreatedAt}
+	if code != "" && !s.alreadyAppliedLocked(userID) {
+		owner := s.referralOwnerLocked(code)
+		if owner > 0 && owner != userID {
+			inviterName := s.referralDisplayNameLocked(owner)
+			lead.ReferralCode, lead.ReferrerID = code, owner
+			lead.ReferrerName, lead.ReferralStatus = inviterName, "pending"
+			next.Referrals[key] = referralRecord{
+				InviteeID: userID, InviterID: owner, CaseNumber: lead.Number,
+				InviterName: inviterName, InviteeName: lead.Name, Code: code,
+				Status: "pending", CreatedAt: lead.CreatedAt,
+			}
 		}
 	}
 	delete(next.PendingReferrals,key)

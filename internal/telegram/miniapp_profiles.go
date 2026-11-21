@@ -16,7 +16,8 @@ type miniProfileRecord struct {
  Company string `json:"company,omitempty"`
  Kind string `json:"kind"`
  DiscountPercent int `json:"discountPercent"`
- ManualDiscountPercent int `json:"manualDiscountPercent,omitempty"`
+ ManualRevision int64 `json:"manualRevision,omitempty"`
+ ManualDiscountPercent int `json:"manualDiscountPercent"`
  ReferralDiscountPercent int `json:"referralDiscountPercent,omitempty"`
  UpdatedAt time.Time `json:"updatedAt"`
 }
@@ -52,7 +53,7 @@ func (b *Bot) MiniGetProfile(id int64) (MiniProfile,bool) {
   // Inviting clients may earn discounts before completing their contact profile.
   p=MiniProfile{UserID:id}
   p=b.leads.effectiveProfileLocked(p)
-  if p.ReferralDiscountPercent==0{return MiniProfile{},false}
+  return p,p.ReferralDiscountPercent>0
  }
  return b.leads.effectiveProfileLocked(p),true
 }
@@ -65,6 +66,7 @@ func (b *Bot) MiniSaveProfile(id int64,p MiniProfile)(MiniProfile,error) {
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
  existing,_:=s.profileLocked(id)
  p.DiscountPercent=existing.DiscountPercent // never trust client-submitted discount
+ p.ManualRevision=existing.ManualRevision
  p.UpdatedAt=time.Now().UTC()
  next:=s.cloneLocked()
  next.Profiles[strconv.FormatInt(id,10)]=p
@@ -77,7 +79,7 @@ func (b *Bot) MiniProfileFromCase(userID int64, l MiniCase) {
  existing,_:=s.profileLocked(userID)
  // The most recently submitted mini-app case refreshes contact details,
  // but never overwrites the admin-controlled discount.
- p:=MiniProfile{UserID:userID,Name:l.Name,Phone:l.Phone,Company:l.Company,Kind:l.Kind,DiscountPercent:existing.DiscountPercent,UpdatedAt:time.Now().UTC()}
+ p:=MiniProfile{UserID:userID,Name:l.Name,Phone:l.Phone,Company:l.Company,Kind:l.Kind,DiscountPercent:existing.DiscountPercent,ManualRevision:existing.ManualRevision,UpdatedAt:time.Now().UTC()}
  if validMiniProfile(p)!=nil{return}
  next:=s.cloneLocked();next.Profiles[strconv.FormatInt(userID,10)]=p
  _=s.saveLocked(next)
@@ -90,6 +92,7 @@ func (b *Bot) MiniAdminProfiles(adminID int64)([]MiniProfile,error){
  for _,l:=range s.state.History {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
  for _,l:=range s.state.Submitted {if l.UserID>0&&!l.Hidden{byID[l.UserID]=caseProfile(l)}}
  for _,p:=range s.state.Profiles {if p.UserID>0{byID[p.UserID]=p}}
+ for _,r:=range s.state.Referrals {if _,ok:=byID[r.InviterID];!ok&&r.InviterID>0{byID[r.InviterID]=MiniProfile{UserID:r.InviterID,Name:r.InviterName}}}
  for id,p:=range byID {byID[id]=s.effectiveProfileLocked(p)}
  out:=make([]MiniProfile,0,len(byID))
  for _,p:=range byID {out=append(out,p)}
@@ -101,7 +104,12 @@ func (b *Bot) MiniAdminSetDiscount(adminID,userID int64,discount int)(MiniProfil
  if userID<=0||discount<0||discount>100{return MiniProfile{},errors.New("скидка должна быть от 0 до 100%")}
  s:=b.leads;s.mu.Lock();defer s.mu.Unlock()
  p,ok:=s.profileLocked(userID)
+ if !ok {for _,r:=range s.state.Referrals {if r.InviterID==userID{p=MiniProfile{UserID:userID,Name:r.InviterName};ok=true;break}}}
  if !ok{return MiniProfile{},errors.New("профиль клиента не найден")}
+ if p.DiscountPercent!=discount{
+  for _,r:=range s.state.DiscountUses {if r.UserID==userID && r.Status=="pending" && r.Source=="manual"{return MiniProfile{},errors.New("сначала согласуйте запрос на использование ручной скидки")}}
+  p.ManualRevision++
+ }
  p.UserID=userID;p.DiscountPercent=discount;p.UpdatedAt=time.Now().UTC()
  next:=s.cloneLocked();next.Profiles[strconv.FormatInt(userID,10)]=p
  if err:=s.saveLocked(next);err!=nil{return MiniProfile{},err}

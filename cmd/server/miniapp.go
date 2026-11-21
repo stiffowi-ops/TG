@@ -22,6 +22,7 @@ import (
 )
 
 type telegramUser struct {
+	StartParam string `json:"-"`
 	ID int64 `json:"id"`
 	Username string `json:"username"`
 	FirstName string `json:"first_name"`
@@ -57,6 +58,7 @@ func verifyTelegramInitData(raw, token string, now time.Time) (telegramUser,erro
 	if err=json.Unmarshal([]byte(values.Get("user")),&user);err!=nil||user.ID<=0 {
 		return telegramUser{},errors.New("invalid Telegram user")
 	}
+	user.StartParam = values.Get("start_param")
 	return user,nil
 }
 
@@ -193,11 +195,27 @@ func (s *appService) handler(webDist string) http.Handler {
                 if input.Action=="defer"{s.bot.MiniDeferredReminder(r.Context(),u.ID,rec)}
             }
             jsonResponse(w,200,map[string]any{"referralStatus":rec.Status})
+        case r.Method=="POST" && r.URL.Path=="/api/discount/use":
+            var input struct{Offer string `json:"offer"`}
+            if err:=readBody(r,&input);err!=nil||input.Offer==""{jsonResponse(w,400,map[string]string{"error":"укажите активную скидку"});return}
+            wallet,err:=s.bot.MiniRequestDiscount(u.ID,input.Offer)
+            if err!=nil{jsonResponse(w,409,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,wallet)
+        case r.Method=="GET" && r.URL.Path=="/api/admin/discount-requests":
+            if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"доступ запрещён"});return}
+            if r.URL.Query().Get("summary")=="1"{count,latest:=s.bot.MiniPendingDiscountCount(u.ID);jsonResponse(w,200,map[string]any{"count":count,"latest":latest});return}
+            rows,err:=s.bot.MiniAdminDiscountUses(u.ID)
+            if err!=nil{jsonResponse(w,403,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,rows)
+        case r.Method=="POST" && r.URL.Path=="/api/admin/discount-requests/approve":
+            if !s.bot.IsMiniAdmin(u.ID){jsonResponse(w,403,map[string]string{"error":"доступ запрещён"});return}
+            var input struct{ID int64 `json:"id"`}
+            if err:=readBody(r,&input);err!=nil||input.ID<=0{jsonResponse(w,400,map[string]string{"error":"неверный запрос"});return}
+            row,err:=s.bot.MiniApproveDiscount(u.ID,input.ID)
+            if err!=nil{jsonResponse(w,409,map[string]string{"error":err.Error()});return}
+            jsonResponse(w,200,row)
         case r.Method=="GET"&&r.URL.Path=="/api/me":
-   // The value is read only after Telegram initData signature validation.
-            if values,err:=url.ParseQuery(r.Header.Get("X-Telegram-Init-Data"));err==nil {
-                _,_=s.bot.MiniCaptureReferral(u.ID,values.Get("start_param"))
-            }
+            _,_=s.bot.MiniCaptureReferral(u.ID,u.StartParam)
             s.bot.MiniObserve(u.ID,u.Username,u.FirstName,"")
 			jsonResponse(w,200,map[string]any{
 				"user":map[string]any{"id":u.ID,"username":u.Username,"firstName":u.FirstName},
@@ -206,6 +224,7 @@ func (s *appService) handler(webDist string) http.Handler {
 				"cases":s.bot.MiniMyCases(u.ID),
 				"profile":func() any { p,ok:=s.bot.MiniGetProfile(u.ID);if ok{return p};return nil }(),
 				"referralCode":s.bot.MiniPendingReferral(u.ID),
+                "discountWallet":s.bot.MiniDiscountWallet(u.ID),
 			})
 		case r.Method=="GET"&&r.URL.Path=="/api/profile":
             p,ok:=s.bot.MiniGetProfile(u.ID)
@@ -236,6 +255,7 @@ func (s *appService) handler(webDist string) http.Handler {
 		case r.Method=="POST"&&r.URL.Path=="/api/cases":
 			var input telegram.MiniNewCase
 			if err:=readBody(r,&input);err!=nil {jsonResponse(w,400,map[string]string{"error":"invalid request"});return}
+			if !input.SkipReferral { _,_ = s.bot.MiniCaptureReferral(u.ID,u.StartParam) }
 			c,err:=s.bot.MiniCreateCase(u.ID,u.Username,input)
 			if err!=nil{jsonResponse(w,400,map[string]string{"error":err.Error()});return}
 			s.bot.MiniProfileFromCase(u.ID,c)

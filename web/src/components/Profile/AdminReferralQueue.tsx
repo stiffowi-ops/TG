@@ -1,13 +1,13 @@
 import {useEffect,useState} from 'react';
-import {Clock3,Gift,RefreshCcw} from 'lucide-react';
+import {Gift,RefreshCcw} from 'lucide-react';
 import './admin-referrals.css';
 
 export type ReferralRecord={
  inviteeId:number;inviterId:number;caseNumber:number;inviterName:string;inviteeName:string;
  status:'pending'|'deferred'|'awarded';createdAt:string;ready:boolean;
 };
-type Props={load:()=>Promise<ReferralRecord[]>;decide:(number:number,action:'award'|'defer')=>Promise<void>};
-export default function AdminReferralQueue({load,decide}:Props){
+type Props={caseTitle:(number:number)=>string|undefined;load:()=>Promise<ReferralRecord[]>;decide:(number:number,action:'award'|'defer')=>Promise<void>};
+export default function AdminReferralQueue({load,decide,caseTitle}:Props){
  const [rows,setRows]=useState<ReferralRecord[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
@@ -25,13 +25,15 @@ export default function AdminReferralQueue({load,decide}:Props){
   finally{setBusy(null)}
  };
  return <section className="admin-referrals" aria-label="Реферальные начисления">
-  <div className="admin-referrals__head"><div><h2><Gift size={23}/> Реферальные начисления</h2><p>Заявки, по которым решение ещё не принято</p></div><button type="button" onClick={()=>void refresh()} aria-label="Обновить реферальные заявки"><RefreshCcw size={19}/></button></div>
+  <div className="admin-referrals__head"><p>Приглашения, по которым ожидается решение</p><button type="button" onClick={()=>void refresh()} aria-label="Обновить реферальные заявки"><RefreshCcw size={19}/></button></div>
   {error&&<p role="alert" className="admin-referrals__error">{error}</p>}
   {loading?<p className="admin-referrals__empty">Проверяем приглашения…</p>:rows.length===0?<p className="admin-referrals__empty">Нет ожидающих реферальных начислений.</p>:
-  <div className="admin-referrals__list">{rows.map(rec=><article key={rec.caseNumber} className="admin-referrals__item">
-   <div className="admin-referrals__status"><Clock3 size={16}/>{rec.status==='deferred'?'Назначу позже':rec.ready?'Ожидает решения':'Ожидает принятия заявки'}</div>
-   <strong>Заявка №{rec.caseNumber}</strong>
-   <small>Клиент: {rec.inviteeName}</small><small>Пригласил: {rec.inviterName} · ID {rec.inviterId}</small>
+  <div className="admin-referrals__list">{rows.map(rec=><article key={rec.caseNumber} className="discount-panel">
+   <div className="admin-client-head"><span className="profile-symbol"><Gift size={21}/></span><span className="profile-current__copy"><strong>Приглашение клиента</strong><small>Заявка {caseTitle(rec.caseNumber)||'№'+rec.caseNumber}</small></span></div>
+   <span className="discount-tag">{rec.status==='deferred'?'Отложено':rec.ready?'Ожидает решения':'Ожидает принятия заявки'}</span>
+   <div className="discount-history-row"><span>Пригласил</span><b>{rec.inviterName}</b></div>
+   <div className="discount-history-row"><span>Приглашён</span><b>{rec.inviteeName}</b></div>
+   <div className="discount-history-row"><span>Вознаграждение</span><b>10%</b></div>
    <div className="admin-referrals__actions">
     <button disabled={busy!==null||!rec.ready} onClick={()=>void action(rec.caseNumber,'award')}>Начислить 10%</button>
     <button disabled={busy!==null||!rec.ready||rec.status==='deferred'} onClick={()=>void action(rec.caseNumber,'defer')}>Назначу позже</button>

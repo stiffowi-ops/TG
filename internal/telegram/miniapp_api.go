@@ -121,11 +121,8 @@ func (b *Bot) MiniCreateCase(userID int64, username string, input MiniNewCase) (
 	if utf8.RuneCountInString(input.Name)<2 || utf8.RuneCountInString(input.Name)>120 {return MiniCase{},errors.New("проверьте имя")}
 	if input.Kind=="new" && (utf8.RuneCountInString(input.Company)<2 || utf8.RuneCountInString(input.Company)>200) {return MiniCase{},errors.New("укажите юридическое лицо")}
 	phone,ok:=normalizeLeadPhone(input.Phone);if !ok {return MiniCase{},errors.New("номер должен содержать +7 и десять цифр")}
-	if current,ok:=b.leads.submitted(userID);ok&&!current.isResolved() {return miniCase(current),errors.New("у Вас уже есть активное обращение")}
- if input.SkipReferral {if err:=b.MiniClearPendingReferral(userID);err!=nil{return MiniCase{},err}} else if err:=b.MiniPrepareReferral(userID,input.ReferralCode);err!=nil{return MiniCase{},err}
 	d:=leadDraft{Source:"menu",Stage:"review",Kind:input.Kind,Company:input.Company,Name:input.Name,Phone:phone,LocationID:loc.ID}
-	if err:=b.leads.putDraft(userID,d);err!=nil{return MiniCase{},err}
-	l,already,err:=b.leads.submit(userID,username,publicText(loc.Title))
+	l,already,err:=b.leads.submitMiniCase(userID,username,publicText(loc.Title),d,input.ReferralCode,input.SkipReferral)
 	if err!=nil{return MiniCase{},err}
 	if already{return miniCase(l),errors.New("заявка уже существует")}
 	if b.visitors!=nil { _=b.visitors.markLead(userID) }
