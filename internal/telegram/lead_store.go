@@ -69,6 +69,7 @@ type leadState struct {
 	PendingReferrals map[string]string `json:"pending_referrals,omitempty"`
 	Referrals map[string]referralRecord `json:"referrals,omitempty"`
  DiscountUses map[int64]discountUseRecord `json:"discount_uses,omitempty"`
+ ManualDiscountNotices map[string]manualDiscountNotice `json:"manual_discount_notices,omitempty"`
 }
 
 type leadStore struct {
@@ -101,6 +102,7 @@ func openLeadStore(path string) (*leadStore, error) {
 	if s.state.ReferralCodes == nil {s.state.ReferralCodes=map[string]string{}}
 	if s.state.PendingReferrals == nil {s.state.PendingReferrals=map[string]string{}}
 	if s.state.Referrals == nil {s.state.Referrals=map[string]referralRecord{}}
+ if s.state.ManualDiscountNotices == nil {s.state.ManualDiscountNotices=map[string]manualDiscountNotice{}}
 	// Resume stored forms explicitly after a restart.
 	for k, d := range s.state.Drafts {
 		d.Paused = true
@@ -169,6 +171,7 @@ func (s *leadStore) cloneLocked() leadState {
 		ReferralCodes:make(map[string]string,len(s.state.ReferralCodes)),
 		PendingReferrals:make(map[string]string,len(s.state.PendingReferrals)),
 		Referrals:make(map[string]referralRecord,len(s.state.Referrals)),
+ ManualDiscountNotices:make(map[string]manualDiscountNotice,len(s.state.ManualDiscountNotices)),
 	}
 	for key, draft := range s.state.Drafts {
 		next.Drafts[key] = cloneLeadDraft(draft)
@@ -179,6 +182,7 @@ func (s *leadStore) cloneLocked() leadState {
 	for k,v:=range s.state.ReferralCodes {next.ReferralCodes[k]=v}
 	for k,v:=range s.state.PendingReferrals {next.PendingReferrals[k]=v}
 	for k,v:=range s.state.Referrals {next.Referrals[k]=v}
+ for k,v:=range s.state.ManualDiscountNotices {next.ManualDiscountNotices[k]=v}
  next.DiscountUses=make(map[int64]discountUseRecord,len(s.state.DiscountUses))
  for key,rec:=range s.state.DiscountUses {rec.AdminMessages=maps.Clone(rec.AdminMessages);next.DiscountUses[key]=rec}
 	for key, draft := range s.state.Supplements {
