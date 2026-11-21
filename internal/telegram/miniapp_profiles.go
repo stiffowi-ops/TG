@@ -1,7 +1,10 @@
 package telegram
 
 import (
+ "context"
  "errors"
+ "fmt"
+ "log"
  "sort"
  "strconv"
  "strings"
@@ -20,6 +23,13 @@ type miniProfileRecord struct {
  ManualDiscountPercent int `json:"manualDiscountPercent"`
  ReferralDiscountPercent int `json:"referralDiscountPercent,omitempty"`
  UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// A durable notification for a newly assigned manual discount.
+type manualDiscountNotice struct {
+ UserID int64 `json:"userId"`
+ Percent int `json:"percent"`
+ Revision int64 `json:"revision"`
 }
 
 // Profile belongs to the authenticated Telegram user. Discount is admin-controlled.
@@ -106,12 +116,59 @@ func (b *Bot) MiniAdminSetDiscount(adminID,userID int64,discount int)(MiniProfil
  p,ok:=s.profileLocked(userID)
  if !ok {for _,r:=range s.state.Referrals {if r.InviterID==userID{p=MiniProfile{UserID:userID,Name:r.InviterName};ok=true;break}}}
  if !ok{return MiniProfile{},errors.New("профиль клиента не найден")}
- if p.DiscountPercent!=discount{
+ changed:=p.DiscountPercent!=discount
+ if changed{
   for _,r:=range s.state.DiscountUses {if r.UserID==userID && r.Status=="pending" && r.Source=="manual"{return MiniProfile{},errors.New("сначала согласуйте запрос на использование ручной скидки")}}
   p.ManualRevision++
  }
  p.UserID=userID;p.DiscountPercent=discount;p.UpdatedAt=time.Now().UTC()
  next:=s.cloneLocked();next.Profiles[strconv.FormatInt(userID,10)]=p
+ if changed {
+  key:=strconv.FormatInt(userID,10)
+  if discount>0 {
+   next.ManualDiscountNotices[key]=manualDiscountNotice{UserID:userID,Percent:discount,Revision:p.ManualRevision}
+  } else {
+   delete(next.ManualDiscountNotices,key)
+  }
+ }
  if err:=s.saveLocked(next);err!=nil{return MiniProfile{},err}
+ if changed&&discount>0 {b.wakeDiscountDelivery()}
  return s.effectiveProfileLocked(p),nil
+}
+
+func (s *leadStore) manualDiscountNotices() []manualDiscountNotice {
+ s.mu.Lock()
+ defer s.mu.Unlock()
+ items:=make([]manualDiscountNotice,0,len(s.state.ManualDiscountNotices))
+ for _,notice:=range s.state.ManualDiscountNotices {items=append(items,notice)}
+ sort.Slice(items,func(i,j int)bool{return items[i].UserID<items[j].UserID})
+ return items
+}
+
+func (s *leadStore) markManualDiscountNotified(notice manualDiscountNotice) error {
+ s.mu.Lock()
+ defer s.mu.Unlock()
+ key:=strconv.FormatInt(notice.UserID,10)
+ current,ok:=s.state.ManualDiscountNotices[key]
+ if !ok||current.Revision!=notice.Revision||current.Percent!=notice.Percent{return nil}
+ next:=s.cloneLocked()
+ delete(next.ManualDiscountNotices,key)
+ return s.saveLocked(next)
+}
+
+func (b *Bot) sendManualDiscountNotices(ctx context.Context) {
+ if b==nil||b.leads==nil{return}
+ for _,notice:=range b.leads.manualDiscountNotices(){
+  if ctx.Err()!=nil{return}
+  button:=b.profileButton(ctx)
+  if len(button)==0{continue}
+  button["text"]="🎁 Использовать скидку"
+  _,err:=b.call(ctx,"sendMessage",map[string]any{
+   "chat_id":notice.UserID,
+   "text":fmt.Sprintf("🎁 Вам назначена скидка %d%%!\n\nПроверить доступное вознаграждение и отправить запрос на использование можно в мини-приложении.",notice.Percent),
+   "reply_markup":markup([]Button{button}),
+  })
+  if err==nil{err=b.leads.markManualDiscountNotified(notice)}
+  if err!=nil{log.Printf("Manual discount notice to %d: %v",notice.UserID,err)}
+ }
 }
