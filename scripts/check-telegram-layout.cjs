@@ -21,12 +21,18 @@ module.exports = async function checkTelegramLayout(context, target) {
         }};`
       }));
       let grantedDiscount=0;
+      let discountPhase='available';
       let mockCases=[];
+      const discountRecord={id:701,userId:1,name:'Тестовый клиент',percent:15,createdAt:'2026-11-21T09:00:00Z'};
       const mockReferral='ref_ABCDEFGHIJKLMNOP';
       await page.route('**/api/me', route => route.fulfill({json:{
         user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:mockCases,
         referralCode:mockReferral,
-        discountWallet:{percent:grantedDiscount,offer:grantedDiscount?'m1':'',history:[]},
+        discountWallet:discountPhase==='pending'
+         ?{percent:0,offer:'',history:[{...discountRecord,status:'pending'}]}
+         :discountPhase==='used'
+          ?{percent:0,offer:'',history:[{...discountRecord,status:'used',approvedAt:'2026-11-21T09:15:00Z'}]}
+          :{percent:grantedDiscount,offer:grantedDiscount?'m1':'',history:[]},
         profile:{userId:1,name:'Тестовый клиент',phone:'+79990000000',kind:'existing',company:'',discountPercent:grantedDiscount}
       }}));
       await page.route('**/api/referral', route => route.fulfill({json:{
@@ -279,7 +285,9 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('heading',{name:'Мой профиль'}).waitFor();
       await page.getByText('Ваша скидка: 15%',{exact:true}).waitFor();
+      assert.ok(await page.getByText('Скидка доступна',{exact:true}).isVisible());
       assert.equal(await page.getByText('Скидка 15%',{exact:true}).count(),0,'Discount must not appear in the contacts card');
+      if(fullscreen)await page.locator('.profile-referral-hub').screenshot({path:'screenshots/18-discount-available-real.png'});
       assert.ok(await page.getByRole('button',{name:'Воспользоваться скидкой'}).isVisible(),'Discount redemption belongs to referral block');
       if(fullscreen)await page.screenshot({path:'screenshots/11-profile-discount.png'});
       await page.locator('.profile-rewards__summary').tap();
@@ -287,6 +295,26 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.getByRole('button',{name:/Моя ссылка и история приглашений/}).tap();
       assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),0,'Do not duplicate redemption in referral details');
       await page.getByRole('button',{name:'Назад'}).tap();
+      discountPhase='pending';
+      await nav.getByRole('button',{name:'Локации'}).tap();
+      await nav.getByRole('button',{name:'Профиль'}).tap();
+      await page.getByText('Ожидает подтверждения',{exact:true}).waitFor();
+      assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),0,'Cannot redeem while confirmation is pending');
+      assert.ok(await page.locator('.profile-rewards--pending').isVisible());
+      if(fullscreen)await page.locator('.profile-referral-hub').screenshot({path:'screenshots/19-discount-pending-real.png'});
+      await page.locator('.profile-rewards__summary').tap();
+      assert.ok(await page.getByText('Запрос на использование скидки отправлен. Мы сообщим о результате.').isVisible());
+      assert.equal(await page.getByText('Подтверждение',{exact:true}).count(),1);
+      if(fullscreen)await page.locator('.profile-referral-hub').screenshot({path:'screenshots/20-discount-pending-expanded-real.png'});
+      discountPhase='used';
+      await nav.getByRole('button',{name:'Локации'}).tap();
+      await nav.getByRole('button',{name:'Профиль'}).tap();
+      await page.getByText('Скидка использована',{exact:true}).waitFor();
+      assert.ok(await page.getByText('Применение скидки 15% подтверждено',{exact:true}).isVisible());
+      assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),0);
+      if(fullscreen)await page.locator('.profile-referral-hub').screenshot({path:'screenshots/21-discount-used-real.png'});
+      await page.locator('.profile-rewards__summary').tap();
+      if(fullscreen)await page.locator('.profile-referral-hub').screenshot({path:'screenshots/22-discount-used-expanded-real.png'});
       if(fullscreen){
         const manage=nav.getByRole('button',{name:'Управление'});
         await manage.tap();

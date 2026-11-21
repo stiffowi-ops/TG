@@ -27,3 +27,12 @@
 .profile-rewards__tracker{padding:6px;background:white;border-radius:12px}
 .profile-rewards__error{color:#B34131}
 @media(prefers-reduced-motion:reduce){.profile-rewards__arrow{transition:none}}
+
+/* Gentle one-shot feedback when a client discount changes state. */
+.profile-rewards--pending .profile-rewards__icon{background:#FFF2DC;color:#BE7A19}
+.profile-rewards--used .profile-rewards__icon{background:#E5F5EB;color:#278653}
+.profile-rewards--used{border-color:#D5EBD8}
+.profile-rewards__copy,.profile-rewards__icon{animation:discount-phase-arrive .45s ease-out both}
+.profile-rewards__info{font-size:12px;line-height:1.5;color:#667C7E}
+@keyframes discount-phase-arrive{from{opacity:.55;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+@media(prefers-reduced-motion:reduce){.profile-rewards__copy,.profile-rewards__icon{animation:none}}
