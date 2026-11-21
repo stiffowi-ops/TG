@@ -105,3 +105,19 @@
 .referral-admin-review>small{font-size:11px;color:#C17120;}
 .referral-admin-review__buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px;}
 .referral-admin-review__buttons button{flex:1;min-height:39px;font-size:12px!important;padding:9px!important;}
+
+/* Profile refinements: contacts have one entry, and rewards belong to the invitation block. */
+.profile-summary__edit{display:inline-flex;flex-shrink:0;align-items:center;gap:5px;padding:7px 9px;border-radius:11px;background:#fff0e1;color:#bb5a13;font-size:11px;font-weight:800}
+.profile-shortcuts--single{grid-template-columns:minmax(0,1fr)}
+.profile-shortcuts--single .profile-shortcut{min-height:80px;gap:6px}
+.profile-referral-hub{display:grid;gap:9px}
+.profile-referral-hub .discount-balance{gap:9px;padding:13px 15px;border-radius:16px}
+.profile-referral-hub .discount-balance>div{font-size:12px}
+.profile-referral-hub .discount-balance>div svg{width:19px;height:19px}
+.profile-referral-hub .discount-balance>strong{font-size:29px}
+.profile-referral-hub .discount-balance>strong.discount-balance__empty{font-size:18px}
+.profile-referral-hub .discount-balance .profile-cta{min-height:43px;font-size:13px!important}
+.profile-referral-hub .profile-detail-tracker{padding:10px}
+.profile-referral-more{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:10px 12px;border:1px solid #f0e5db;border-radius:12px;background:#fffdfb;color:#9b5524;text-align:left;font-size:12px!important;font-weight:750!important}
+.profile-referral-more svg{flex-shrink:0}
+@media(max-width:360px){.profile-summary__edit{font-size:0;gap:0;padding:8px}.profile-summary__edit svg{width:17px;height:17px}}

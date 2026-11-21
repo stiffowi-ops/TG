@@ -3,7 +3,7 @@ import {designAssets} from '../../design/assets';
 
 export default function ProfileReferralBanner({onClick}: {onClick: () => void}) {
   return <button type="button" className="profile-referral" onClick={onClick}
-    aria-label="Пригласить новых клиентов. Открыть бонусы">
+    aria-label="Пригласить новых клиентов. Поделиться ссылкой в Telegram">
     <span className="profile-referral__inner">
       <img className="profile-referral__art" src={designAssets.profileReferral.megaphone} alt="" />
       <strong className="profile-referral__title">Приглашайте<br/>новых клиентов</strong>
