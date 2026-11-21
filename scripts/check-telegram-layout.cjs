@@ -21,9 +21,10 @@ module.exports = async function checkTelegramLayout(context, target) {
         }};`
       }));
       let grantedDiscount=0;
+      let mockCases=[];
       const mockReferral='ref_ABCDEFGHIJKLMNOP';
       await page.route('**/api/me', route => route.fulfill({json:{
-        user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:[],
+        user:{id:1,firstName:'Тест'}, admin:fullscreen, favorites:[], cases:mockCases,
         referralCode:mockReferral,
         discountWallet:{percent:grantedDiscount,offer:grantedDiscount?'m1':'',history:[]},
         profile:{userId:1,name:'Тестовый клиент',phone:'+79990000000',kind:'existing',company:'',discountPercent:grantedDiscount}
@@ -235,6 +236,15 @@ module.exports = async function checkTelegramLayout(context, target) {
       await form.getByRole('button',{name:'Продолжить'}).tap();
       await form.getByText('Проверьте данные заявки').waitFor();
       await form.getByRole('button',{name:'Закрыть',exact:true}).tap();
+      mockCases=[{number:101,locationIds:['001'],createdAt:'2026-11-21T08:00:00Z',status:'working',takenAt:'2026-11-21T08:15:00Z',updates:[]}];
+      await nav.getByRole('button',{name:'Локации'}).tap();
+      await nav.getByRole('button',{name:'Профиль'}).tap();
+      await page.getByRole('button',{name:'Отследить заявку'}).waitFor();
+      assert.equal(await page.getByRole('button',{name:'Подать заявку'}).count(),0,'Active request must replace the application CTA');
+      await page.getByRole('button',{name:'Отследить заявку'}).tap();
+      await page.getByRole('heading',{name:'Заявка Метро Остров Мечты'}).waitFor();
+      await page.getByRole('button',{name:'Назад'}).tap();
+      mockCases=[];
       await nav.getByRole('button',{name:'Избранное'}).tap();
       await page.locator('.catalog-page-heading__back').tap();
       grantedDiscount=15; // Simulate an administrator granting a discount while the app remains open.
