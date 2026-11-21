@@ -11,3 +11,19 @@
 .discount-panel h2{font-size:16px;margin:0}.discount-history-row{justify-content:space-between;border-top:1px solid #eee6df;padding-top:8px}
 
 .discount-balance>strong.discount-balance__empty{font-size:22px;letter-spacing:-.6px}
+
+/* A single compact, expandable rewards area below the invitation banner. */
+.profile-rewards{display:flex;flex-direction:column;gap:9px;padding:10px 12px;border:1px solid #F0E3D7;border-radius:16px;background:#FFFDFB;box-shadow:0 6px 15px #49301a08}
+.profile-rewards__summary{display:flex;align-items:center;gap:11px;width:100%;padding:3px 1px;text-align:left;color:#0D3034;background:transparent;border:0;cursor:pointer}
+.profile-rewards__icon{display:grid;place-items:center;flex:0 0 38px;height:38px;border-radius:12px;background:#FFF0E1;color:#ED7517}
+.profile-rewards__copy{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.profile-rewards__copy strong{font-size:14px;font-weight:850}
+.profile-rewards__copy small{font-size:11px;color:#657A7D}
+.profile-rewards__arrow{color:#637679;transition:transform .2s ease}
+.profile-rewards__arrow.is-expanded{transform:rotate(180deg)}
+.profile-rewards__redeem{min-height:42px!important;padding:9px!important;border-radius:11px!important;font-size:13px!important}
+.profile-rewards__details{display:flex;flex-direction:column;gap:7px;border-top:1px solid #F0E6DA;padding-top:9px}
+.profile-rewards__history{display:flex;justify-content:space-between;align-items:center;gap:8px;width:100%;padding:8px 5px;border:0;border-radius:9px;background:#FFF3E8;color:#A75A20;text-align:left;font-size:12px!important;font-weight:750!important}
+.profile-rewards__tracker{padding:6px;background:white;border-radius:12px}
+.profile-rewards__error{color:#B34131}
+@media(prefers-reduced-motion:reduce){.profile-rewards__arrow{transition:none}}

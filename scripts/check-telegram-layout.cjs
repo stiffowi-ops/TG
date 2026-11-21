@@ -38,6 +38,21 @@ module.exports = async function checkTelegramLayout(context, target) {
         return route.fulfill({status:valid?200:400,json:valid?{valid:true,code:mockReferral}:{error:'Реферальная ссылка не найдена'}});
       });
       await page.route('**/api/locations/view', route => route.fulfill({json:{ok:true}}));
+      // Admin screens use fixed, non-personal fixture data for reproducible visual captures.
+      await page.route('**/api/admin/profiles', route => route.fulfill({json:{profiles:[
+        {userId:100001,name:'Мария Смирнова',phone:'+79991112233',kind:'existing',company:'Город',discountPercent:10,manualDiscountPercent:0,referralDiscountPercent:10},
+        {userId:100002,name:'Александр Иванов',phone:'+79994445566',kind:'new',company:'Новые точки',discountPercent:0,manualDiscountPercent:0,referralDiscountPercent:0}
+      ]}}));
+      await page.route('**/api/admin/referrals', route => route.fulfill({json:{referrals:[
+        {inviteeId:100002,inviterId:100001,caseNumber:101,inviterName:'Мария Смирнова',inviteeName:'Александр Иванов',status:'pending',createdAt:'2026-11-20T12:30:00Z',ready:true}
+      ]}}));
+      await page.route('**/api/admin/cases', route => route.fulfill({json:{cases:[
+        {number:101,locationIds:['001'],name:'Александр Иванов',createdAt:'2026-11-20T12:30:00Z',status:'working',takenAt:'2026-11-20T13:00:00Z',updates:[]}
+      ]}}));
+      await page.route('**/api/admin/discount-requests*', route => {
+        if(new URL(route.request().url()).searchParams.has('summary'))return route.fulfill({json:{count:1,latest:501}});
+        return route.fulfill({json:[{id:501,userId:100001,name:'Мария Смирнова',percent:10,status:'pending',createdAt:'2026-11-21T08:00:00Z'}]});
+      });
       const station = {id:'001', title:'Метро Остров Мечты', area:'Москва', category:'Метро',
         latitude:55.69218672, longitude:37.66859046};
       const town = {...station,id:'036',title:'Ивантеевка',area:'Другие локации',category:'Другие локации'};
@@ -213,12 +228,20 @@ module.exports = async function checkTelegramLayout(context, target) {
       assert.ok(await page.getByText('У вас нет скидок',{exact:true}).isVisible());
       assert.ok(await page.getByText('+7 ••• •••-••-00',{exact:true}).isVisible(),'Phone must be masked on the profile summary');
       assert.equal(await page.getByRole('button',{name:/Данные для заявок/}).count(),1,'Contacts must have one entry point');
+      assert.equal(await page.locator('.profile-rewards__summary').getAttribute('aria-expanded'),'false','Rewards must start collapsed');
+      const order=await page.evaluate(()=>['.profile-summary','.profile-cta--primary-action','.profile-shortcuts','.profile-referral-hub'].map(x=>document.querySelector(x).getBoundingClientRect().top));
+      assert.ok(order.every((top,i)=>i===0||top>order[i-1]),'Primary action and requests must precede referrals: '+order);
+      if(fullscreen)await page.screenshot({path:'screenshots/07-profile-overview.png'});
       await referral.locator('.profile-referral__cta').tap();
       assert.equal(new URL(await page.evaluate(()=>window.sharedReferral)).searchParams.get('url'),
         'https://t.me/TestLocationBot?startapp=ref_MNOPQRSTUVWXYZab');
       assert.ok(await page.getByRole('heading',{name:'Мой профиль'}).isVisible(),'Sharing must stay on the profile');
+      await page.locator('.profile-rewards__summary').tap();
+      assert.equal(await page.locator('.profile-rewards__summary').getAttribute('aria-expanded'),'true');
+      if(fullscreen)await page.screenshot({path:'screenshots/16-rewards-expanded-empty.png'});
       await page.getByRole('button',{name:/Моя ссылка и история приглашений/}).tap();
       await page.getByText('Ваша реферальная ссылка').waitFor();
+      if(fullscreen)await page.screenshot({path:'screenshots/08-referral-details.png'});
       assert.ok(await page.getByRole('button',{name:'Скопировать'}).isVisible());
       await page.getByRole('button',{name:'Поделиться'}).tap();
       assert.equal(new URL(await page.evaluate(()=>window.sharedReferral)).searchParams.get('url'),
@@ -241,8 +264,13 @@ module.exports = async function checkTelegramLayout(context, target) {
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('button',{name:'Отследить заявку'}).waitFor();
       assert.equal(await page.getByRole('button',{name:'Подать заявку'}).count(),0,'Active request must replace the application CTA');
+      assert.ok(await page.getByText(/Специалист взял в работу/).isVisible(),'Active request must show last activity');
+      const activeOrder=await page.evaluate(()=>['.profile-summary','.profile-active-card','.profile-cta--primary-action','.profile-shortcuts','.profile-referral-hub'].map(x=>document.querySelector(x).getBoundingClientRect().top));
+      assert.ok(activeOrder.every((top,i)=>i===0||top>activeOrder[i-1]),'Active request must precede referrals: '+activeOrder);
+      if(fullscreen)await page.screenshot({path:'screenshots/09-active-request.png'});
       await page.getByRole('button',{name:'Отследить заявку'}).tap();
       await page.getByRole('heading',{name:'Заявка Метро Остров Мечты'}).waitFor();
+      if(fullscreen)await page.screenshot({path:'screenshots/10-request-tracker.png'});
       await page.getByRole('button',{name:'Назад'}).tap();
       mockCases=[];
       await nav.getByRole('button',{name:'Избранное'}).tap();
@@ -250,12 +278,32 @@ module.exports = async function checkTelegramLayout(context, target) {
       grantedDiscount=15; // Simulate an administrator granting a discount while the app remains open.
       await nav.getByRole('button',{name:'Профиль'}).tap();
       await page.getByRole('heading',{name:'Мой профиль'}).waitFor();
-      await page.getByText('15%',{exact:true}).waitFor();
+      await page.getByText('Ваша скидка: 15%',{exact:true}).waitFor();
       assert.equal(await page.getByText('Скидка 15%',{exact:true}).count(),0,'Discount must not appear in the contacts card');
       assert.ok(await page.getByRole('button',{name:'Воспользоваться скидкой'}).isVisible(),'Discount redemption belongs to referral block');
+      if(fullscreen)await page.screenshot({path:'screenshots/11-profile-discount.png'});
+      await page.locator('.profile-rewards__summary').tap();
+      if(fullscreen)await page.screenshot({path:'screenshots/17-profile-discount-expanded.png'});
       await page.getByRole('button',{name:/Моя ссылка и история приглашений/}).tap();
       assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),0,'Do not duplicate redemption in referral details');
       await page.getByRole('button',{name:'Назад'}).tap();
+      if(fullscreen){
+        const manage=nav.getByRole('button',{name:'Управление'});
+        await manage.tap();
+        await page.getByRole('heading',{name:'Управление'}).waitFor();
+        await page.screenshot({path:'screenshots/12-admin-dashboard.png'});
+        await page.locator('.admin-page').getByRole('button',{name:/Клиенты/}).tap();
+        await page.getByText('Мария Смирнова').first().waitFor();
+        await page.screenshot({path:'screenshots/13-admin-clients.png'});
+        await page.getByRole('button',{name:'Назад в управление'}).tap();
+        await page.locator('.admin-page').getByRole('button',{name:/Начисления/}).tap();
+        await page.getByText('Пригласил').waitFor();
+        await page.screenshot({path:'screenshots/14-admin-referrals.png'});
+        await page.getByRole('button',{name:'Назад в управление'}).tap();
+        await page.locator('.admin-page').getByRole('button',{name:/Запросы на скидку/}).tap();
+        await page.getByRole('button',{name:'Согласовать'}).waitFor();
+        await page.screenshot({path:'screenshots/15-admin-discounts.png'});
+      }
       await nav.getByRole('button',{name:'Локации'}).tap();
       await home.waitFor();
 

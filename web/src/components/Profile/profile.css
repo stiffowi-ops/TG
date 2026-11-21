@@ -121,3 +121,16 @@
 .profile-referral-more{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;padding:10px 12px;border:1px solid #f0e5db;border-radius:12px;background:#fffdfb;color:#9b5524;text-align:left;font-size:12px!important;font-weight:750!important}
 .profile-referral-more svg{flex-shrink:0}
 @media(max-width:360px){.profile-summary__edit{font-size:0;gap:0;padding:8px}.profile-summary__edit svg{width:17px;height:17px}}
+
+/* Client-first hierarchy: the active request and its action precede referrals. */
+.profile-cta--primary-action{min-height:52px}
+.profile-active-card{display:flex;width:100%;flex-direction:column;gap:11px;text-align:left;padding:15px 16px;border:1px solid #F0E2D6;border-radius:18px;color:#0D3034;background:linear-gradient(125deg,#fff,#FFF9F2);box-shadow:0 7px 19px #3C32250d}
+.profile-active-card__heading{display:flex;width:100%;justify-content:space-between;align-items:center;gap:9px}
+.profile-active-card__heading small{font-size:12px;font-weight:700;color:#677D80}
+.profile-active-card__title{display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px;font-size:16px;font-weight:850;line-height:1.28}
+.profile-active-card__progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px;width:100%}
+.profile-active-card__progress span{height:5px;border-radius:8px;background:#EAE7E2}
+.profile-active-card__progress span.is-done{background:linear-gradient(90deg,#FF891F,#FF6912)}
+.profile-active-card__updated{font-size:11px;line-height:1.35;color:#637A7D}
+.profile-referral-hub{margin-top:2px;gap:8px}
+@media(max-width:350px){.profile-active-card{padding:13px}.profile-active-card__title{font-size:14px}}
