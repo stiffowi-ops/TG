@@ -274,9 +274,8 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
   if ctx.Err()!=nil{return}
   if rec.Percent<=0 {continue}
   text:=fmt.Sprintf("🎉 <b>Вам начислена скидка %d%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.",rec.Percent)
-  button:=b.profileButton(ctx)
+  button:=b.discountButton(ctx,"🎁 Использовать скидку")
   if len(button)==0{continue}
-  button["text"]="🎁 Использовать скидку"
   keyboard:=markup([]Button{button})
   _,err:=b.call(ctx,"sendMessage",map[string]any{"chat_id":rec.InviterID,"text":text,"parse_mode":"HTML","reply_markup":keyboard})
   if err!=nil{log.Printf("Referral notice to %d (case %d): %v",rec.InviterID,rec.CaseNumber,err);continue}

@@ -129,7 +129,7 @@ func TestDiscountTelegramApprovalAndRetry(t *testing.T) {
 				if fail {
 					return nil, errors.New("temporary failure")
 				}
-				if !strings.Contains(p.Text, "10% использована") || !strings.Contains(string(p.Markup), "?view=profile") {
+				if !strings.Contains(p.Text, "10% использована") || !strings.Contains(string(p.Markup), "?view=discount") {
 					t.Fatal(p.Text, string(p.Markup))
 				}
 			} else if !strings.Contains(string(p.Markup), "discount:1") {

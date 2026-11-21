@@ -269,9 +269,8 @@ func (b *Bot) sendDiscountNotices(ctx context.Context) {
 			return
 		}
         if r.Status == "pending" && !r.ClientRequestNotified && s.discountRequestPending(r.ID) {
-            btn:=b.profileButton(ctx)
+            btn:=b.discountButton(ctx,"📱 Посмотреть статус скидки")
             if len(btn)>0 {
-                btn["text"]="📱 Посмотреть статус скидки"
                 _,err:=b.call(ctx,"sendMessage",map[string]any{
                     "chat_id":r.UserID,
                     "text":fmt.Sprintf("🕓 Запрос на использование скидки %d%% отправлен.\n\nОжидает подтверждения. Мы сообщим о результате.",r.Percent),
@@ -282,9 +281,8 @@ func (b *Bot) sendDiscountNotices(ctx context.Context) {
             }
         }
 		if r.Status == "used" && !r.ClientNotified {
-			btn := b.profileButton(ctx)
+			btn := b.discountButton(ctx,"👤 Посмотреть скидку")
 			if len(btn) > 0 {
-                btn["text"]="👤 Посмотреть скидку"
 				_, err := b.call(ctx, "sendMessage", map[string]any{"chat_id": r.UserID, "text": fmt.Sprintf("✅ Ваша скидка %d%% использована. Применение скидки подтверждено.\n\nСпасибо! Будем рады новым обращениям.", r.Percent), "reply_markup": markup([]Button{btn})})
 				if err == nil {
 					err = s.saveDiscountReceipt(r.ID, 0, 0)

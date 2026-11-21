@@ -13,6 +13,7 @@ import (
 )
 
 // Delays count working time inside the Monday-Friday Moscow office window.
+const caseTakeSLADelay = 30 * time.Minute
 const supplementReminderDelay = 2 * time.Hour
 const supplementEscalationDelay = 4 * time.Hour
 
@@ -143,16 +144,54 @@ func (b *Bot) clientCaseMarkup(ctx context.Context, l leadApplication) any {
  return markup(rows...)
 }
 
+// The taking-in-work SLA is independent of the 2h/4h supplement reminders.
+func caseTakeReminderStage(created, now time.Time) string {
+ if !adminWorkTime(now) {return ""}
+ elapsed:=adminWorkingDuration(created,now)
+ if elapsed>=supplementEscalationDelay{return "escalation"}
+ if elapsed>=supplementReminderDelay{return "reminder"}
+ if elapsed>=caseTakeSLADelay{return "sla30"}
+ return ""
+}
+
+func clientContactExpectation(l leadApplication) string {
+ if l.TakenAt!=nil && adminWorkTime(*l.TakenAt) {
+  return "С вами в ближайшее время свяжется специалист для уточнения деталей."
+ }
+ return "Специалист свяжется с вами в ближайшее рабочее время (пн–пт, 09:00–19:00 МСК)."
+}
+
+func clientSupplementDetails(u leadUpdate) string {
+ parts:=[]string{}
+ if len(u.Locations)>0 {
+  names:=[]string{}
+  for i,loc:=range u.Locations{
+   if i>=3 {break}
+   names=append(names,html.EscapeString(limitRunes(strings.TrimSpace(loc.Name),65)))
+  }
+  text:="<b>Добавленные локации:</b> "+strings.Join(names,", ")
+  if len(u.Locations)>3{text+=fmt.Sprintf(" и ещё %d",len(u.Locations)-3)}
+  parts=append(parts,text)
+ }
+ if comment:=strings.TrimSpace(u.Comment);comment!="" {
+  parts=append(parts,"<b>Комментарий:</b> "+html.EscapeString(limitRunes(comment,240)))
+ }
+ return strings.Join(parts,"\n")
+}
+
 type caseNoticeSender func(leadApplication, string, int64, string, any)
 
 func pendingCaseReminderText(l leadApplication, stage string) string {
-	title := "⏰ Заявка не взята в работу"
-	delay := 2
-	if stage == "escalation" {
-		title = "‼️ Заявка не взята в работу"
-		delay = 4
-	}
-	return fmt.Sprintf("<b>%s · №%04d</b>\n\nОжидает обработки более %d рабочих часов.\nРабочее время: пн–пт, 09:00–19:00 МСК.\nПолучена: %s\n\n<b>Клиент:</b> %s\n<b>Телефон:</b> %s\n\n<b>Локации</b>\n%s", title, l.Number, delay, caseTime(l.CreatedAt), html.EscapeString(l.Name), html.EscapeString(l.Phone), locationLines(l.locations()))
+ title:="⚠️ SLA 30 минут: заявка не взята в работу"
+ elapsed:="30 рабочих минут"
+ if stage=="reminder"{
+  title="⏰ Заявка не взята в работу"
+  elapsed="2 рабочих часа"
+ }else if stage=="escalation"{
+  title="‼️ Заявка не взята в работу"
+  elapsed="4 рабочих часа"
+ }
+ return fmt.Sprintf("<b>%s · №%04d</b>\n\nЗаявка ожидает принятия более %s.\nSLA на взятие в работу: 30 рабочих минут.\nРабочее время: пн–пт, 09:00–19:00 МСК.\nПолучена: %s\n\n<b>Клиент:</b> %s\n<b>Телефон:</b> %s\n\n<b>Локации</b>\n%s",title,l.Number,elapsed,caseTime(l.CreatedAt),html.EscapeString(l.Name),html.EscapeString(l.Phone),locationLines(l.locations()))
 }
 func (b *Bot) notifyPendingCaseReminder(l leadApplication, now time.Time, send caseNoticeSender) {
 	if l.TakenInWork || l.isResolved() {
@@ -162,12 +201,12 @@ func (b *Bot) notifyPendingCaseReminder(l leadApplication, now time.Time, send c
 	if !ok || current.Number != l.Number {
 		return
 	}
-	stage := adminReminderStage(l.CreatedAt, now)
+	stage := caseTakeReminderStage(l.CreatedAt, now)
 	if stage == "" {
 		return
 	}
-	// After downtime send only the latest due stage to each recipient, instead
-	// of a 2h reminder and a 4h escalation together at the next opening.
+	// After downtime send only the latest due stage to each recipient.
+	// The 30-minute SLA event does not cause a burst of older reminders.
 	for _, id := range b.caseAdminRecipients(l) {
 		send(l, fmt.Sprintf("case:%s:%d", stage, id), id, pendingCaseReminderText(l, stage), adminLeadMarkup(l))
 	}
@@ -248,11 +287,11 @@ func (b *Bot) notifySelectedCaseEvents(ctx context.Context, now time.Time, cases
 			if !l.supplementLimitReached() {
 				note = "Статус и возможность дополнить обращение доступны в разделе «Мои заявки»."
 			}
-			send(l, "client:taken", l.UserID, fmt.Sprintf("🛠 <b>%s взята в работу.</b>\n\nС вами в ближайшее время свяжется специалист.\n%s", clientCaseName(l), note), b.clientCaseMarkup(ctx, l))
+			send(l, "client:taken", l.UserID, fmt.Sprintf("🛠 <b>%s взята в работу.</b>\n\n%s\n%s", clientCaseName(l), clientContactExpectation(l), note), b.clientCaseMarkup(ctx, l))
 		}
 		for _, u := range l.Updates {
 			if u.AcceptedAt != nil {
-				send(l, fmt.Sprintf("client:ack:%d", u.ID), l.UserID, fmt.Sprintf("✅ <b>Дополнение №%d к заявке принято в работу.</b>\n\n%s. Уточнения переданы специалисту.", u.ID, clientCaseName(l)), b.clientCaseMarkup(ctx, l))
+				send(l, fmt.Sprintf("client:ack:%d", u.ID), l.UserID, fmt.Sprintf("✅ <b>Дополнение №%d к заявке принято в работу.</b>\n\n%s\n%s\nУточнения переданы специалисту.", u.ID, clientCaseName(l), clientSupplementDetails(u)), b.clientCaseMarkup(ctx, l))
 				continue
 			}
 			for _, id := range b.caseAdminRecipients(l) {

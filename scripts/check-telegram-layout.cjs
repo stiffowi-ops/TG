@@ -293,7 +293,7 @@ module.exports = async function checkTelegramLayout(context, target) {
       await page.locator('.profile-rewards__summary').tap();
       if(fullscreen)await page.screenshot({path:'screenshots/17-profile-discount-expanded.png'});
       await page.getByRole('button',{name:/Моя ссылка и история приглашений/}).tap();
-      assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),0,'Do not duplicate redemption in referral details');
+      assert.equal(await page.getByRole('button',{name:'Воспользоваться скидкой'}).count(),1,'The dedicated discount screen must offer redemption');
       await page.getByRole('button',{name:'Назад'}).tap();
       discountPhase='pending';
       await nav.getByRole('button',{name:'Локации'}).tap();

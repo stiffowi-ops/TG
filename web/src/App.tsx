@@ -87,8 +87,15 @@ function Dialog({children,onClose,className='',hidden=false}:{children:ReactNode
  useEffect(()=>{if(hidden)return;const onKey=(e:KeyboardEvent)=>{if(e.key==='Escape')onClose()};document.addEventListener('keydown',onKey);document.body.classList.add('has-dialog');return()=>{document.removeEventListener('keydown',onKey);document.body.classList.remove('has-dialog')}},[onClose,hidden]);
  return <div className="dialog-overlay" style={hidden?{display:'none'}:undefined} onMouseDown={e=>{if(e.target===e.currentTarget)onClose()}}><div className={`dialog ${className}`} role="dialog" aria-modal="true"><button className="dialog-close icon-button" onClick={onClose} aria-label="Закрыть"><X size={20}/></button>{children}</div></div>;
 }
+function initialMiniAppView():'profile'|'discount'|null {
+ const query=new URLSearchParams(window.location.search);
+ const start=new URLSearchParams(window.Telegram?.WebApp?.initData).get('start_param');
+ const value=query.get('view')||query.get('tgWebAppStartParam')||start;
+ return value==='discount'?'discount':value==='profile'?'profile':null;
+}
 function App(){
- const [tab,setTab]=useState<Tab>(()=>{const query=new URLSearchParams(window.location.search);return query.get('view')==='profile'||query.get('tgWebAppStartParam')==='profile'||new URLSearchParams(window.Telegram?.WebApp?.initData).get('start_param')==='profile'?'requests':'home'});
+ const [initialView]=useState(initialMiniAppView);
+ const [tab,setTab]=useState<Tab>(()=>initialView?'requests':'home');
  const [hasNavigated,setHasNavigated]=useState(false);
  const observeCard=useCardReveal();
  const [focusSearch,setFocusSearch]=useState(false);
@@ -102,7 +109,7 @@ function App(){
  const [yandexLocation,setYandexLocation]=useState<Location|null>(null);
  const [favorites,setFavorites]=useStoredState<string[]>(heartKey,[]);
  const [cases,setCases]=useState<DemoCase[]>([]);
- const [profileView,setProfileView]=useState<ProfileView>('home');
+ const [profileView,setProfileView]=useState<ProfileView>(()=>initialView==='discount'?'discount':'home');
  const [adminView,setAdminView]=useState<AdminView>('home');
  const [discountRows,setDiscountRows]=useState<DiscountUse[]|null>(null);
  const [pendingCount,setPendingCount]=useState<number|null>(null);
