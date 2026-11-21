@@ -123,6 +123,26 @@ func (b *Bot) deliverCaseNotice(ctx context.Context, l leadApplication, key stri
 	}
 }
 
+// Client-facing notifications name the location rather than relying on case IDs.
+func clientCaseName(l leadApplication) string {
+ for _, location := range l.locations() {
+  if name := strings.TrimSpace(location.Name); name != "" {
+   return "Заявка " + html.EscapeString(name)
+  }
+ }
+ return fmt.Sprintf("Заявка №%04d", l.Number)
+}
+
+// Keep the original bot navigation and offer the Mini App alongside it.
+func (b *Bot) clientCaseMarkup(ctx context.Context, l leadApplication) any {
+ rows := [][]Button{{caseButton("📂 Открыть заявку", l.Number)}}
+ if button := b.profileButton(ctx); len(button) > 0 {
+  button["text"] = "📱 Открыть мини-приложение"
+  rows = append(rows, []Button{button})
+ }
+ return markup(rows...)
+}
+
 type caseNoticeSender func(leadApplication, string, int64, string, any)
 
 func pendingCaseReminderText(l leadApplication, stage string) string {
@@ -228,11 +248,11 @@ func (b *Bot) notifySelectedCaseEvents(ctx context.Context, now time.Time, cases
 			if !l.supplementLimitReached() {
 				note = "Статус и возможность дополнить обращение доступны в разделе «Мои заявки»."
 			}
-			send(l, "client:taken", l.UserID, fmt.Sprintf("🛠 <b>Ваше обращение №%04d взято в работу.</b>\n\n%s", l.Number, note), markup([]Button{caseButton("📂 Открыть обращение", l.Number)}))
+			send(l, "client:taken", l.UserID, fmt.Sprintf("🛠 <b>%s взята в работу.</b>\n\nС вами в ближайшее время свяжется специалист.\n%s", clientCaseName(l), note), b.clientCaseMarkup(ctx, l))
 		}
 		for _, u := range l.Updates {
 			if u.AcceptedAt != nil {
-				send(l, fmt.Sprintf("client:ack:%d", u.ID), l.UserID, fmt.Sprintf("✅ <b>Специалист принял дополнение №%d к обращению №%04d.</b>", u.ID, l.Number), markup([]Button{caseButton("📂 Открыть обращение", l.Number)}))
+				send(l, fmt.Sprintf("client:ack:%d", u.ID), l.UserID, fmt.Sprintf("✅ <b>Дополнение №%d к заявке принято в работу.</b>\n\n%s. Уточнения переданы специалисту.", u.ID, clientCaseName(l)), b.clientCaseMarkup(ctx, l))
 				continue
 			}
 			for _, id := range b.caseAdminRecipients(l) {
@@ -243,11 +263,13 @@ func (b *Bot) notifySelectedCaseEvents(ctx context.Context, now time.Time, cases
 			}
 		}
 		if l.isResolved() {
-			text := processedText
-			if l.Resolution != "" {
-				text += "\n\n<b>Итог</b>\n" + html.EscapeString(l.Resolution)
-			}
-			send(l, "client:resolved", l.UserID, text, markup([]Button{caseButton(fmt.Sprintf("📂 Заявка №%04d", l.Number), l.Number), cabinetButton()}))
+            status := "обработана"
+            if l.ResolvedBy > 0 { status = "выполнена" }
+            text := fmt.Sprintf("✅ <b>%s %s.</b>\n\nСпасибо за обращение! Будем рады вашим новым заявкам.", clientCaseName(l), status)
+            if l.Resolution != "" {
+                text += "\n\n<b>Итог</b>\n" + html.EscapeString(l.Resolution)
+            }
+            send(l, "client:resolved", l.UserID, text, b.clientCaseMarkup(ctx, l))
 		}
 	}
 }

@@ -272,9 +272,11 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
  if b==nil||b.leads==nil{return}
  for _,rec:=range b.leads.referralNotices(){
   if ctx.Err()!=nil{return}
-  text:=fmt.Sprintf("🎉 <b>Вам начислена скидка 10%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.")
+  if rec.Percent<=0 {continue}
+  text:=fmt.Sprintf("🎉 <b>Вам начислена скидка %d%%!</b>\n\nПо вашему приглашению поступила заявка нового клиента. Скидка доступна на следующую оплату.",rec.Percent)
   button:=b.profileButton(ctx)
   if len(button)==0{continue}
+  button["text"]="🎁 Использовать скидку"
   keyboard:=markup([]Button{button})
   _,err:=b.call(ctx,"sendMessage",map[string]any{"chat_id":rec.InviterID,"text":text,"parse_mode":"HTML","reply_markup":keyboard})
   if err!=nil{log.Printf("Referral notice to %d (case %d): %v",rec.InviterID,rec.CaseNumber,err);continue}
@@ -283,7 +285,7 @@ func (b *Bot) sendReferralNotices(ctx context.Context) {
 }
 func (b *Bot) runReferralNotices(ctx context.Context) {
  ticker:=time.NewTicker(2*time.Minute);defer ticker.Stop()
- deliver:=func(){b.sendReferralNotices(ctx);b.sendDiscountNotices(ctx)}
+ deliver:=func(){b.sendReferralNotices(ctx);b.sendManualDiscountNotices(ctx);b.sendDiscountNotices(ctx)}
  deliver()
  for {
   select{
