@@ -2,9 +2,10 @@ import {useRef,useState} from 'react';
 import {Copy,Share2,Check,Link2,Users} from 'lucide-react';
 import type {MiniReferralInfo,DiscountWallet} from '../../types';
 
-import DiscountUsage,{DiscountHistory} from './DiscountUsage';
+import {DiscountHistory} from './DiscountUsage';
+import {shareReferralLink} from './referralShare';
 
-export default function ReferralDetails({wallet,onRequest,info,loading,error}:{wallet:DiscountWallet|null;onRequest:(offer:string)=>Promise<void>;info:MiniReferralInfo|null;loading:boolean;error:string}){
+export default function ReferralDetails({wallet,info,loading,error}:{wallet:DiscountWallet|null;info:MiniReferralInfo|null;loading:boolean;error:string}){
  const [copied,setCopied]=useState(false);
  const [manualCopy,setManualCopy]=useState(false);
  const linkField=useRef<HTMLInputElement>(null);
@@ -14,14 +15,8 @@ export default function ReferralDetails({wallet,onRequest,info,loading,error}:{w
   try{await navigator.clipboard.writeText(link);setCopied(true);setManualCopy(false)}
   catch{setCopied(false);setManualCopy(true);linkField.current?.focus();linkField.current?.select()}
  };
- const share=()=>{
-  if(!link)return;
-  const target='https://t.me/share/url?url='+encodeURIComponent(link)+'&text='+encodeURIComponent('Приглашаю посмотреть локации в приложении «Локации»');
-  if(window.Telegram?.WebApp?.openTelegramLink){window.Telegram.WebApp.openTelegramLink(target)}
-  else{window.open(target,'_blank','noopener,noreferrer')}
- };
+ const share=()=>{shareReferralLink(link)};
  return <div className="profile-discount-screen">
-  <DiscountUsage wallet={wallet} onRequest={onRequest}/>
   <div className="profile-referral-share">
    <div className="profile-referral-share__heading"><Users size={22}/><strong>Ваша реферальная ссылка</strong></div>
    {loading?<p>Получаем персональную ссылку…</p>:error?<p role="alert">{error}</p>:link?<>
