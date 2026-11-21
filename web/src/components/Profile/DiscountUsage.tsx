@@ -1,13 +1,16 @@
 import {useState} from 'react';
-import {BadgePercent, CheckCircle2, Gift} from 'lucide-react';
+import {BadgePercent, CheckCircle2, Gift, ChevronDown, ChevronRight} from 'lucide-react';
 import type {DiscountWallet} from '../../types';
 import ProgressTracker from './ProgressTracker';
 import {prettyDate} from '../../demo';
 import './discount-usage.css';
 
-export default function DiscountUsage({wallet,onRequest}:{wallet:DiscountWallet|null;onRequest:(offer:string)=>Promise<void>}) {
+type Props={wallet:DiscountWallet|null;onRequest:(offer:string)=>Promise<void>;compact?:boolean;onDetails?:()=>void};
+
+export default function DiscountUsage({wallet,onRequest,compact=false,onDetails}:Props) {
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
+ const [expanded,setExpanded]=useState(false);
  const latest=wallet?.history?.[0];
  const pending=latest?.status==='pending';
  const used=latest?.status==='used'&&!wallet?.percent;
@@ -16,6 +19,22 @@ export default function DiscountUsage({wallet,onRequest}:{wallet:DiscountWallet|
   if(!wallet?.offer||busy)return;
   setBusy(true);setError('');
   try{await onRequest(wallet.offer)}catch(e){setError((e as Error).message)}finally{setBusy(false)}
+ }
+ if(compact){
+  const status=used?'Скидка использована':pending?'На согласовании':percent?'На следующую оплату':'Приглашайте клиентов по ссылке';
+  return <section className="profile-rewards" aria-label="Мои скидки и приглашения">
+   <button type="button" className="profile-rewards__summary" aria-expanded={expanded} onClick={()=>setExpanded(value=>!value)}>
+    <span className="profile-rewards__icon"><Gift size={20}/></span>
+    <span className="profile-rewards__copy"><strong>{percent?'Ваша скидка: '+percent+'%':'У вас нет скидок'}</strong><small>{status}</small></span>
+    <ChevronDown size={20} className={'profile-rewards__arrow'+(expanded?' is-expanded':'')} aria-hidden="true"/>
+   </button>
+   {wallet?.offer&&<button className="profile-cta profile-rewards__redeem" type="button" disabled={busy} onClick={request}><BadgePercent size={18}/>{busy?'Отправляем…':'Воспользоваться скидкой'}</button>}
+   {expanded&&<div className="profile-rewards__details">
+    {latest&&<div className="profile-rewards__tracker"><ProgressTracker status={pending?'working':'resolved'} labels={['Отправлено','Согласование','Использовано']} subject="скидки"/></div>}
+    {onDetails&&<button type="button" className="profile-rewards__history" onClick={onDetails}>Моя ссылка и история приглашений <ChevronRight size={18}/></button>}
+   </div>}
+   {error&&<small role="alert" className="profile-rewards__error">{error}</small>}
+  </section>;
  }
  return <>
   <section className={'discount-balance'+(used?' discount-balance--used':'')} aria-live="polite">

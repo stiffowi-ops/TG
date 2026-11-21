@@ -65,16 +65,15 @@ export default function ProfilePage({view,setView,wallet,onRequest,cases,locatio
  if(view==='home')return <section className="profile-page profile-page--home">
   <div className="profile-page__title"><h1>Мой профиль</h1></div>
   <ProfileSummaryCard profile={profile} fallbackName={user?.firstName} onClick={()=>setView('data')}/>
-  <section className="profile-referral-hub" aria-label="Приглашайте новых клиентов и скидки">
-   <ProfileReferralBanner onClick={()=>{if(!shareReferralLink(referral?.link))setView('discount')}}/>
-   <DiscountUsage wallet={wallet} onRequest={onRequest}/>
-   <button type="button" className="profile-referral-more" onClick={()=>setView('discount')}>Моя ссылка и история приглашений <ProfileGlyph name="chevron" size={18}/></button>
-  </section>
+  {active&&<ActiveRequestPreview record={active} title={names.get(active.locationIds[0]||'')||'Локация'} onClick={()=>openCase(active.number)}/>}
+  <button type="button" className="profile-cta profile-cta--primary-action" onClick={()=>active?openCase(active.number):onCreate()}><ProfileGlyph name={active?'application':'plus'} size={23}/>{active?'Отследить заявку':'Подать заявку'}</button>
   <div className="profile-shortcuts profile-shortcuts--single">
    <ProfileShortcutTile title="Мои заявки" subtitle="История и статус" icon="requests" theme="blue" onClick={()=>setView('requests')}/>
   </div>
-  {active&&<ActiveRequestPreview record={active} title={names.get(active.locationIds[0]||'')||'Локация'} onClick={()=>openCase(active.number)}/>}
-  <button type="button" className="profile-cta" onClick={()=>active?openCase(active.number):onCreate()}><ProfileGlyph name={active?'application':'plus'} size={23}/>{active?'Отследить заявку':'Подать заявку'}</button>
+  <section className="profile-referral-hub" aria-label="Приглашайте новых клиентов и скидки">
+   <ProfileReferralBanner onClick={()=>{if(!shareReferralLink(referral?.link))setView('discount')}}/>
+   <DiscountUsage wallet={wallet} onRequest={onRequest} compact onDetails={()=>setView('discount')}/>
+  </section>
  </section>;
  return <section className="profile-page profile-page--subview">
   {view==='data'&&<><h1>Мои данные</h1><ProfileDataForm profile={profile} onSave={onSave}/></>}
