@@ -77,7 +77,7 @@ export default function ProfilePage({view,setView,wallet,onRequest,cases,locatio
  </section>;
  return <section className="profile-page profile-page--subview">
   {view==='data'&&<><h1>Мои данные</h1><ProfileDataForm profile={profile} onSave={onSave}/></>}
-  {view==='discount'&&<><h1>Приглашения</h1><ReferralDetails wallet={wallet} info={referral} loading={referralLoading} error={referralError}/></>}
+  {view==='discount'&&<><h1>Приглашения и скидки</h1><DiscountUsage wallet={wallet} onRequest={onRequest}/><ReferralDetails wallet={wallet} info={referral} loading={referralLoading} error={referralError}/></>}
   {view==='requests'&&<><h1>Мои заявки</h1>{sorted.length?sorted.map(c=><RequestItem key={c.number} record={c} title={caseName(c)} onClick={()=>openCase(c.number)}/>):<div className="profile-empty">Пока нет заявок. После отправки они появятся здесь.</div>}<button className="profile-cta" onClick={onCreate}><ProfileGlyph name="plus" size={22}/> Подать заявку</button></>}
   {view==='case'&&current&&<><h1>{caseName(current)}</h1><p className="profile-muted">{prettyDate(current.createdAt)}</p><div className="profile-detail-tracker"><ProgressTracker status={current.status}/></div><h2>История заявки</h2><div className="profile-history">
     <div><span className="profile-history__dot"/><strong>Заявка получена</strong><small>{prettyDate(current.createdAt)}</small></div>

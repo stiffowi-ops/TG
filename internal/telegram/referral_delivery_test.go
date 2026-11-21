@@ -89,7 +89,7 @@ func TestReferralDecisionDelivery(t *testing.T) {
 		t.Fatalf("award recipients: %+v", notices)
 	}
 	rows := notices[1].Markup.Rows
-	if len(rows) != 1 || len(rows[0]) != 1 || !strings.Contains(rows[0][0].Text, "Использовать скидку") || rows[0][0].WebApp.URL != "https://example.test/app?lang=ru&view=profile" {
+	if len(rows) != 1 || len(rows[0]) != 1 || !strings.Contains(rows[0][0].Text, "Использовать скидку") || rows[0][0].WebApp.URL != "https://example.test/app?lang=ru&view=discount" {
 		t.Fatalf("unexpected profile button: %+v", rows)
 	}
 }

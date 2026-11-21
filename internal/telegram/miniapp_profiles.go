@@ -160,9 +160,8 @@ func (b *Bot) sendManualDiscountNotices(ctx context.Context) {
  if b==nil||b.leads==nil{return}
  for _,notice:=range b.leads.manualDiscountNotices(){
   if ctx.Err()!=nil{return}
-  button:=b.profileButton(ctx)
+  button:=b.discountButton(ctx,"🎁 Использовать скидку")
   if len(button)==0{continue}
-  button["text"]="🎁 Использовать скидку"
   _,err:=b.call(ctx,"sendMessage",map[string]any{
    "chat_id":notice.UserID,
    "text":fmt.Sprintf("🎁 Вам назначена скидка %d%%!\n\nПроверить доступное вознаграждение и отправить запрос на использование можно в мини-приложении.",notice.Percent),

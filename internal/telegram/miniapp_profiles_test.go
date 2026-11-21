@@ -69,7 +69,7 @@ func TestManualDiscountTelegramNotificationAfterRestart(t *testing.T) {
   rows:=data["reply_markup"].(map[string]any)["inline_keyboard"].([]any)
   button:=rows[0].([]any)[0].(map[string]any)
   if !strings.Contains(button["text"].(string),"Использовать скидку"){t.Fatal("missing CTA",button)}
-  if !strings.Contains(button["web_app"].(map[string]any)["url"].(string),"view=profile"){t.Fatal("no profile link",button)}
+  if !strings.Contains(button["web_app"].(map[string]any)["url"].(string),"view=discount"){t.Fatal("no profile link",button)}
   sent++
   return &http.Response{StatusCode:200,Body:io.NopCloser(strings.NewReader(`{"ok":true,"result":{"message_id":1}}`))},nil
  })}
