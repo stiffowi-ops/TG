@@ -29,6 +29,7 @@ type discountUseRecord struct {
 	ApprovedBy     int64           `json:"approvedBy,omitempty"`
 	AdminMessages  map[int64]int64 `json:"adminMessages,omitempty"` // negative once updated
 	ClientNotified bool            `json:"clientNotified,omitempty"`
+	ClientRequestNotified bool     `json:"clientRequestNotified,omitempty"`
 }
 type MiniDiscountWallet struct {
 	Percent int               `json:"percent"`
@@ -233,6 +234,24 @@ func (s *leadStore) saveDiscountReceipt(id, chat, message int64) error {
 	next.DiscountUses[id] = r
 	return s.saveLocked(next)
 }
+func (s *leadStore) markDiscountRequestNotified(id int64) error {
+ s.mu.Lock()
+ defer s.mu.Unlock()
+ r,ok:=s.state.DiscountUses[id]
+ if !ok {return errors.New("запрос не найден")}
+ if r.ClientRequestNotified||r.Status!="pending" {return nil}
+ next:=s.cloneLocked()
+ r.ClientRequestNotified=true
+ next.DiscountUses[id]=r
+ return s.saveLocked(next)
+}
+func (s *leadStore) discountRequestPending(id int64) bool {
+ s.mu.Lock()
+ defer s.mu.Unlock()
+ r,ok:=s.state.DiscountUses[id]
+ return ok&&r.Status=="pending"&&!r.ClientRequestNotified
+}
+
 func (b *Bot) sendDiscountNotices(ctx context.Context) {
 	if b == nil || b.leads == nil {
 		return
@@ -249,10 +268,24 @@ func (b *Bot) sendDiscountNotices(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
+        if r.Status == "pending" && !r.ClientRequestNotified && s.discountRequestPending(r.ID) {
+            btn:=b.profileButton(ctx)
+            if len(btn)>0 {
+                btn["text"]="📱 Посмотреть статус скидки"
+                _,err:=b.call(ctx,"sendMessage",map[string]any{
+                    "chat_id":r.UserID,
+                    "text":fmt.Sprintf("🕓 Запрос на использование скидки %d%% отправлен.\n\nОжидает подтверждения. Мы сообщим о результате.",r.Percent),
+                    "reply_markup":markup([]Button{btn}),
+                })
+                if err==nil {err=s.markDiscountRequestNotified(r.ID)}
+                if err!=nil {log.Printf("Discount request notice %d: %v",r.ID,err)}
+            }
+        }
 		if r.Status == "used" && !r.ClientNotified {
 			btn := b.profileButton(ctx)
 			if len(btn) > 0 {
-				_, err := b.call(ctx, "sendMessage", map[string]any{"chat_id": r.UserID, "text": fmt.Sprintf("Ваша скидка %d%% использована. Администратор подтвердил её на оплату.", r.Percent), "reply_markup": markup([]Button{btn})})
+                btn["text"]="👤 Посмотреть скидку"
+				_, err := b.call(ctx, "sendMessage", map[string]any{"chat_id": r.UserID, "text": fmt.Sprintf("✅ Ваша скидка %d%% использована. Применение скидки подтверждено.\n\nСпасибо! Будем рады новым обращениям.", r.Percent), "reply_markup": markup([]Button{btn})})
 				if err == nil {
 					err = s.saveDiscountReceipt(r.ID, 0, 0)
 				}
